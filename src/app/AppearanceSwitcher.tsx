@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import {
   APPEARANCE_MODES,
@@ -16,11 +17,30 @@ const LABELS: Readonly<Record<AppearanceMode, string>> = {
   aurora: "Aurora",
 };
 
+type NeonIgnition = typeof import("./neon-ignition");
+
+let ignition: Promise<NeonIgnition> | undefined;
+
+const loadIgnition = (): Promise<NeonIgnition> => {
+  ignition ??= import("./neon-ignition").catch((error: unknown) => {
+    ignition = undefined;
+    throw error;
+  });
+
+  return ignition;
+};
+
+const canIgnite = (): boolean =>
+  typeof document.startViewTransition === "function" &&
+  typeof window.matchMedia === "function" &&
+  !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export function AppearanceSwitcher() {
   const [mode, setMode] = useState<AppearanceMode>(() =>
     readAppearancePreference(),
   );
   const [saveFailed, setSaveFailed] = useState(false);
+  const latestChoice = useRef(mode);
 
   useEffect(() => {
     applyAppearanceToDocument(mode);
@@ -44,10 +64,43 @@ export function AppearanceSwitcher() {
     };
   }, [mode]);
 
-  const choose = (nextMode: AppearanceMode) => {
+  const apply = (nextMode: AppearanceMode) => {
     setMode(nextMode);
     setSaveFailed(!persistAppearancePreference(nextMode));
     applyAppearanceToDocument(nextMode);
+  };
+
+  const choose = (nextMode: AppearanceMode, trigger: HTMLElement) => {
+    const previous = latestChoice.current;
+    latestChoice.current = nextMode;
+
+    if (nextMode !== "aurora" || previous === "aurora" || !canIgnite()) {
+      apply(nextMode);
+      return;
+    }
+
+    const box = (
+      trigger.querySelector('[aria-hidden="true"]') ?? trigger
+    ).getBoundingClientRect();
+    const commit = () => {
+      if (latestChoice.current === "aurora") {
+        flushSync(() => {
+          apply("aurora");
+        });
+      }
+    };
+
+    loadIgnition().then(
+      ({ igniteNeon }) => {
+        if (latestChoice.current === "aurora") {
+          igniteNeon(
+            { x: box.left + box.width / 2, y: box.top + box.height / 2 },
+            commit,
+          );
+        }
+      },
+      commit,
+    );
   };
 
   return (
@@ -68,8 +121,13 @@ export function AppearanceSwitcher() {
             className={styles.option}
             aria-pressed={mode === candidate}
             data-mode={candidate}
-            onClick={() => {
-              choose(candidate);
+            onPointerDown={() => {
+              if (candidate === "aurora" && canIgnite()) {
+                loadIgnition().catch(() => undefined);
+              }
+            }}
+            onClick={(event) => {
+              choose(candidate, event.currentTarget);
             }}
           >
             <span className={styles.swatch} aria-hidden="true" />

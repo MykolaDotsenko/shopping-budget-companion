@@ -1,0 +1,92 @@
+:root[data-neon-ignition]::view-transition-old(root),
+:root[data-neon-ignition]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+:root[data-neon-ignition]::view-transition-group(neon-burst),
+:root[data-neon-ignition]::view-transition-new(neon-burst) {
+  animation: none;
+}
+
+.neon-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  view-transition-name: neon-burst;
+}
+
+:root[data-neon-ignition] :is(button, input) {
+  animation: neon-tube 1.1s linear 0.3s;
+}
+
+:root[data-neon-ignition] :is(button, input):nth-of-type(3n + 2) {
+  animation-delay: 0.42s;
+}
+
+:root[data-neon-ignition] :is(button, input):nth-of-type(3n) {
+  animation-delay: 0.54s;
+}
+
+:root[data-neon-ignition] h1 {
+  animation: neon-title 1.2s linear 0.28s;
+}
+
+:root[data-neon-ignition] [data-mode="aurora"] [aria-hidden="true"] {
+  animation: neon-swatch 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+@keyframes neon-tube {
+  6%,
+  14%,
+  30% {
+    box-shadow:
+      0 0 0 1px #8de8ff,
+      0 0 14px #8de8ffb3,
+      0 0 34px #9d8cff66;
+  }
+
+  10%,
+  22% {
+    box-shadow: 0 0 0 1px #8de8ff33;
+  }
+
+  48% {
+    box-shadow:
+      0 0 0 1px #8de8ffcc,
+      0 0 22px #8de8ff80,
+      0 0 48px #9d8cff4d;
+  }
+}
+
+@keyframes neon-title {
+  8%,
+  18%,
+  34% {
+    text-shadow:
+      0 0 10px #8de8ffcc,
+      0 0 28px #9d8cff99;
+  }
+
+  13%,
+  25% {
+    text-shadow: none;
+  }
+
+  52% {
+    text-shadow:
+      0 0 14px #8de8ff99,
+      0 0 36px #9d8cff66;
+  }
+}
+
+@keyframes neon-swatch {
+  35% {
+    transform: scale(1.45);
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 18px #8de8ff,
+      0 0 42px #ff8ad8;
+  }
+}

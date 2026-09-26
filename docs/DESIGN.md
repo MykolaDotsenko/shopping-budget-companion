@@ -179,11 +179,13 @@ Requirements:
 - use a deep navy-black canvas with restrained cyan/violet atmospheric gradients;
 - keep the remaining amount and all critical money values neutral, high-contrast and free of decorative effects;
 - reserve luminous cyan for actions, selected state and controlled emphasis rather than tinting the whole interface;
-- create depth through layered surfaces, subtle glass-like contrast and soft bloom rather than particles or heavy WebGL;
+- at rest, create depth through layered surfaces, subtle glass-like contrast and soft bloom rather than particles or heavy WebGL;
 - preserve explicit warning, danger and focus semantics without letting the aurora palette blur state meaning;
 - price entry, button geometry, information architecture and shopping semantics stay identical to Light/Dark;
 - the explicit Aurora choice must not be overridden by operating-system colour scheme;
-- no continuous animation is required for the static Aurora baseline; later motion must respect reduced motion and performance budgets;
+- no continuous animation: at rest Aurora is static aurora gradients, neon hairlines on panels and luminous actions and selected states;
+- choosing Aurora plays one short ignition, the only showpiece motion in the product: the new look spreads from the tapped control behind a spectrum neon rim, with a brief bloom and a spark burst, and controls flicker on like neon tubes (about 1.5 seconds, then nothing keeps moving);
+- the ignition loads on demand only when Aurora is chosen, never runs with reduced motion or on start-up, never covers or delays a shopping action and never touches money values; browsers without View Transitions switch instantly;
 - all Aurora effects must degrade gracefully to ordinary dark surfaces if a browser cannot render an effect.
 
 ## Dark calibration
@@ -323,6 +325,7 @@ Rules:
 - remaining-value changes may use a brief settle transition only after the new canonical state renders;
 - new or restored cart rows may use a short orientation transition; removal must never wait for an exit animation;
 - completion may use one short settled reveal, never a celebratory sequence;
+- the Aurora ignition is the one deliberate showpiece: it plays only when someone chooses Aurora (see [Aurora calibration](#aurora-calibration));
 - no important information exists only in motion;
 - reduced motion preserves all meaning and controls and removes decorative animation;
 - transitions should help orientation, not demonstrate animation skill.

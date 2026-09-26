@@ -58,6 +58,81 @@ if (!(manifest.icons ?? []).some((icon) => icon.purpose === "maskable")) {
   throw new Error("Public PWA manifest is missing a maskable icon.");
 }
 
+const imageSize = (bytes) => {
+  if (bytes.toString("latin1", 0, 8) === "\x89PNG\r\n\x1a\n") {
+    return {
+      type: "image/png",
+      width: bytes.readUInt32BE(16),
+      height: bytes.readUInt32BE(20),
+    };
+  }
+
+  let offset = 2;
+
+  while (bytes[0] === 0xff && bytes[1] === 0xd8 && offset + 9 < bytes.length) {
+    const marker = bytes[offset + 1];
+
+    if (bytes[offset] !== 0xff) {
+      return null;
+    }
+
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return {
+        type: "image/jpeg",
+        width: bytes.readUInt16BE(offset + 7),
+        height: bytes.readUInt16BE(offset + 5),
+      };
+    }
+
+    offset += 2 + bytes.readUInt16BE(offset + 2);
+  }
+
+  return null;
+};
+
+const screenshotRatios = new Map();
+
+if ((manifest.screenshots ?? []).length === 0) {
+  throw new Error("Public PWA manifest has no screenshots for the install dialog.");
+}
+
+for (const screenshot of manifest.screenshots) {
+  const size = imageSize(await readFile(path.join(dist, screenshot.src)));
+  const [width, height] = screenshot.sizes.split("x").map(Number);
+  const ratio = (width / height).toFixed(3);
+
+  if (
+    size === null ||
+    size.type !== screenshot.type ||
+    size.width !== width ||
+    size.height !== height
+  ) {
+    throw new Error(
+      `Manifest screenshot ${screenshot.src} is not a ${screenshot.sizes} ${screenshot.type}.`,
+    );
+  }
+
+  if (
+    Math.min(width, height) < 320 ||
+    Math.max(width, height) > 3840 ||
+    Math.max(width, height) / Math.min(width, height) > 2.3 ||
+    !["narrow", "wide"].includes(screenshot.form_factor) ||
+    !screenshot.label
+  ) {
+    throw new Error(
+      `Manifest screenshot ${screenshot.src} would not be shown in the install dialog.`,
+    );
+  }
+
+  if ((screenshotRatios.get(screenshot.form_factor) ?? ratio) !== ratio) {
+    throw new Error(
+      `Manifest screenshots for ${screenshot.form_factor} screens must share one aspect ratio.`,
+    );
+  }
+
+  screenshotRatios.set(screenshot.form_factor, ratio);
+}
+
 const indexHtml = await readFile(path.join(dist, "index.html"), "utf8");
 
 if (!indexHtml.includes('rel="manifest"')) {
@@ -368,6 +443,10 @@ if (!serviceWorker.includes('url:"index.html"')) {
 
 if (serviceWorker.includes('url:"assets/ocr/')) {
   throw new Error("The price reader files must not be precached for every visitor.");
+}
+
+if (serviceWorker.includes('url:"screenshots/')) {
+  throw new Error("The install screenshots must not be precached for every visitor.");
 }
 
 for (const file of initialJsFiles) {

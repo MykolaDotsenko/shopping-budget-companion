@@ -123,6 +123,29 @@ export default defineConfig(() => {
               purpose: "maskable",
             },
           ],
+          screenshots: [
+            {
+              src: "screenshots/trip.jpg",
+              sizes: "780x1688",
+              type: "image/jpeg",
+              form_factor: "narrow",
+              label: "See what’s left of your budget while you shop",
+            },
+            {
+              src: "screenshots/entry.jpg",
+              sizes: "780x1688",
+              type: "image/jpeg",
+              form_factor: "narrow",
+              label: "Add a price and see what will be left before you add it",
+            },
+            {
+              src: "screenshots/summary.jpg",
+              sizes: "780x1688",
+              type: "image/jpeg",
+              form_factor: "narrow",
+              label: "Compare your receipt with your budget when you finish",
+            },
+          ],
         },
         workbox: {
           cleanupOutdatedCaches: true,

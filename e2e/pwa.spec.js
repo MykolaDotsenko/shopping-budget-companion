@@ -48,6 +48,23 @@ test("exposes an installable shell and precaches the application entry", async (
   expect(manifest.theme_color).toBe(
     await page.locator('meta[name="theme-color"]').getAttribute("content"),
   );
+  expect(manifest.screenshots.length).toBeGreaterThan(0);
+
+  for (const screenshot of manifest.screenshots) {
+    const served = await page.evaluate(async ({ href, src }) => {
+      const response = await fetch(new URL(src, new URL(href, location.href)));
+      const image = await createImageBitmap(await response.blob());
+
+      return {
+        ok: response.ok,
+        type: response.headers.get("content-type"),
+        sizes: `${image.width}x${image.height}`,
+      };
+    }, { href: manifestHref, src: screenshot.src });
+
+    expect(served).toEqual({ ok: true, type: screenshot.type, sizes: screenshot.sizes });
+  }
+
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
   expect(
     await page.locator('meta[property="og:image"]').getAttribute("content"),

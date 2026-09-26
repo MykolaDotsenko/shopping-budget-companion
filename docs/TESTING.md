@@ -55,7 +55,7 @@ npm run test:e2e
 3. `typecheck` — strict TypeScript (`tsc --noEmit`);
 4. `test:coverage` — every Vitest unit and component test, with the coverage floors below;
 5. `build` — the public production build;
-6. `build:check` — the public build validator (`scripts/validate-build.mjs`): install manifest, icons and service worker, the [public bundle budget](#public-bundle-budget), engine isolation and the guarded-evidence marker scan.
+6. `build:check` — the public build validator (`scripts/validate-build.mjs`): install manifest, icons, install-dialog screenshots (real size, not precached) and service worker, the [public bundle budget](#public-bundle-budget), engine isolation and the guarded-evidence marker scan.
 
 `npm run test:e2e` builds the public app and runs the public Playwright suite in Chromium, Firefox and WebKit. Tests tagged for a guarded evidence surface run only with `PLAYWRIGHT_GUARDED_SURFACE=1`, which CI sets while it serves that surface.
 
@@ -212,7 +212,7 @@ At minimum cover:
 
 Automation must prove:
 
-- the public release artifact contains a valid install manifest, install icons and generated service worker;
+- the public release artifact contains a valid install manifest, install icons, install-dialog screenshots and generated service worker;
 - guarded evidence builds do not create competing service workers;
 - after one successful online install/cache pass, the shell opens when network requests are unavailable;
 - an active trip restores offline with exact canonical values;

@@ -109,7 +109,18 @@
   --status-danger: #ff9cb5;
   --focus-ring: #bdcaff;
   --progress-track: #202a40;
-  --page-canvas: linear-gradient(135deg,#132840,#100b1e,#070912);
-  --primary-action-shadow: 0 0 24px #8de8ff24;
+  --page-canvas:
+    radial-gradient(36rem 26rem at 6% -6%, #19c6ff47, transparent 70%),
+    radial-gradient(32rem 28rem at 106% 16%, #8b5cff40, transparent 70%),
+    radial-gradient(40rem 24rem at 40% 110%, #ff4fd82e, transparent 70%),
+    linear-gradient(165deg, #0c1a33, #0b0b1f 52%, #070912);
+  --hero-surface: linear-gradient(160deg, #17223d, #101625 62%);
+  --panel-shadow: inset 0 1px 0 #ffffff0f, 0 0 0 1px #8de8ff1a, 0 18px 44px #0009, 0 0 40px #7b8cff1f;
+  --elevated-shadow: inset 0 1px 0 #ffffff14, 0 0 0 1px #8de8ff29, 0 24px 60px #000b, 0 0 60px #9d8cff2e;
+  --primary-action-shadow: 0 0 0 1px #8de8ff59, 0 10px 26px #8de8ff2e, 0 0 44px #9d8cff33;
+}
+
+:root[data-theme="aurora"] [aria-pressed="true"] {
+  box-shadow: 0 0 0 1px #8de8ff8c, 0 0 18px #8de8ff38;
 }
 

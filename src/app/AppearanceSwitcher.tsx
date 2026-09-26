@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import {
   APPEARANCE_MODES,
@@ -16,11 +17,53 @@ const LABELS: Readonly<Record<AppearanceMode, string>> = {
   aurora: "Aurora",
 };
 
+type NeonIgnition = typeof import("./neon-ignition");
+
+const IGNITION_WAIT_MS = 150;
+
+let ignition: Promise<NeonIgnition> | undefined;
+let loadedIgnition: NeonIgnition | undefined;
+
+const loadIgnition = (): Promise<NeonIgnition> => {
+  ignition ??= import("./neon-ignition").then(
+    (module) => {
+      loadedIgnition = module;
+      return module;
+    },
+    (error: unknown) => {
+      ignition = undefined;
+      throw error;
+    },
+  );
+
+  return ignition;
+};
+
+const canIgnite = (): boolean =>
+  typeof document.startViewTransition === "function" &&
+  typeof window.matchMedia === "function" &&
+  !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export function AppearanceSwitcher() {
   const [mode, setMode] = useState<AppearanceMode>(() =>
     readAppearancePreference(),
   );
   const [saveFailed, setSaveFailed] = useState(false);
+  const latestChoice = useRef(mode);
+
+  useEffect(() => {
+    if (!canIgnite()) {
+      return undefined;
+    }
+
+    const prefetch = window.setTimeout(() => {
+      loadIgnition().catch(() => undefined);
+    }, 1_000);
+
+    return () => {
+      window.clearTimeout(prefetch);
+    };
+  }, []);
 
   useEffect(() => {
     applyAppearanceToDocument(mode);
@@ -44,10 +87,69 @@ export function AppearanceSwitcher() {
     };
   }, [mode]);
 
-  const choose = (nextMode: AppearanceMode) => {
+  const apply = (nextMode: AppearanceMode) => {
     setMode(nextMode);
     setSaveFailed(!persistAppearancePreference(nextMode));
     applyAppearanceToDocument(nextMode);
+  };
+
+  const choose = (nextMode: AppearanceMode, trigger: HTMLElement) => {
+    const previous = latestChoice.current;
+    latestChoice.current = nextMode;
+
+    if (nextMode !== "aurora" || previous === "aurora" || !canIgnite()) {
+      apply(nextMode);
+      return;
+    }
+
+    setSaveFailed(!persistAppearancePreference(nextMode));
+
+    const box = (
+      trigger.querySelector('[aria-hidden="true"]') ?? trigger
+    ).getBoundingClientRect();
+    const commit = () => {
+      if (latestChoice.current === "aurora") {
+        flushSync(() => {
+          apply("aurora");
+        });
+      }
+    };
+    const ignite = ({ igniteNeon }: NeonIgnition) => {
+      if (latestChoice.current === "aurora") {
+        igniteNeon(
+          { x: box.left + box.width / 2, y: box.top + box.height / 2 },
+          commit,
+        );
+      }
+    };
+
+    if (loadedIgnition !== undefined) {
+      ignite(loadedIgnition);
+      return;
+    }
+
+    let settled = false;
+    const settle = (next: () => void) => {
+      if (!settled) {
+        settled = true;
+        window.clearTimeout(deadline);
+        next();
+      }
+    };
+    const deadline = window.setTimeout(() => {
+      settle(commit);
+    }, IGNITION_WAIT_MS);
+
+    loadIgnition().then(
+      (module) => {
+        settle(() => {
+          ignite(module);
+        });
+      },
+      () => {
+        settle(commit);
+      },
+    );
   };
 
   return (
@@ -68,8 +170,13 @@ export function AppearanceSwitcher() {
             className={styles.option}
             aria-pressed={mode === candidate}
             data-mode={candidate}
-            onClick={() => {
-              choose(candidate);
+            onPointerDown={() => {
+              if (candidate === "aurora" && canIgnite()) {
+                loadIgnition().catch(() => undefined);
+              }
+            }}
+            onClick={(event) => {
+              choose(candidate, event.currentTarget);
             }}
           >
             <span className={styles.swatch} aria-hidden="true" />

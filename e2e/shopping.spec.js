@@ -175,6 +175,7 @@ test("keeps explicit Aurora appearance durable and independent from shopping sta
   await page.goto("/");
 
   await page.getByRole("button", { name: "Aurora", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "aurora");
 
   const initialAppearance = await page.evaluate((appearanceKey) => {
     const style = getComputedStyle(document.documentElement);
@@ -227,6 +228,65 @@ test("keeps explicit Aurora appearance durable and independent from shopping sta
     theme: "aurora",
     persisted: "aurora",
   });
+});
+
+test("lights Aurora up with a short neon ignition that never blocks shopping", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const animated = await page.evaluate(
+    () => typeof document.startViewTransition === "function",
+  );
+  const burst = page.locator("canvas.neon-burst");
+
+  if (animated) {
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          performance
+            .getEntriesByType("resource")
+            .some((entry) => entry.name.includes("neon-ignition")),
+        ),
+      )
+      .toBe(true);
+  }
+
+  await page.getByRole("button", { name: "Aurora", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "aurora");
+
+  if (animated) {
+    await expect(burst).toHaveCount(1);
+    await expect(burst).toHaveAttribute("aria-hidden", "true");
+    await expect(burst).toHaveCSS("pointer-events", "none");
+  }
+
+  await expect(burst).toHaveCount(0, { timeout: 5_000 });
+  await expect(page.locator("html")).not.toHaveAttribute("data-neon-ignition");
+  await expect(page.getByRole("button", { name: "Aurora", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.getByRole("button", { name: "€50", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Know what’s left" })).toBeVisible();
+});
+
+test("switches to Aurora instantly without the ignition when motion is reduced", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Aurora", exact: true }).click();
+
+  expect(
+    await page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme,
+      ignition: "neonIgnition" in document.documentElement.dataset,
+      bursts: document.querySelectorAll("canvas.neon-burst").length,
+    })),
+  ).toEqual({ theme: "aurora", ignition: false, bursts: 0 });
 });
 
 test("System appearance follows OS colour scheme without mutating the saved preference", async ({

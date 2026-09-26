@@ -82,6 +82,8 @@ test("has no detectable WCAG A/AA violations through the explicit Aurora core fl
 
   await page.goto("/");
   await page.getByRole("button", { name: "Aurora", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "aurora");
+  await expect(page.locator("canvas.neon-burst")).toHaveCount(0);
 
   let results = await scan(page);
   expect(results.violations).toEqual([]);

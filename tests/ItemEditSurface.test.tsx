@@ -91,7 +91,7 @@ describe("ItemEditSurface", () => {
 
     const price = screen.getByRole("textbox", { name: "Price" });
     expect((price as HTMLInputElement).value).toBe("4.79");
-    expect(screen.getByText("Confirmed · manual")).not.toBeNull();
+    expect(screen.getByText("Confirmed · Manual")).not.toBeNull();
 
     await user.clear(price);
     await user.type(price, "5.29");

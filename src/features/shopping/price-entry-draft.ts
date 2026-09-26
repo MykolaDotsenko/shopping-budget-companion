@@ -79,7 +79,7 @@ export const appendPriceDigit = (
   draft: PriceEntryDraft,
   digit: string,
 ): PriceEntryDraft => {
-  if (!/^\d$/.test(digit)) {
+  if (!/^\d$/.test(digit) || /[.,]\d{2}$/.test(draft.raw)) {
     return draft;
   }
 

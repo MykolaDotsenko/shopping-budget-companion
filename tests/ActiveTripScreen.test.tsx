@@ -378,10 +378,10 @@ describe("ActiveTripScreen", () => {
 
     expect(screen.queryByText("Confirmed · Manual")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Edit Item 1" }));
     expect(onEditItem).toHaveBeenCalledWith(item);
 
-    await user.click(screen.getByRole("button", { name: "Remove" }));
+    await user.click(screen.getByRole("button", { name: "Remove Item 1" }));
     expect(onRemoveItem).toHaveBeenCalledWith(item);
   });
 

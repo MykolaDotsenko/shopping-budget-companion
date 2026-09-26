@@ -2025,3 +2025,46 @@ test("removes only one item when Remove is double-tapped", async ({ page }) => {
 
   await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(2);
 });
+
+test("closes an open sheet with the browser's Back instead of leaving the app", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await startQuickBudget(page);
+
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("textbox", { name: "Price" }).fill("4");
+  await page.goBack();
+
+  await expect(page.getByRole("heading", { name: "Know what’s left" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Price" })).toHaveCount(0);
+  expect(new URL(page.url()).pathname).toBe("/");
+
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("heading", { name: "Know what’s left" })).toBeVisible();
+
+  await expect
+    .poll(() => page.evaluate(() => window.history.state?.shoppingSheet === true))
+    .toBe(false);
+});
+
+test("returns from trip history to the start screen with Back", async ({ page }) => {
+  await page.goto("/");
+  await startQuickBudget(page);
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("textbox", { name: "Price" }).fill("4.79");
+  await page.getByRole("button", { name: "Add · €4.79" }).click();
+  await page.getByRole("button", { name: "Finish trip" }).click();
+  await page.getByRole("button", { name: "Finish trip" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+
+  await page.getByRole("button", { name: /View trip history/ }).click();
+  await expect(page.getByRole("heading", { name: "Past shopping trips" })).toBeVisible();
+
+  await page.goBack();
+
+  await expect(
+    page.getByRole("heading", { name: "How much can you spend today?" }),
+  ).toBeVisible();
+});

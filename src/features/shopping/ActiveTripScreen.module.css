@@ -315,7 +315,6 @@
   gap: 10px;
 }
 
-.secondaryTripActions .adjustBudgetButton,
 .secondaryTripActions .finishButton {
   width: 100%;
 }
@@ -361,7 +360,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--shopping-raised);
-  color: var(--muted-on-soft);
+  color: var(--text);
   font: inherit;
   font-weight: 800;
   cursor: pointer;
@@ -605,7 +604,6 @@
   .capacity,
   .addButton,
   .finishButton,
-  .adjustBudgetButton,
   .undoButton,
   .itemActionButton,
   .removeButton {
@@ -619,7 +617,6 @@
   .capacity,
   .addButton,
   .finishButton,
-  .adjustBudgetButton,
   .undoButton,
   .itemActionButton,
   .removeButton {
@@ -637,42 +634,6 @@
   }
 
   .undoButton {
-    border: 1px solid ButtonText;
-  }
-}
-
-.adjustBudgetButton {
-  width: fit-content;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--shopping-panel);
-  color: var(--accent);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.adjustBudgetButton:hover {
-  background: var(--panel-soft);
-}
-
-.adjustBudgetButton:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
-}
-
-@media (max-width: 420px) {
-  .adjustBudgetButton {
-    width: 100%;
-  }
-}
-
-@media (forced-colors: active) {
-  .adjustBudgetButton {
-    forced-color-adjust: auto;
     border: 1px solid ButtonText;
   }
 }

@@ -101,7 +101,7 @@
   border: 1px solid var(--shopping-field-border);
   border-radius: 14px;
   padding: 0 13px;
-  background: var(--shopping-soft);
+  background: var(--shopping-raised);
   color: var(--shopping-text);
   font: inherit;
 }

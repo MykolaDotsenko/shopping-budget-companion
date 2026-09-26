@@ -213,6 +213,37 @@ function ShoppingAppScreens({
     openedOverlay.tripId !== state.activeTrip?.id
       ? NO_OVERLAY
       : openedOverlay;
+  const sheetOpen = overlay.kind !== "none";
+  const sheetHistoryEntry = useRef(false);
+  useEffect(() => {
+    if (sheetOpen && !sheetHistoryEntry.current) {
+      sheetHistoryEntry.current = true;
+      window.history.pushState({ shoppingSheet: true }, "");
+    } else if (!sheetOpen && sheetHistoryEntry.current) {
+      sheetHistoryEntry.current = false;
+
+      if (window.history.state?.shoppingSheet === true) {
+        window.history.back();
+      }
+    }
+  }, [sheetOpen]);
+  useEffect(() => {
+    const closeSheetOnBack = (): void => {
+      if (!sheetHistoryEntry.current) {
+        return;
+      }
+
+      sheetHistoryEntry.current = false;
+      setOverlay(NO_OVERLAY);
+      focusNextScreen();
+    };
+
+    window.addEventListener("popstate", closeSheetOnBack);
+
+    return () => {
+      window.removeEventListener("popstate", closeSheetOnBack);
+    };
+  }, []);
   const openTripOverlay = (next: TripOverlay): void => {
     if (state.activeTrip !== null) {
       setOverlay({ ...next, tripId: state.activeTrip.id });

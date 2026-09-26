@@ -24,6 +24,7 @@ import {
 import { HistoryIntegrityNotice } from "./HistoryIntegrityNotice";
 import { PersistenceHealthNotice } from "./PersistenceHealthNotice";
 import { RecentItemsSection } from "./RecentItemsSection";
+import { trustLabel } from "./item-trust";
 import styles from "./ActiveTripScreen.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
 
@@ -49,46 +50,6 @@ export interface ActiveTripScreenProps {
   readonly utilityControl?: ReactNode;
   readonly locale?: string;
 }
-
-const confidenceLabel = (item: CartItem): string => {
-  switch (item.priceConfidence.kind) {
-    case "confirmed":
-      return "Confirmed";
-    case "remembered":
-      return "Remembered";
-    case "estimated":
-      return "Estimated";
-    default: {
-      const exhaustive: never = item.priceConfidence;
-      return exhaustive;
-    }
-  }
-};
-
-const sourceLabel = (item: CartItem): string => {
-  switch (item.priceSource.kind) {
-    case "manual":
-      return "Manual";
-    case "price-memory":
-      return "Price memory";
-    case "shelf-scan":
-      return "Shelf scan";
-    case "encoded-barcode":
-      return "Barcode";
-    case "retailer-feed":
-      return "Retailer feed";
-    default: {
-      const exhaustive: never = item.priceSource;
-      return exhaustive;
-    }
-  }
-};
-
-const trustLabel = (item: CartItem): string =>
-  item.priceSource.kind === "price-memory" &&
-  item.priceConfidence.kind === "remembered"
-    ? "Remembered price"
-    : `${confidenceLabel(item)} · ${sourceLabel(item)}`;
 
 const clampPercentage = (value: number): number =>
   Math.min(100, Math.max(0, value));
@@ -354,7 +315,7 @@ export function ActiveTripScreen({
                 <button
                   ref={adjustBudgetButtonRef}
                   type="button"
-                  className={styles.adjustBudgetButton}
+                  className={styles.finishButton}
                   onClick={onAdjustBudget}
                 >
                   Adjust budget
@@ -411,11 +372,12 @@ export function ActiveTripScreen({
             <ul className={styles.itemList}>
               {trip.items.map((item, index) => {
                 const itemTotal = lineTotal(item);
+                const itemName = item.label ?? `Item ${index + 1}`;
 
                 return (
                   <li key={item.id} className={styles.item}>
                     <div className={styles.itemIdentity}>
-                      <strong>{item.label ?? `Item ${index + 1}`}</strong>
+                      <strong>{itemName}</strong>
                       {item.quantity > 1 ? (
                         <span>
                           {formatEur(item.unitPriceMinor, locale)} × {item.quantity}
@@ -442,6 +404,7 @@ export function ActiveTripScreen({
                             <button
                               type="button"
                               className={styles.itemActionButton}
+                              aria-label={`Edit ${itemName}`}
                               data-edit-item-id={item.id}
                               onClick={(event) => {
                                 if (event.timeStamp - lastRemovalAt.current < GHOST_TAP_MS) {
@@ -458,6 +421,7 @@ export function ActiveTripScreen({
                             <button
                               type="button"
                               className={styles.removeButton}
+                              aria-label={`Remove ${itemName}`}
                               onClick={(event) => {
                                 if (event.timeStamp - lastRemovalAt.current < GHOST_TAP_MS) {
                                   return;

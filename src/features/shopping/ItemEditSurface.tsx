@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   formatEur,
+  moneyInputValue,
   signedMinorUnits,
   type MinorUnits,
   type SignedMinorUnits,
@@ -26,6 +27,7 @@ import {
   decreaseQuantity,
   increaseQuantity,
 } from "./quantity-draft";
+import { trustLabel } from "./item-trust";
 import styles from "./ItemEditSurface.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
 
@@ -44,12 +46,6 @@ export interface ItemEditSurfaceProps {
   readonly locale?: string;
 }
 
-const rawPrice = (minor: MinorUnits): string => {
-  const euros = Math.floor(minor / 100);
-  const cents = minor % 100;
-  return `${euros}.${String(cents).padStart(2, "0")}`;
-};
-
 const absoluteMoney = (value: number): SignedMinorUnits => {
   const result = signedMinorUnits(Math.abs(value));
 
@@ -58,40 +54,6 @@ const absoluteMoney = (value: number): SignedMinorUnits => {
   }
 
   return result.value;
-};
-
-const confidenceLabel = (item: CartItem): string => {
-  switch (item.priceConfidence.kind) {
-    case "confirmed":
-      return "Confirmed";
-    case "remembered":
-      return "Remembered";
-    case "estimated":
-      return "Estimated";
-    default: {
-      const exhaustive: never = item.priceConfidence;
-      return exhaustive;
-    }
-  }
-};
-
-const sourceLabel = (item: CartItem): string => {
-  switch (item.priceSource.kind) {
-    case "manual":
-      return "manual";
-    case "price-memory":
-      return "price memory";
-    case "shelf-scan":
-      return "shelf scan";
-    case "encoded-barcode":
-      return "barcode";
-    case "retailer-feed":
-      return "retailer feed";
-    default: {
-      const exhaustive: never = item.priceSource;
-      return exhaustive;
-    }
-  }
 };
 
 const GHOST_TAP_MS = 500;
@@ -112,7 +74,7 @@ export function ItemEditSurface({
   }, []);
 
   const [draft, setDraft] = useState<PriceEntryDraft>(() => ({
-    raw: rawPrice(item.unitPriceMinor),
+    raw: moneyInputValue(item.unitPriceMinor),
     mode: "decimal",
   }));
   const [quantity, setQuantity] = useState(item.quantity);
@@ -259,7 +221,7 @@ export function ItemEditSurface({
         </header>
 
         <p className={styles.trust}>
-          {confidenceLabel(item)} · {sourceLabel(item)}
+          {trustLabel(item)}
         </p>
 
         <label className={styles.field}>

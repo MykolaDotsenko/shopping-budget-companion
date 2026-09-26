@@ -18,6 +18,7 @@ import {
   latestTripTimestamp,
   laterTimestamp,
   lineTotal,
+  mergeTripChanges,
   nominalOverage,
   mostRecentCompletedTrip,
   projectAddItem,
@@ -1445,5 +1446,61 @@ describe("property-based shopping invariants", () => {
       ),
       { numRuns: 1_500 },
     );
+  });
+});
+
+describe("merging a trip changed in two places", () => {
+  it("keeps the changes from both sides and lets the saved side win a clash", () => {
+    const bread = createItem({ id: "bread", price: 250, label: "Bread" });
+    const tea = createItem({ id: "tea", price: 300, label: "Tea" });
+    const base = addItem(addItem(createTrip(), bread), tea);
+    const mine = {
+      ...base,
+      items: [
+        { ...bread, unitPriceMinor: money(200) },
+        createItem({ id: "jam", price: 410, label: "Jam", createdAt: LATER }),
+      ],
+    };
+    const theirs = {
+      ...base,
+      items: [
+        { ...bread, unitPriceMinor: money(220), quantity: 2 },
+        tea,
+        createItem({ id: "milk", price: 139, label: "Milk", createdAt: LATER }),
+      ],
+    };
+
+    const merged = mergeTripChanges(base, mine, theirs);
+
+    expect(
+      merged?.items.map((item) => [item.id, item.unitPriceMinor, item.quantity]),
+    ).toEqual([
+      ["bread", 220, 2],
+      ["milk", 139, 1],
+      ["jam", 410, 1],
+    ]);
+  });
+
+  it("keeps a budget change made on one side and the saved one when both changed it", () => {
+    const base = createTrip(5_000);
+
+    expect(mergeTripChanges(base, createTrip(6_000), base)?.budgetMinor).toBe(6_000);
+    expect(mergeTripChanges(base, createTrip(6_000), createTrip(7_000))?.budgetMinor).toBe(
+      7_000,
+    );
+  });
+
+  it("does not merge two different trips", () => {
+    const other = unwrap(
+      createActiveTrip({
+        id: "trip-2",
+        currency: "EUR",
+        budgetMinor: money(5_000),
+        safetyBufferMinor: money(0),
+        startedAt: START,
+      }),
+    );
+
+    expect(mergeTripChanges(createTrip(), createTrip(), other)).toBeNull();
   });
 });

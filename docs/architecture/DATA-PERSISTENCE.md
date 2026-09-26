@@ -296,10 +296,10 @@ The stored records are the source of truth; a tab's in-memory copy is a cache of
 - Each storage port remembers the raw records it last read or wrote and reports when another tab has changed them.
 - Before any command that writes, a tab whose own saves are healthy reloads the stored records and applies the command to them: an item added in each of two tabs keeps both, and a trip another tab finished or started is never reopened or overwritten.
 - A `storage` event, returning to a hidden tab and restoring a page from the back/forward cache reload the same way, so an idle tab shows what another tab did.
-- A tab whose own saves are failing keeps its unsaved view instead of reloading, so retrying saves what the shopper sees.
+- A tab whose own saves are failing keeps its unsaved changes; when another tab has saved the same trip since, it merges them onto that saved trip before writing again. Items added, edited or removed in either tab are kept, a saved change wins over an unsaved one to the same item or budget, and a trip another tab finished is not brought back.
 - A finished-trip summary stays open when the reloaded history does not contain it, unless another tab has started a trip.
 
-Concurrent edits are never merged below the command level; the second tab's command runs on the first tab's result.
+Healthy tabs never merge below the command level; the second tab's command runs on the first tab's result. Only a tab with unsaved changes merges, item by item, against the last trip it knew was saved.
 
 ## Write strategy
 

@@ -63,6 +63,23 @@ const sharedStorage = (): StorageLike & { values: Map<string, string> } => {
   };
 };
 
+const tabStorage = (
+  values: Map<string, string>,
+  failing: { readonly current: boolean } = { current: false },
+): StorageLike => ({
+  getItem: (key) => values.get(key) ?? null,
+  setItem: (key, value) => {
+    if (failing.current && key === ACTIVE_TRIP_STORAGE_KEY) {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+    }
+
+    values.set(key, value);
+  },
+  removeItem: (key) => {
+    values.delete(key);
+  },
+});
+
 const openTab = (storage: StorageLike, tab: string): ShoppingAppController =>
   bootstrapBrowserShoppingAppController({ storage, clock, ids: tabIds(tab) });
 
@@ -169,10 +186,90 @@ describe("two tabs sharing one device store", () => {
 
     values.set(HISTORY_STORAGE_KEY, "changed elsewhere");
 
-    expect(tab.refreshFromStorage()).toMatchObject({ ok: true, changed: false });
+    expect(tab.refreshFromStorage()).toMatchObject({ ok: true, durability: "memory-only" });
     expect(tab.getSnapshot().activeTrip?.items.map((item) => item.label)).toEqual([
       "Bread",
     ]);
+    expect(tab.getSnapshot().persistence.status).toBe("degraded");
+  });
+
+  it("keeps both tabs' items when a tab whose saves failed can save again", () => {
+    const values = new Map<string, string>();
+    const failing = { current: false };
+    const stuck = openTab(tabStorage(values, failing), "a");
+    stuck.startTrip({ budgetMinor: money(5_000) });
+    stuck.addManualItem({ unitPriceMinor: money(250), quantity: 1, label: "Bread" });
+    const other = openTab(tabStorage(values), "b");
+
+    failing.current = true;
+    stuck.addManualItem({ unitPriceMinor: money(320), quantity: 1, label: "Eggs" });
+    other.addManualItem({ unitPriceMinor: money(139), quantity: 1, label: "Milk" });
+    stuck.addManualItem({ unitPriceMinor: money(410), quantity: 1, label: "Jam" });
+
+    expect(stuck.getSnapshot().persistence.status).toBe("degraded");
+    expect(stuck.getSnapshot().activeTrip?.items.map((item) => item.label)).toEqual([
+      "Bread",
+      "Milk",
+      "Eggs",
+      "Jam",
+    ]);
+
+    other.addManualItem({ unitPriceMinor: money(275), quantity: 1, label: "Butter" });
+    failing.current = false;
+
+    expect(stuck.retryPersistence()).toMatchObject({ ok: true, durability: "persisted" });
+    expect(storedLabels(tabStorage(values))).toEqual(["Bread", "Milk", "Butter", "Eggs", "Jam"]);
+    expect(stuck.getSnapshot().persistence.status).toBe("healthy");
+  });
+
+  it("keeps the other tab's saved edit and this tab's own removal and budget", () => {
+    const values = new Map<string, string>();
+    const failing = { current: false };
+    const stuck = openTab(tabStorage(values, failing), "a");
+    stuck.startTrip({ budgetMinor: money(5_000) });
+    stuck.addManualItem({ unitPriceMinor: money(250), quantity: 1, label: "Bread" });
+    stuck.addManualItem({ unitPriceMinor: money(300), quantity: 1, label: "Tea" });
+    const other = openTab(tabStorage(values), "b");
+    const [bread, tea] = stuck.getSnapshot().activeTrip?.items ?? [];
+
+    if (bread === undefined || tea === undefined) {
+      throw new Error("Expected two items");
+    }
+
+    failing.current = true;
+    stuck.updateManualItem({ itemId: bread.id, unitPriceMinor: money(200), quantity: 1 });
+    stuck.removeItem(tea.id);
+    stuck.updateSpendingPlan({ budgetMinor: money(6_000), safetyBufferMinor: money(0) });
+    other.updateManualItem({ itemId: bread.id, unitPriceMinor: money(220), quantity: 2 });
+    failing.current = false;
+    stuck.retryPersistence();
+
+    const stored = restoreActiveTrip(tabStorage(values)).trip;
+
+    expect(stored?.budgetMinor).toBe(6_000);
+    expect(
+      stored?.items.map((item) => [item.label, item.unitPriceMinor, item.quantity]),
+    ).toEqual([["Bread", 220, 2]]);
+  });
+
+  it("does not bring back a trip another tab finished while this tab could not save", () => {
+    const values = new Map<string, string>();
+    const failing = { current: false };
+    const stuck = openTab(tabStorage(values, failing), "a");
+    stuck.startTrip({ budgetMinor: money(5_000) });
+    stuck.addManualItem({ unitPriceMinor: money(250), quantity: 1, label: "Bread" });
+    const other = openTab(tabStorage(values), "b");
+
+    failing.current = true;
+    stuck.addManualItem({ unitPriceMinor: money(320), quantity: 1, label: "Eggs" });
+    other.completeTrip();
+    other.dismissCompletedSummary();
+    failing.current = false;
+
+    expect(stuck.retryPersistence()).toMatchObject({ ok: true });
+    expect(stuck.getSnapshot()).toMatchObject({ lifecycle: "idle", activeTrip: null });
+    expect(restoreActiveTrip(tabStorage(values)).trip).toBeNull();
+    expect(restoreHistory(tabStorage(values)).trips).toHaveLength(1);
   });
 
   it("keeps and saves again an open trip whose saved copy was wiped from the device", () => {

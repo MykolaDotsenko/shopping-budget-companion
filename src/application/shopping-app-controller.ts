@@ -15,6 +15,7 @@ import {
   createCartItem,
   latestTripTimestamp,
   laterTimestamp,
+  mergeTripChanges,
   reduceTrip,
   sameTripContents,
   type ActiveTrip,
@@ -110,6 +111,7 @@ export const createShoppingAppController = ({
   barcodeLinkPersistence = EMPTY_BARCODE_LINK_PERSISTENCE_PORT,
 }: ShoppingAppControllerDependencies): ShoppingAppController => {
   let state = initialState();
+  let durableTrip: ActiveTrip | null = null;
   const listeners = new Set<() => void>();
   const ports: CompletionPorts & { barcodeLinks: BarcodeLinkPersistencePort } = {
     persistence,
@@ -119,6 +121,10 @@ export const createShoppingAppController = ({
 
   const publish = (nextState: ShoppingAppState): ShoppingAppState => {
     state = freezeState(nextState);
+
+    if (state.persistence.status === "healthy") {
+      durableTrip = state.activeTrip;
+    }
 
     for (const listener of listeners) {
       listener();
@@ -157,6 +163,7 @@ export const createShoppingAppController = ({
 
   const loadPersistedState = (): ShoppingAppState => {
     const result = ports.persistence.bootstrap();
+    durableTrip = result.activeTrip;
     const memoryResult = ports.priceMemory.bootstrap();
     const linkResult = ports.barcodeLinks.bootstrap();
     const bootstrapIssueTime =
@@ -261,16 +268,62 @@ export const createShoppingAppController = ({
     ports.priceMemory.isCurrent?.() === false ||
     ports.barcodeLinks.isCurrent?.() === false;
 
+  const reconcileUnsavedTrip = (): AppCommandResult => {
+    const previous = state;
+    const mine = previous.activeTrip;
+
+    if (previous.lifecycle !== "active" || mine === null) {
+      return success(state, false, "unchanged");
+    }
+
+    const base = durableTrip?.id === mine.id ? durableTrip : null;
+    const loaded = loadPersistedState();
+
+    if (loaded.lifecycle === "recovery") {
+      return success(publish(loaded), true, "persisted");
+    }
+
+    const theirs = loaded.activeTrip;
+    const next =
+      theirs === null
+        ? loaded.completedTrips.some((trip) => trip.id === mine.id)
+          ? null
+          : mine
+        : theirs.id === mine.id
+          ? mergeTripChanges(base ?? theirs, mine, theirs)
+          : null;
+
+    if (next === null) {
+      return success(publish({ ...loaded, undo: null }), true, "persisted");
+    }
+
+    const saved = theirs !== null && sameTripContents(next, theirs);
+
+    publish({
+      ...loaded,
+      lifecycle: "active",
+      activeTrip: next,
+      completedSummary: null,
+      persistence: saved ? loaded.persistence : previous.persistence,
+      undo: sameTripContents(next, mine) ? previous.undo : null,
+    });
+
+    return success(state, true, saved ? "persisted" : "memory-only");
+  };
+
   const refreshFromStorage = (): AppCommandResult => {
     if (
       state.lifecycle === "booting" ||
       state.lifecycle === "recovery" ||
       sessionOnly() ||
-      state.persistence.status !== "healthy" ||
       state.completionCleanupPending ||
       !changedElsewhere()
     ) {
       return success(state, false, "unchanged");
+    }
+
+    if (state.persistence.status !== "healthy") {
+      return reconcileUnsavedTrip();
     }
 
     const previous = state;
@@ -1390,7 +1443,7 @@ export const createShoppingAppController = ({
     deleteOldestCompletedTrips: synced(deleteOldestCompletedTrips),
     clearCompletedHistory: synced(clearCompletedHistory),
     clearPriceMemory: synced(clearPriceMemory),
-    retryPersistence,
+    retryPersistence: synced(retryPersistence),
     retryHistoryRead: synced(retryHistoryRead),
     setAsideDamagedHistory,
     setAsideUnreadableActiveTrip,

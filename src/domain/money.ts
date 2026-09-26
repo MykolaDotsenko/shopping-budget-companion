@@ -300,6 +300,9 @@ export const multiplyMoney = (
   return ok(value as MinorUnits);
 };
 
+export const moneyInputValue = (amount: MinorUnits): string =>
+  `${Math.floor(amount / 100)}.${String(amount % 100).padStart(2, "0")}`;
+
 export const formatEur = (
   amount: MoneyAmount,
   locale: string,

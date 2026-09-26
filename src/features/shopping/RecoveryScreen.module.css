@@ -93,7 +93,32 @@
   cursor: pointer;
 }
 
+.secondaryButton {
+  min-height: 52px;
+  border: 1px solid var(--shopping-border-strong);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.linkButton {
+  justify-self: center;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 750;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .retryButton:focus-visible,
+.secondaryButton:focus-visible,
+.linkButton:focus-visible,
 .details summary:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
@@ -159,6 +184,7 @@
 
   .panel,
   .retryButton,
+  .secondaryButton,
   .details pre,
   .retryStatus {
     border: 1px solid ButtonText;

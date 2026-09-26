@@ -26,6 +26,11 @@ import {
   type PersistenceWriteResult,
   type StorageLike,
 } from "./shopping-storage";
+import {
+  ACTIVE_TRIP_STORAGE_KEY,
+  HISTORY_STORAGE_KEY,
+} from "./shopping-storage-schema";
+import { createStorageRevision } from "./storage-revision";
 
 const toSaveResult = (
   result: PersistenceWriteResult,
@@ -54,142 +59,157 @@ const toPersistenceProblem = (
 
 export const createActiveTripPersistencePort = (
   storage: StorageLike | null | undefined,
-): ActiveTripPersistencePort => ({
-  bootstrap(): ActiveTripBootstrapResult {
-    const result = bootstrapShoppingPersistence(storage);
+): ActiveTripPersistencePort => {
+  const revision = createStorageRevision(storage, [
+    ACTIVE_TRIP_STORAGE_KEY,
+    HISTORY_STORAGE_KEY,
+  ]);
+  const tracked = <T>(result: T): T => {
+    revision.remember();
+    return result;
+  };
 
-    const historyFields =
-      result.historyIssue === undefined
-        ? {}
-        : { historyIssue: toPersistenceProblem(result.historyIssue) };
+  return {
+    isCurrent(): boolean {
+      return revision.isCurrent();
+    },
 
-    if (result.health === "healthy") {
+    bootstrap(): ActiveTripBootstrapResult {
+      const result = tracked(bootstrapShoppingPersistence(storage));
+
+      const historyFields =
+        result.historyIssue === undefined
+          ? {}
+          : { historyIssue: toPersistenceProblem(result.historyIssue) };
+
+      if (result.health === "healthy") {
+        return {
+          ok: true,
+          activeTrip: result.activeTrip,
+          completedTrips: result.completedTrips,
+          completionCleanupPending:
+            result.completionCleanupPending,
+          ...historyFields,
+        };
+      }
+
       return {
-        ok: true,
+        ok: false,
         activeTrip: result.activeTrip,
         completedTrips: result.completedTrips,
         completionCleanupPending:
           result.completionCleanupPending,
+        issue: toPersistenceProblem(result.issue),
+        recoveryRequired: result.activeTripUnreadable,
+        ...(result.recoveryRaw === undefined
+          ? {}
+          : { recoveryRaw: result.recoveryRaw }),
         ...historyFields,
       };
-    }
+    },
 
-    return {
-      ok: false,
-      activeTrip: result.activeTrip,
-      completedTrips: result.completedTrips,
-      completionCleanupPending:
-        result.completionCleanupPending,
-      issue: toPersistenceProblem(result.issue),
-      recoveryRequired: result.activeTripUnreadable,
-      ...(result.recoveryRaw === undefined
-        ? {}
-        : { recoveryRaw: result.recoveryRaw }),
-      ...historyFields,
-    };
-  },
+    readCompletedHistory(): CompletedHistoryReadResult {
+      const result = tracked(restoreHistory(storage));
 
-  readCompletedHistory(): CompletedHistoryReadResult {
-    const result = restoreHistory(storage);
+      if (result.health === "healthy") {
+        return { ok: true, completedTrips: result.trips };
+      }
 
-    if (result.health === "healthy") {
-      return { ok: true, completedTrips: result.trips };
-    }
+      return {
+        ok: false,
+        completedTrips: result.trips,
+        issue: toPersistenceProblem(result.issue),
+      };
+    },
 
-    return {
-      ok: false,
-      completedTrips: result.trips,
-      issue: toPersistenceProblem(result.issue),
-    };
-  },
+    setAsideDamagedHistory(setAsideAt: IsoTimestamp): HistorySetAsideResult {
+      const result = tracked(setAsideDamagedHistory(storage, setAsideAt));
 
-  setAsideDamagedHistory(setAsideAt: IsoTimestamp): HistorySetAsideResult {
-    const result = setAsideDamagedHistory(storage, setAsideAt);
+      if (result.health === "healthy") {
+        return { ok: true, completedTrips: result.trips };
+      }
 
-    if (result.health === "healthy") {
-      return { ok: true, completedTrips: result.trips };
-    }
+      return { ok: false, issue: toPersistenceProblem(result.issue) };
+    },
 
-    return { ok: false, issue: toPersistenceProblem(result.issue) };
-  },
+    setAsideUnreadableActiveTrip(
+      setAsideAt: IsoTimestamp,
+    ): ActiveTripSaveResult {
+      const result = tracked(setAsideUnreadableActiveTrip(storage, setAsideAt));
 
-  setAsideUnreadableActiveTrip(
-    setAsideAt: IsoTimestamp,
-  ): ActiveTripSaveResult {
-    const result = setAsideUnreadableActiveTrip(storage, setAsideAt);
+      if (result.health === "healthy") {
+        return { ok: true };
+      }
 
-    if (result.health === "healthy") {
-      return { ok: true };
-    }
+      return { ok: false, issue: toPersistenceProblem(result.issue) };
+    },
 
-    return { ok: false, issue: toPersistenceProblem(result.issue) };
-  },
+    save(
+      trip: ActiveTrip,
+      savedAt: IsoTimestamp,
+    ): ActiveTripSaveResult {
+      const result = tracked(writeActiveTrip(storage, trip, savedAt));
 
-  save(
-    trip: ActiveTrip,
-    savedAt: IsoTimestamp,
-  ): ActiveTripSaveResult {
-    const result = writeActiveTrip(storage, trip, savedAt);
+      if (result.health === "healthy") {
+        return { ok: true };
+      }
 
-    if (result.health === "healthy") {
-      return { ok: true };
-    }
+      return {
+        ok: false,
+        issue: toPersistenceProblem(result.issue),
+      };
+    },
 
-    return {
-      ok: false,
-      issue: toPersistenceProblem(result.issue),
-    };
-  },
+    complete(
+      trip: CompletedTrip,
+      savedAt: IsoTimestamp,
+    ): CompletionSaveResult {
+      const result = tracked(completeTripPersistence(storage, trip, savedAt));
 
-  complete(
-    trip: CompletedTrip,
-    savedAt: IsoTimestamp,
-  ): CompletionSaveResult {
-    const result = completeTripPersistence(storage, trip, savedAt);
+      if (result.ok) {
+        return { ok: true, completedTrips: result.trips };
+      }
 
-    if (result.ok) {
-      return { ok: true, completedTrips: result.trips };
-    }
+      return {
+        ok: false,
+        stage: result.stage,
+        issue: toPersistenceProblem(result.issue),
+        historyPersisted: result.historyPersisted,
+        ...(result.trips === undefined ? {} : { completedTrips: result.trips }),
+      };
+    },
 
-    return {
-      ok: false,
-      stage: result.stage,
-      issue: toPersistenceProblem(result.issue),
-      historyPersisted: result.historyPersisted,
-      ...(result.trips === undefined ? {} : { completedTrips: result.trips }),
-    };
-  },
+    saveCompleted(
+      trip: CompletedTrip,
+      savedAt: IsoTimestamp,
+    ): ActiveTripSaveResult {
+      const result = tracked(
+        updateCompletedTripPersistence(storage, trip, savedAt),
+      );
 
-  saveCompleted(
-    trip: CompletedTrip,
-    savedAt: IsoTimestamp,
-  ): ActiveTripSaveResult {
-    const result = updateCompletedTripPersistence(
-      storage,
-      trip,
-      savedAt,
-    );
+      return toSaveResult(result);
+    },
 
-    return toSaveResult(result);
-  },
+    replaceCompletedHistory(
+      trips: readonly CompletedTrip[],
+      savedAt: IsoTimestamp,
+    ): ActiveTripSaveResult {
+      return toSaveResult(
+        tracked(replaceReadableHistory(storage, trips, savedAt)),
+      );
+    },
 
-  replaceCompletedHistory(
-    trips: readonly CompletedTrip[],
-    savedAt: IsoTimestamp,
-  ): ActiveTripSaveResult {
-    return toSaveResult(replaceReadableHistory(storage, trips, savedAt));
-  },
+    clearCompletedActive(): ActiveTripSaveResult {
+      const result = tracked(clearActiveTrip(storage));
 
-  clearCompletedActive(): ActiveTripSaveResult {
-    const result = clearActiveTrip(storage);
+      if (result.health === "healthy") {
+        return { ok: true };
+      }
 
-    if (result.health === "healthy") {
-      return { ok: true };
-    }
-
-    return {
-      ok: false,
-      issue: toPersistenceProblem(result.issue),
-    };
-  },
-});
+      return {
+        ok: false,
+        issue: toPersistenceProblem(result.issue),
+      };
+    },
+  };
+};

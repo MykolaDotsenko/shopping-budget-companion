@@ -56,7 +56,8 @@
 
 .viewport {
   position: relative;
-  aspect-ratio: 4 / 3;
+  height: min(75vw, 36dvh);
+  min-height: 180px;
   overflow: hidden;
   border-radius: 20px;
   background: #0b0d0c;
@@ -354,7 +355,7 @@
 .field input {
   min-height: 48px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--shopping-field-border);
   border-radius: 14px;
   background: var(--shopping-raised);
   color: var(--text);

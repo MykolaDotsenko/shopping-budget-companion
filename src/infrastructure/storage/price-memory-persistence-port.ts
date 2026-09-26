@@ -11,7 +11,9 @@ import {
   writePriceMemory,
   type PriceMemoryPersistenceIssue,
 } from "./price-memory-storage";
+import { PRICE_MEMORY_STORAGE_KEY } from "./price-memory-storage-schema";
 import type { StorageLike } from "./shopping-storage";
+import { createStorageRevision } from "./storage-revision";
 
 const toProblem = (
   issue: PriceMemoryPersistenceIssue,
@@ -25,37 +27,47 @@ const toProblem = (
 
 export const createPriceMemoryPersistencePort = (
   storage: StorageLike | null | undefined,
-): PriceMemoryPersistencePort => ({
-  bootstrap(): PriceMemoryBootstrapResult {
-    const result = restorePriceMemory(storage);
+): PriceMemoryPersistencePort => {
+  const revision = createStorageRevision(storage, [PRICE_MEMORY_STORAGE_KEY]);
 
-    if (result.health === "healthy") {
+  return {
+    isCurrent(): boolean {
+      return revision.isCurrent();
+    },
+
+    bootstrap(): PriceMemoryBootstrapResult {
+      const result = restorePriceMemory(storage);
+      revision.remember();
+
+      if (result.health === "healthy") {
+        return {
+          ok: true,
+          records: result.records,
+        };
+      }
+
       return {
-        ok: true,
+        ok: false,
         records: result.records,
+        issue: toProblem(result.issue),
       };
-    }
+    },
 
-    return {
-      ok: false,
-      records: result.records,
-      issue: toProblem(result.issue),
-    };
-  },
+    save(
+      records: readonly PriceMemoryRecord[],
+      savedAt: IsoTimestamp,
+    ): PriceMemorySaveResult {
+      const result = writePriceMemory(storage, records, savedAt);
+      revision.remember();
 
-  save(
-    records: readonly PriceMemoryRecord[],
-    savedAt: IsoTimestamp,
-  ): PriceMemorySaveResult {
-    const result = writePriceMemory(storage, records, savedAt);
+      if (result.health === "healthy") {
+        return { ok: true };
+      }
 
-    if (result.health === "healthy") {
-      return { ok: true };
-    }
-
-    return {
-      ok: false,
-      issue: toProblem(result.issue),
-    };
-  },
-});
+      return {
+        ok: false,
+        issue: toProblem(result.issue),
+      };
+    },
+  };
+};

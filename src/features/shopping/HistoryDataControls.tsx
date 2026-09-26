@@ -47,8 +47,7 @@ export function HistoryDataControls({
         <p className={styles.sectionKicker}>Local data</p>
         <h2 id="data-controls-title">Data controls</h2>
         <p>
-          Trip history and remembered prices are separate local records,
-          so you can remove either without implying that the other is gone.
+          Clear either one on its own. Both are stored only on this device.
         </p>
       </div>
 

@@ -97,7 +97,6 @@ test("sets an unreadable saved trip aside and starts a new saved trip", async ({
     page.getByRole("heading", { name: "Saved trip needs recovery" }),
   ).toBeVisible();
 
-  await page.getByText("Other ways to continue").click();
   await page.getByRole("button", { name: "Set aside and start fresh" }).click();
 
   await page.getByRole("button", { name: "€25", exact: true }).click();
@@ -134,7 +133,6 @@ test("continues without saving when saved data cannot be read", async ({
     page.getByRole("heading", { name: "Saved trip could not be restored safely" }),
   ).toBeVisible();
 
-  await page.getByText("Other ways to continue").click();
   await page.getByRole("button", { name: "Continue without saving" }).click();
   await expect(
     page.getByRole("heading", { name: "How much can you spend today?" }),
@@ -174,10 +172,10 @@ test("continues without saving when browser storage is blocked", async ({
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "Saved trip is unavailable" }),
+    page.getByRole("heading", { name: "This browser isn’t letting the app save" }),
   ).toBeVisible();
+  await expect(page.getByText("The saved record stays untouched", { exact: false })).toHaveCount(0);
 
-  await page.getByText("Other ways to continue").click();
   await expect(
     page.getByRole("button", { name: "Set aside and start fresh" }),
   ).toHaveCount(0);
@@ -244,7 +242,6 @@ test("has no detectable WCAG A/AA violations in recovery and history repair stat
   test.skip(browserName !== "chromium", "axe scan runs once in Chromium");
 
   await seed(page, { [ACTIVE_TRIP_KEY]: "{broken" });
-  await page.getByText("Other ways to continue").click();
   expect((await scan(page)).violations).toEqual([]);
 
   for (const appearance of ["light", "dark", "aurora"]) {
@@ -255,4 +252,63 @@ test("has no detectable WCAG A/AA violations in recovery and history repair stat
     await page.getByRole("button", { name: "Set aside…" }).click();
     expect((await scan(page)).violations).toEqual([]);
   }
+});
+
+test("makes room when browser storage is full and saves the open trip again", async ({
+  page,
+}) => {
+  const at = (minute) => new Date(Date.UTC(2026, 0, 1, 8, minute)).toISOString();
+  const trips = Array.from({ length: 30 }, (_, index) => ({
+    ...completedTrip(`trip-${index}`),
+    startedAt: at(index * 2),
+    completedAt: at(index * 2 + 1),
+    items: Array.from({ length: 20 }, (_, item) => ({
+      id: `item-${index}-${item}`,
+      label: `Grocery item ${item}`,
+      unitPriceMinor: 199,
+      quantity: 1,
+      priceSource: { kind: "manual" },
+      priceConfidence: { kind: "confirmed", confirmedAt: at(index * 2) },
+      createdAt: at(index * 2),
+      updatedAt: at(index * 2),
+    })),
+  }));
+
+  await seed(page, {
+    [HISTORY_KEY]: JSON.stringify({ schemaVersion: 1, savedAt: at(100), data: { trips } }),
+  });
+  await expect(
+    page.getByRole("button", { name: "View trip history · 30" }),
+  ).toBeVisible();
+
+  await page.evaluate(() => {
+    let index = 0;
+
+    for (const size of [1_000_000, 100_000, 10_000, 1_000, 100, 10]) {
+      for (;;) {
+        try {
+          localStorage.setItem(`filler:${index}`, "x".repeat(size));
+          index += 1;
+        } catch {
+          break;
+        }
+      }
+    }
+  });
+
+  await page.getByRole("button", { name: "€50", exact: true }).click();
+
+  const notice = page.getByRole("complementary", {
+    name: "Storage for this app is full",
+  });
+  await expect(notice).toBeVisible();
+  await notice.getByRole("button", { name: "Make room…" }).click();
+  await notice.getByRole("button", { name: "Remove 3 oldest trips" }).click();
+
+  await expect(page.getByText("Saved on this device")).toBeVisible();
+
+  const stored = await storedEntries(page);
+  expect(JSON.parse(stored[HISTORY_KEY]).data.trips).toHaveLength(27);
+  expect(JSON.parse(stored[HISTORY_KEY]).data.trips[0].id).toBe("trip-3");
+  expect(JSON.parse(stored[ACTIVE_TRIP_KEY]).data.budgetMinor).toBe(5000);
 });

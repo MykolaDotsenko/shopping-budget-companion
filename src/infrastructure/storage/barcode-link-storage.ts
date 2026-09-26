@@ -12,6 +12,7 @@ import {
 } from "../../domain/barcode-link";
 import { isoTimestamp, type IsoTimestamp } from "../../domain/shopping-trip";
 import type { StorageLike } from "./shopping-storage";
+import { createStorageRevision } from "./storage-revision";
 import {
   canonicalIsoTimestampSchema,
   canonicalLabelSchema,
@@ -236,15 +237,25 @@ const writeBarcodeLinks = (
 
 export const createBarcodeLinkPersistencePort = (
   storage: StorageLike | null | undefined,
-): BarcodeLinkPersistencePort => ({
-  bootstrap(): BarcodeLinkBootstrapResult {
-    const restored = restoreBarcodeLinks(storage);
+): BarcodeLinkPersistencePort => {
+  const revision = createStorageRevision(storage, [BARCODE_LINK_STORAGE_KEY]);
 
-    return restored.health === "healthy"
-      ? { ok: true, links: restored.links }
-      : { ok: false, links: restored.links, issue: restored.issue };
-  },
-  save(links, savedAt): BarcodeLinkSaveResult {
-    return writeBarcodeLinks(storage, links, savedAt);
-  },
-});
+  return {
+    isCurrent(): boolean {
+      return revision.isCurrent();
+    },
+    bootstrap(): BarcodeLinkBootstrapResult {
+      const restored = restoreBarcodeLinks(storage);
+      revision.remember();
+
+      return restored.health === "healthy"
+        ? { ok: true, links: restored.links }
+        : { ok: false, links: restored.links, issue: restored.issue };
+    },
+    save(links, savedAt): BarcodeLinkSaveResult {
+      const result = writeBarcodeLinks(storage, links, savedAt);
+      revision.remember();
+      return result;
+    },
+  };
+};

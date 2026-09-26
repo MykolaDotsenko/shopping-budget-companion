@@ -1,44 +1,36 @@
 # Shopping Budget Companion
 
-A **mobile-first, local-first shopping budget companion** built to answer one question while you shop:
-
-> **How much can I still safely spend before checkout?**
+**Know what’s left before checkout.** Set a spending limit, add prices as you shop and always see what you can still spend — while the cart can still change.
 
 [![Quality](https://github.com/MykolaDotsenko/shopping-budget-companion/actions/workflows/quality.yml/badge.svg)](https://github.com/MykolaDotsenko/shopping-budget-companion/actions/workflows/quality.yml)
 [![React](https://img.shields.io/badge/React-19.3-20232a?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**Live app:** https://mykoladotsenko.github.io/shopping-budget-companion/
+**[Open the app](https://mykoladotsenko.github.io/shopping-budget-companion/)** · [Privacy](https://mykoladotsenko.github.io/shopping-budget-companion/privacy/) · [Send feedback](https://github.com/MykolaDotsenko/shopping-budget-companion/issues/new?template=feedback.yml)
 
 <p align="center">
   <img
     src="docs/assets/shopping-budget-companion.png"
-    alt="Shopping Budget Companion active trip screen with a €50 budget"
+    alt="Shopping Budget Companion trip screen showing €19.48 left of a €50 budget, with the cart total, Add price and the cart list"
     width="390"
   />
 </p>
 
-<p align="center"><em>Current mobile active-trip UI — captured from the repository in Chromium.</em></p>
-
 ---
 
-## Product
+## What it does
+
+- **Start in one tap:** pick €25, €50, €75 or €100, or type your own limit, with an optional safety buffer for weighed items and deposits.
+- **Add prices fast:** a price is enough; a name is optional. You see what’s left before you add, and a clear warning before going over.
+- **Fix mistakes easily:** edit, remove and undo; change the budget mid-trip.
+- **Finish and compare:** finish the trip, add the receipt total and see how close you were.
+- **Shop again with less typing:** reuse your last budget, and remembered prices from past trips — always with an explicit way to enter today’s price.
+- **Use the camera if you like:** scan a barcode to recall a product and its last price, or read a shelf price tag; the camera picture never leaves the phone.
+- **Private and offline:** no account and no bank connection; everything stays on your device, and the app works offline once opened. Install it to keep it on your home screen; the app offers this on the start screen where the browser allows it, and on iPhone it explains Add to Home Screen before your first trip.
 
 This is deliberately narrower than a generic expense tracker:
 
 **set a spending limit → add prices quickly → always know what remains**
-
-The core flow is local-first and account-free. The product prioritizes exact money, durable state, one-hand interaction, reversible corrections, accessibility, premium interaction quality and evidence-based feature expansion.
-
-What a shopper can do today:
-
-- start a trip with a budget and an optional safety buffer, then add prices with a fast keypad;
-- see what is left, projected totals and over-budget state update on every change;
-- edit, remove and undo items, adjust the budget, finish the trip and compare it with the checkout total;
-- revisit completed trips, shop again with the same plan, and reuse Recent Items and remembered prices while always keeping an explicit **Enter current price** path;
-- optionally scan a barcode to recall the product's name and last price, and look a name up online only on tap;
-- optionally read a shelf price tag on the device, choose the right price and confirm it in price entry;
-- install the app and keep shopping offline; clear history or remembered prices independently.
 
 ---
 

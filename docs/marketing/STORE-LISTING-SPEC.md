@@ -160,9 +160,9 @@ Visual:
 
 Score: **98/100**
 
-## Screenshot 6 — future price memory
+## Screenshot 6 — remembered prices
 
-Only after shipped.
+Price Memory has shipped as Recent Items; capture it from a second trip.
 
 Copy:
 
@@ -174,9 +174,9 @@ Visual:
 - previous price
 - store/date context
 
-## Screenshot 7 — future scanning
+## Screenshot 7 — scanning
 
-Only after reliable implementation.
+Barcode and price-tag reading have shipped behind kill switches (D-053, D-055); keep them out of the screenshot set until the field evidence in issues #73 and #90 reports.
 
 Copy:
 

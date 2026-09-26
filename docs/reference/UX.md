@@ -127,6 +127,8 @@ Always preserve an explicit current-price path.
 
 Recent Items should reduce repeated identification/typing.
 
+Items are ordered by when they were last bought or last seen at a price, so the weekly basket stays at the top even when its prices are reused rather than retyped; reuse never makes a remembered price look freshly seen. Four show by default, the rest behind Show all, and items already in this cart are marked.
+
 Do not turn it into a catalogue-management feature.
 
 ## Shop again

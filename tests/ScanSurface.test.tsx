@@ -328,7 +328,7 @@ describe("ScanSurface barcode mode", () => {
 
     await user.clear(input);
     await user.type(input, "641 4893 386303");
-    await user.click(screen.getByRole("button", { name: "Look up barcode" }));
+    await user.click(screen.getByRole("button", { name: "Use barcode" }));
 
     expect(await screen.findByRole("heading", { name: "Milk 1L" })).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Enter current price" }));

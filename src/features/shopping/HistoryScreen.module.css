@@ -163,25 +163,89 @@
   overflow-wrap: anywhere;
 }
 
-.difference,
-.neutral {
-  margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.4;
+.metrics dd[data-outcome="over"] {
+  color: var(--shopping-danger);
+}
+
+.difference[data-direction="more"] {
+  color: var(--shopping-warning);
 }
 
 .difference {
+  margin: 0;
   color: var(--shopping-accent);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.checkoutToggle {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--shopping-accent);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.checkoutForm {
+  display: grid;
+  gap: 10px;
+}
+
+.checkoutField {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
   font-weight: 800;
 }
 
-.neutral {
+.checkoutInput {
+  min-height: 48px;
+  display: flex;
+  align-items: stretch;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid var(--shopping-field-border);
+  border-radius: 13px;
+  background: var(--shopping-raised);
   color: var(--shopping-muted-strong);
 }
 
-.backButton:focus-visible {
-  outline: 3px solid var(--shopping-focus);
-  outline-offset: 3px;
+.checkoutInput > span {
+  align-self: center;
+}
+
+.checkoutInput input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--shopping-text);
+  font: inherit;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.saveCheckoutButton {
+  flex: 1 1 9rem;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--shopping-accent);
+  border-radius: 13px;
+  background: var(--shopping-accent);
+  color: var(--shopping-accent-contrast);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 @media (max-width: 520px) {
@@ -211,7 +275,6 @@
     border: 1px solid ButtonText;
   }
 }
-
 
 .status,
 .error,
@@ -386,6 +449,11 @@
   line-height: 1.35;
 }
 
+.backButton:focus-visible,
+.checkoutToggle:focus-visible,
+.checkoutInput:focus-within,
+.saveCheckoutButton:focus-visible,
+.repeatTripButton:focus-visible,
 .deleteTripButton:focus-visible,
 .secondaryButton:focus-visible,
 .dangerButton:focus-visible,
@@ -407,7 +475,6 @@
     border: 1px solid ButtonText;
   }
 }
-
 
 .tripDetails {
   border-top: 1px solid var(--shopping-border);
@@ -490,11 +557,6 @@
 .repeatTripButton:disabled {
   cursor: not-allowed;
   opacity: 0.55;
-}
-
-.repeatTripButton:focus-visible {
-  outline: 3px solid var(--shopping-focus);
-  outline-offset: 3px;
 }
 
 @media (max-width: 380px) {

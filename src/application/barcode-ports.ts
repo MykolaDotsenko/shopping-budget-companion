@@ -58,6 +58,7 @@ export type BarcodeLinkSaveResult =
   | { readonly ok: false; readonly issue: PriceMemoryPersistenceProblem };
 
 export interface BarcodeLinkPersistencePort {
+  isCurrent?(): boolean;
   bootstrap(): BarcodeLinkBootstrapResult;
   save(
     links: readonly BarcodeLink[],

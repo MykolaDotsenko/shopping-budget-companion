@@ -91,7 +91,7 @@ describe("ItemEditSurface", () => {
 
     const price = screen.getByRole("textbox", { name: "Price" });
     expect((price as HTMLInputElement).value).toBe("4.79");
-    expect(screen.getByText("Confirmed · manual")).not.toBeNull();
+    expect(screen.getByText("Confirmed · Manual")).not.toBeNull();
 
     await user.clear(price);
     await user.type(price, "5.29");
@@ -109,7 +109,7 @@ describe("ItemEditSurface", () => {
     ).not.toBeNull();
 
     await user.click(
-      screen.getByRole("button", { name: "Save correction" }),
+      screen.getByRole("button", { name: "Save changes" }),
     );
 
     expect(onSave).toHaveBeenCalledTimes(1);
@@ -117,6 +117,28 @@ describe("ItemEditSurface", () => {
       unitPriceMinor: 529,
       quantity: 2,
     });
+  });
+
+  it("closes on Escape from any control, not only the price field", async () => {
+    const user = userEvent.setup();
+    const item = createItem();
+    const onCancel = vi.fn();
+
+    render(
+      <ItemEditSurface
+        trip={createTrip(item)}
+        item={item}
+        onCancel={onCancel}
+        onSave={vi.fn(() => true)}
+        onRemove={vi.fn()}
+        locale="en-IE"
+      />,
+    );
+
+    screen.getByRole("button", { name: "Increase edited quantity" }).focus();
+    await user.keyboard("{Escape}");
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it("can name an item for future Recent Items without requiring a price change", async () => {
@@ -141,7 +163,7 @@ describe("ItemEditSurface", () => {
     );
 
     await user.click(
-      screen.getByRole("button", { name: "Save correction" }),
+      screen.getByRole("button", { name: "Save changes" }),
     );
 
     expect(onSave).toHaveBeenCalledWith({
@@ -151,7 +173,7 @@ describe("ItemEditSurface", () => {
     });
   });
 
-  it("rejects an overlong Recent Items label before application commit", async () => {
+  it("keeps the first 120 characters of a pasted name and says the rest was left out", async () => {
     const user = userEvent.setup();
     const item = createItem();
     const onSave = vi.fn(() => true);
@@ -167,20 +189,20 @@ describe("ItemEditSurface", () => {
       />,
     );
 
-    await user.type(
-      screen.getByRole("textbox", { name: /Item name/i }),
-      "x".repeat(121),
-    );
+    const name = screen.getByRole("textbox", { name: /Item name/i });
+    await user.click(name);
+    await user.paste(`${"x".repeat(119)}yz`);
 
+    expect((name as HTMLInputElement).value).toBe(`${"x".repeat(119)}y`);
     expect(
-      screen.getByText(/Keep the name within 120 characters/i),
+      screen.getByText("Names stop at 120 characters; the rest was left out."),
     ).not.toBeNull();
-    expect(
-      (screen.getByRole("button", {
-        name: "Save correction",
-      }) as HTMLButtonElement).disabled,
-    ).toBe(true);
-    expect(onSave).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ label: `${"x".repeat(119)}y` }),
+    );
   });
 
   it("allows a truthful correction that reveals a nominal overage without a destructive modal", async () => {
@@ -213,7 +235,7 @@ describe("ItemEditSurface", () => {
     ).toBeNull();
 
     await user.click(
-      screen.getByRole("button", { name: "Save correction" }),
+      screen.getByRole("button", { name: "Save changes" }),
     );
     expect(onSave).toHaveBeenCalledWith({
       unitPriceMinor: 600,
@@ -221,9 +243,9 @@ describe("ItemEditSurface", () => {
     });
   });
 
-  it("treats quantity one decremented to zero as an explicit reversible removal intent", async () => {
+  it("never removes the item from the quantity stepper, only from Remove item", async () => {
     const user = userEvent.setup();
-    const item = createItem(479, 1);
+    const item = createItem(479, 2);
     const onRemove = vi.fn(() => true);
 
     render(
@@ -237,11 +259,14 @@ describe("ItemEditSurface", () => {
       />,
     );
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Remove item by decreasing quantity",
-      }),
-    );
+    const decrease = screen.getByRole("button", { name: "Decrease edited quantity" });
+    await user.dblClick(decrease);
+
+    expect(screen.getByLabelText("Edited quantity").textContent).toBe("1");
+    expect((decrease as HTMLButtonElement).disabled).toBe(true);
+    expect(onRemove).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Remove item" }));
 
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
@@ -263,7 +288,7 @@ describe("ItemEditSurface", () => {
     expect(
       (
         screen.getByRole("button", {
-          name: "Save correction",
+          name: "Save changes",
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(true);

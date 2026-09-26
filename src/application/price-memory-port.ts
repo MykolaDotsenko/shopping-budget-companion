@@ -26,6 +26,7 @@ export type PriceMemorySaveResult =
     };
 
 export interface PriceMemoryPersistencePort {
+  isCurrent?(): boolean;
   bootstrap(): PriceMemoryBootstrapResult;
   save(
     records: readonly PriceMemoryRecord[],

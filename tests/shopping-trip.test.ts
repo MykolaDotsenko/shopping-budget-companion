@@ -24,6 +24,7 @@ import {
   projectSpendingPlan,
   reduceTrip,
   remaining,
+  restoreTripItems,
   safeLimit,
   safeOverage,
   safeRemaining,
@@ -1086,6 +1087,48 @@ describe("trip reducer", () => {
         safetyBufferMinor: money(5_001),
       }),
       "invalid-buffer",
+    );
+  });
+});
+
+describe("restoring stored items", () => {
+  it("gives the same trip as adding each item in order", () => {
+    const items = [
+      createItem({ id: "item-1", price: 379, quantity: 2, label: "Milk" }),
+      createItem({ id: "item-2", price: 1_250 }),
+      createItem({ id: "item-3", price: 129, quantity: 3 }),
+    ];
+    const replayed = items.reduce(addItem, createTrip());
+
+    expect(unwrap(restoreTripItems(createTrip(), items))).toEqual(replayed);
+  });
+
+  it("rejects what adding the items one by one would reject", () => {
+    const first = createItem({ id: "item-1", price: 379 });
+
+    expectDomainError(
+      restoreTripItems(createTrip(), [first, createItem({ id: "item-1", price: 100 })]),
+      "duplicate-item-id",
+    );
+    expectDomainError(
+      restoreTripItems(addItem(createTrip(), first), [createItem({ id: "item-1", price: 5 })]),
+      "duplicate-item-id",
+    );
+    expectDomainError(
+      restoreTripItems(createTrip(), [{ ...first, quantity: 0 }]),
+      "invalid-quantity",
+    );
+  });
+
+  it("restores a long trip in one pass", () => {
+    const items = Array.from({ length: 2_000 }, (_, index) =>
+      createItem({ id: `item-${index}`, price: 100 + (index % 50) }),
+    );
+    const restored = unwrap(restoreTripItems(createTrip(), items));
+
+    expect(restored.items).toHaveLength(2_000);
+    expect(cartTotal(restored)).toBe(
+      items.reduce((total, item) => total + Number(item.unitPriceMinor), 0),
     );
   });
 });

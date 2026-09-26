@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { useShoppingAppState } from "../../application/react/use-shopping-app-state";
 import type {
   PersistenceHealth,
   PersistenceProblem,
@@ -26,6 +27,24 @@ const retryIsMeaningful = (issue: PersistenceProblem): boolean =>
     "invalid-data",
   ].includes(issue.code);
 
+const tripsToRemove = (removable: number): number =>
+  Math.min(removable, Math.max(1, Math.ceil(removable / 10)));
+
+const removalCopy = (
+  removing: number,
+  removable: number,
+): { readonly action: string; readonly detail: string } => {
+  if (removing === removable) {
+    return removing === 1
+      ? { action: "Remove the only trip", detail: "Your only trip in history" }
+      : { action: `Remove all ${removing} trips`, detail: `All ${removing} trips in history` };
+  }
+
+  return removing === 1
+    ? { action: "Remove the oldest trip", detail: "Your oldest trip" }
+    : { action: `Remove ${removing} oldest trips`, detail: `Your ${removing} oldest trips` };
+};
+
 const noticeCopy = (
   issue: PersistenceProblem,
   context: "active" | "completed" | "idle",
@@ -34,6 +53,19 @@ const noticeCopy = (
   readonly body: string;
   readonly risk: "trip" | "cleanup";
 } => {
+  if (issue.code === "storage-full") {
+    return {
+      title: "Storage for this app is full",
+      body:
+        context === "active"
+          ? "This trip can’t be saved until there is room. Your totals still work in this tab."
+          : context === "completed"
+            ? "The latest change to this trip can’t be saved until there is room. Done keeps the trip as it was last saved."
+            : "Changes can’t be saved until there is room.",
+      risk: "trip",
+    };
+  }
+
   if (context === "completed") {
     if (
       issue.code === "remove-failed" &&
@@ -51,7 +83,7 @@ const noticeCopy = (
       return {
         title: "Trip history is not fully saved",
         body:
-          "This completed trip is still visible here, but the latest history change could not be stored safely. Retry before leaving this summary.",
+          "The latest change to this trip could not be stored safely. Retry, or choose Done to keep the trip as it was last saved.",
         risk: "trip",
       };
     }
@@ -119,7 +151,7 @@ const noticeCopy = (
         body:
           context === "active"
             ? "Keep this page open until checkout. Your totals still work in this tab, and you can retry saving without changing the cart."
-            : "Keep this page open while you retry saving. The app will not claim durability until storage succeeds.",
+            : "Keep this page open while you retry saving. We’ll confirm as soon as it’s saved.",
         risk: "trip",
       };
   }
@@ -130,8 +162,10 @@ export function PersistenceHealthNotice({
   health,
   context = "active",
 }: PersistenceHealthNoticeProps) {
+  const state = useShoppingAppState(controller);
   const [retryMessage, setRetryMessage] = useState("");
   const [resolved, setResolved] = useState(false);
+  const [confirmingRoom, setConfirmingRoom] = useState(false);
   const resolvedRef = useRef<HTMLParagraphElement>(null);
   const episode = health.status === "degraded" ? health.since : null;
   const [seenEpisode, setSeenEpisode] = useState(episode);
@@ -142,6 +176,7 @@ export function PersistenceHealthNotice({
     if (episode !== null) {
       setResolved(false);
       setRetryMessage("");
+      setConfirmingRoom(false);
     }
   }
 
@@ -172,7 +207,35 @@ export function PersistenceHealthNotice({
   }
 
   const copy = noticeCopy(health.issue, context);
-  const canRetry = retryIsMeaningful(health.issue);
+  const removable =
+    health.issue.code === "storage-full"
+      ? state.completedTrips.filter(
+          (trip) => trip.id !== state.completedSummary?.id,
+        ).length
+      : 0;
+  const removing = tripsToRemove(removable);
+  const canMakeRoom = removing > 0;
+  const removal = removalCopy(removing, removable);
+  const canRetry = !canMakeRoom && retryIsMeaningful(health.issue);
+
+  const makeRoom = (): void => {
+    setRetryMessage("");
+    setConfirmingRoom(false);
+
+    const result = controller.deleteOldestCompletedTrips(removing);
+
+    if (!result.ok) {
+      setRetryMessage("Trips could not be removed, so nothing was changed.");
+      return;
+    }
+
+    if (result.state.persistence.status === "healthy") {
+      setResolved(true);
+      return;
+    }
+
+    setRetryMessage("There still isn’t enough room. You can remove more trips.");
+  };
 
   const retry = (): void => {
     setRetryMessage("");
@@ -209,13 +272,42 @@ export function PersistenceHealthNotice({
       </span>
       <div className={styles.copy}>
         <strong id="persistence-notice-title">{copy.title}</strong>
-        <p>{copy.body}</p>
+        <p>
+          {copy.body}
+          {health.issue.code !== "storage-full"
+            ? ""
+            : canMakeRoom
+              ? " Removing your oldest trips from history makes room."
+              : " Free up storage this browser keeps for this site, then retry."}
+          <span aria-live="polite">
+            {confirmingRoom && canMakeRoom
+              ? ` ${removal.detail} will be removed from this device; remembered prices stay.`
+              : ""}
+          </span>
+        </p>
+        {confirmingRoom && canMakeRoom ? (
+          <button type="button" className={styles.retryButton} onClick={makeRoom}>
+            {removal.action}
+          </button>
+        ) : null}
         {retryMessage ? (
           <p className={styles.retryStatus} role="status" aria-live="polite">
             {retryMessage}
           </p>
         ) : null}
       </div>
+      {canMakeRoom ? (
+        <button
+          type="button"
+          className={styles.retryButton}
+          onClick={() => {
+            setRetryMessage("");
+            setConfirmingRoom((current) => !current);
+          }}
+        >
+          {confirmingRoom ? "Keep all trips" : "Make room…"}
+        </button>
+      ) : null}
       {canRetry ? (
         <button type="button" className={styles.retryButton} onClick={retry}>
           Retry

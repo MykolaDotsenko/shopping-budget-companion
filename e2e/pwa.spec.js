@@ -42,8 +42,33 @@ test("exposes an installable shell and precaches the application entry", async (
     expect.arrayContaining([
       expect.objectContaining({ sizes: "192x192" }),
       expect.objectContaining({ sizes: "512x512" }),
+      expect.objectContaining({ sizes: "512x512", purpose: "maskable" }),
     ]),
   );
+  expect(manifest.theme_color).toBe(
+    await page.locator('meta[name="theme-color"]').getAttribute("content"),
+  );
+  expect(manifest.screenshots.length).toBeGreaterThan(0);
+
+  for (const screenshot of manifest.screenshots) {
+    const served = await page.evaluate(async ({ href, src }) => {
+      const response = await fetch(new URL(src, new URL(href, location.href)));
+      const image = await createImageBitmap(await response.blob());
+
+      return {
+        ok: response.ok,
+        type: response.headers.get("content-type"),
+        sizes: `${image.width}x${image.height}`,
+      };
+    }, { href: manifestHref, src: screenshot.src });
+
+    expect(served).toEqual({ ok: true, type: screenshot.type, sizes: screenshot.sizes });
+  }
+
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+  expect(
+    await page.locator('meta[property="og:image"]').getAttribute("content"),
+  ).toMatch(/^https:\/\/.+\/og-image\.jpg$/);
 
   await waitForInstalledShell(page);
 
@@ -172,8 +197,98 @@ test("restores active and completed shopping state with the browser offline", as
       .getByRole("button", { name: "View trip history · 1" })
       .click();
 
-    await expect(page.getByText("€4.79 tracked")).toBeVisible();
+    await expect(page.getByText("€4.79 cart total")).toBeVisible();
   } finally {
     await context.setOffline(false);
   }
+});
+
+test("links a readable privacy page from the start screen", async ({ page }) => {
+  await page.goto(appPath);
+
+  const privacy = page.getByRole("link", { name: "Privacy" });
+  await expect(privacy).toHaveAttribute("href", `${appPath}privacy/`);
+  await expect(page.getByRole("link", { name: "Feedback" })).toHaveAttribute(
+    "href",
+    /github\.com\/MykolaDotsenko\/shopping-budget-companion\/issues\/new/,
+  );
+
+  await privacy.click();
+
+  await expect(page.getByRole("heading", { level: 1, name: "Privacy" })).toBeVisible();
+  await expect(
+    page.getByText("never sent to us or to anyone else", { exact: false }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: "← Back to the app" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "How much can you spend today?" }),
+  ).toBeVisible();
+});
+
+test("offers the browser's install prompt on the start screen and remembers the answer", async ({
+  page,
+}) => {
+  await page.goto(appPath);
+
+  await page.evaluate(() => {
+    window.installPromptCalls = 0;
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    event.prompt = () => {
+      window.installPromptCalls += 1;
+      return Promise.resolve();
+    };
+    window.dispatchEvent(event);
+  });
+
+  await expect(page.getByRole("heading", { name: "Install the app" })).toBeVisible();
+  await page.getByRole("button", { name: "Install", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: "Install the app" })).toHaveCount(0);
+  expect(await page.evaluate(() => window.installPromptCalls)).toBe(1);
+
+  await page.reload();
+  await page.evaluate(() => {
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    event.prompt = () => Promise.resolve();
+    window.dispatchEvent(event);
+  });
+
+  await expect(
+    page.getByRole("heading", { name: "How much can you spend today?" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Install the app" })).toHaveCount(0);
+});
+
+test.describe("on Safari for iPhone", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+  });
+
+  test("suggests Add to Home Screen before the first trip and not once trips are saved", async ({
+    page,
+  }) => {
+    await page.goto(appPath);
+
+    await expect(
+      page.getByRole("heading", { name: "Add it to your Home Screen first" }),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "€50", exact: true }).click();
+    await page.getByRole("button", { name: "Add price" }).click();
+    await page.getByRole("textbox", { name: "Price" }).fill("4.79");
+    await page.getByRole("button", { name: "Add · €4.79" }).click();
+    await page.getByRole("button", { name: "Finish trip" }).click();
+    await page.getByRole("button", { name: "Finish trip" }).click();
+    await page.getByRole("button", { name: "Done" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "How much can you spend today?" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Add it to your Home Screen first" }),
+    ).toHaveCount(0);
+  });
 });

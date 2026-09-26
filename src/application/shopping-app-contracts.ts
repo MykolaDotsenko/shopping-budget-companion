@@ -29,6 +29,7 @@ export interface PersistenceProblem {
 }
 
 export interface ShoppingPersistencePort {
+  isCurrent?(): boolean;
   bootstrap(): ActiveTripBootstrapResult;
   readCompletedHistory(): CompletedHistoryReadResult;
   setAsideDamagedHistory(setAsideAt: IsoTimestamp): HistorySetAsideResult;
@@ -230,7 +231,9 @@ export type ApplicationError =
         | "history-unreadable"
         | "nothing-to-set-aside"
         | "set-aside-failed"
-        | "recovery-not-open";
+        | "recovery-not-open"
+        | "trip-not-empty"
+        | "discard-not-saved";
     }
   | DomainError;
 
@@ -253,8 +256,10 @@ export interface ShoppingAppController {
   readonly getSnapshot: () => ShoppingAppState;
   readonly subscribe: (listener: () => void) => () => void;
   readonly bootstrap: () => ShoppingAppState;
+  readonly refreshFromStorage: () => AppCommandResult;
   readonly startTrip: (input: StartTripInput) => AppCommandResult;
   readonly startTripFromCompleted: (tripId: TripId) => AppCommandResult;
+  readonly discardEmptyTrip: () => AppCommandResult;
   readonly addManualItem: (input: AddManualItemInput) => AppCommandResult;
   readonly addRememberedItem: (
     input: AddRememberedItemInput,
@@ -273,6 +278,11 @@ export interface ShoppingAppController {
   ) => AppCommandResult;
   readonly dismissCompletedSummary: () => AppCommandResult;
   readonly deleteCompletedTrip: (tripId: TripId) => AppCommandResult;
+  readonly setCompletedTripCheckout: (
+    tripId: TripId,
+    actualCheckoutMinor: MinorUnits,
+  ) => AppCommandResult;
+  readonly deleteOldestCompletedTrips: (count: number) => AppCommandResult;
   readonly clearCompletedHistory: () => AppCommandResult;
   readonly clearPriceMemory: () => AppCommandResult;
   readonly retryPersistence: () => AppCommandResult;

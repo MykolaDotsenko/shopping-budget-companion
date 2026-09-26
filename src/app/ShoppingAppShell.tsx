@@ -1,4 +1,12 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 import type {
   BarcodeReaderPort,
@@ -29,7 +37,6 @@ import {
 import { CompletedSummaryScreen } from "../features/shopping/CompletedSummaryScreen";
 import { FinishTripSurface } from "../features/shopping/FinishTripSurface";
 import { HistoryIntegrityNotice } from "../features/shopping/HistoryIntegrityNotice";
-import { HistoryScreen } from "../features/shopping/HistoryScreen";
 import {
   ItemEditSurface,
   type ItemEditIntent,
@@ -38,7 +45,6 @@ import {
   PriceEntrySurface,
   type ValidatedItemIntent,
 } from "../features/shopping/PriceEntrySurface";
-import { RecoveryScreen } from "../features/shopping/RecoveryScreen";
 import type {
   PriceEntryTarget,
   ScanContext,
@@ -46,9 +52,19 @@ import type {
 } from "../features/shopping/scan-targets";
 import { StartTripScreen } from "../features/shopping/StartTripScreen";
 import { useShoppingEvidence } from "#shopping-evidence";
+import type { InstallPromptSource } from "../infrastructure/runtime/install-prompt";
 import { addedFeedback, remainingFeedback } from "../features/shopping/shopping-feedback";
+import { AppFooter } from "./AppFooter";
+import { InstallOffer } from "./InstallOffer";
+import {
+  readPriceEntryModePreference,
+  readScanModePreference,
+  writePriceEntryModePreference,
+  writeScanModePreference,
+} from "./input-preferences";
 import { AppearanceSwitcher } from "./AppearanceSwitcher";
 import { SHOPPING_LOCALE } from "../features/shopping/shopping-locale";
+import { focusNextScreen } from "../features/shopping/focus-next-screen";
 import { useShoppingShellFocus } from "./use-shopping-shell-focus";
 import styles from "./ShoppingAppShell.module.css";
 
@@ -58,9 +74,24 @@ export interface ShoppingAppShellProps {
   readonly barcodeReader?: BarcodeReaderPort | null;
   readonly priceReader?: PriceTagReaderPort | null;
   readonly productLookup?: ProductLookupPort | null;
+  readonly installPrompt?: InstallPromptSource;
+}
+
+interface ShoppingAppScreensProps extends ShoppingAppShellProps {
+  readonly lastAddedMessage: string;
+  readonly setLastAddedMessage: Dispatch<SetStateAction<string>>;
 }
 
 const ScanSurface = lazy(() => import("../features/shopping/ScanSurface"));
+const loadHistoryScreen = () => import("../features/shopping/HistoryScreen");
+const HistoryScreen = lazy(() =>
+  loadHistoryScreen().then((module) => ({ default: module.HistoryScreen })),
+);
+const RecoveryScreen = lazy(() =>
+  import("../features/shopping/RecoveryScreen").then((module) => ({
+    default: module.RecoveryScreen,
+  })),
+);
 
 type FocusReturn = "scan" | "price-trigger";
 
@@ -110,13 +141,59 @@ type OverlayState =
 
 const NO_OVERLAY: OverlayState = { kind: "none" };
 
-export function ShoppingAppShell({
+const SCREEN_HEADINGS: Readonly<Record<string, string>> = {
+  idle: "start-trip-title",
+  active: "active-trip-title",
+  "completed-summary": "completed-title",
+  history: "history-title",
+  recovery: "recovery-title",
+};
+
+function LiveStatus({ message }: { readonly message: string }) {
+  const [spoken, setSpoken] = useState("");
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setSpoken(message);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [message]);
+
+  return (
+    <p className={styles.liveStatus} role="status" aria-live="polite">
+      {spoken === message ? message : ""}
+    </p>
+  );
+}
+
+export function ShoppingAppShell(props: ShoppingAppShellProps) {
+  const [lastAddedMessage, setLastAddedMessage] = useState("");
+
+  return (
+    <>
+      <LiveStatus message={lastAddedMessage} />
+      <ShoppingAppScreens
+        {...props}
+        lastAddedMessage={lastAddedMessage}
+        setLastAddedMessage={setLastAddedMessage}
+      />
+    </>
+  );
+}
+
+function ShoppingAppScreens({
   controller,
   camera = null,
   barcodeReader = null,
   priceReader = null,
   productLookup = null,
-}: ShoppingAppShellProps) {
+  installPrompt,
+  lastAddedMessage,
+  setLastAddedMessage,
+}: ShoppingAppScreensProps) {
   const state = useShoppingAppState(controller);
   const {
     addPriceButtonRef,
@@ -136,12 +213,42 @@ export function ShoppingAppShell({
     openedOverlay.tripId !== state.activeTrip?.id
       ? NO_OVERLAY
       : openedOverlay;
+  const sheetOpen = overlay.kind !== "none";
+  const sheetHistoryEntry = useRef(false);
+  useEffect(() => {
+    if (sheetOpen && !sheetHistoryEntry.current) {
+      sheetHistoryEntry.current = true;
+      window.history.pushState({ shoppingSheet: true }, "");
+    } else if (!sheetOpen && sheetHistoryEntry.current) {
+      sheetHistoryEntry.current = false;
+
+      if (window.history.state?.shoppingSheet === true) {
+        window.history.back();
+      }
+    }
+  }, [sheetOpen]);
+  useEffect(() => {
+    const closeSheetOnBack = (): void => {
+      if (!sheetHistoryEntry.current) {
+        return;
+      }
+
+      sheetHistoryEntry.current = false;
+      setOverlay(NO_OVERLAY);
+      focusNextScreen();
+    };
+
+    window.addEventListener("popstate", closeSheetOnBack);
+
+    return () => {
+      window.removeEventListener("popstate", closeSheetOnBack);
+    };
+  }, []);
   const openTripOverlay = (next: TripOverlay): void => {
     if (state.activeTrip !== null) {
       setOverlay({ ...next, tripId: state.activeTrip.id });
     }
   };
-  const [lastAddedMessage, setLastAddedMessage] = useState("");
   const cameraReady = camera !== null && camera.isAvailable() ? camera : null;
   const scanBarcode = cameraReady === null ? null : barcodeReader;
   const scanPrice = cameraReady === null ? null : priceReader;
@@ -164,6 +271,61 @@ export function ShoppingAppShell({
       scanBarcode?.prepare();
     }
   }, [scanBarcode, state.lifecycle]);
+  const screenName =
+    (state.lifecycle === "idle" || state.lifecycle === "completed-summary") &&
+    overlay.kind === "history"
+      ? "history"
+      : state.lifecycle;
+  const shownScreen = useRef(screenName);
+  useEffect(() => {
+    if (shownScreen.current === screenName) {
+      return;
+    }
+
+    shownScreen.current = screenName;
+    window.scrollTo(0, 0);
+    focusNextScreen(SCREEN_HEADINGS[screenName]);
+  }, [screenName]);
+  const saveProblem = needsSaveAttention(state.persistence)
+    ? state.persistence
+    : null;
+  const announcedSaveProblem = useRef(
+    saveProblem?.status === "degraded" ? saveProblem.since : null,
+  );
+  useEffect(() => {
+    const since = saveProblem?.status === "degraded" ? saveProblem.since : null;
+
+    if (since === announcedSaveProblem.current) {
+      return;
+    }
+
+    announcedSaveProblem.current = since;
+
+    if (saveProblem?.status !== "degraded") {
+      return;
+    }
+
+    const warning =
+      saveProblem.issue.code === "storage-full"
+        ? "Changes aren’t being saved: storage for this app is full."
+        : "Changes aren’t being saved right now.";
+
+    setLastAddedMessage((current) => (current === "" ? warning : `${current} ${warning}`));
+  }, [saveProblem, setLastAddedMessage]);
+  const hasHistory = state.completedTrips.length > 0;
+  useEffect(() => {
+    if (!hasHistory) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void loadHistoryScreen();
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [hasHistory]);
   const recentCompletedTrip = mostRecentCompletedTrip(
     state.completedTrips,
   );
@@ -176,19 +338,26 @@ export function ShoppingAppShell({
   });
   const qaPanel = evidence.panel;
 
+  const openingScreen = (
+    <main className={styles.loading} aria-busy="true">
+      <p>Opening…</p>
+    </main>
+  );
   const historyScreen = (
     <>
-      <HistoryScreen
-        controller={controller}
-        onTripStarted={() => {
-          evidence.recordTripStarted("repeat");
-          setOverlay(NO_OVERLAY);
-        }}
-        onBack={() => {
-          setOverlay(NO_OVERLAY);
-        }}
-        locale={SHOPPING_LOCALE}
-      />
+      <Suspense fallback={openingScreen}>
+        <HistoryScreen
+          controller={controller}
+          onTripStarted={() => {
+            evidence.recordTripStarted("repeat");
+            setOverlay(NO_OVERLAY);
+          }}
+          onBack={() => {
+            setOverlay(NO_OVERLAY);
+          }}
+          locale={SHOPPING_LOCALE}
+        />
+      </Suspense>
       {qaPanel}
     </>
   );
@@ -207,7 +376,9 @@ export function ShoppingAppShell({
   if (state.lifecycle === "recovery") {
     return (
       <>
-        <RecoveryScreen controller={controller} />
+        <Suspense fallback={openingScreen}>
+          <RecoveryScreen controller={controller} />
+        </Suspense>
         {qaPanel}
       </>
     );
@@ -222,7 +393,10 @@ export function ShoppingAppShell({
       <>
         <StartTripScreen
           controller={controller}
-          onTripStarted={evidence.recordTripStarted}
+          onTripStarted={(source) => {
+            setLastAddedMessage("");
+            evidence.recordTripStarted(source);
+          }}
           completedTripCount={state.completedTrips.length}
           rememberedPriceCount={state.priceMemories.length}
           priceMemoryNeedsAttention={
@@ -236,6 +410,19 @@ export function ShoppingAppShell({
             setOverlay({ kind: "history" });
           }}
           utilityControl={<AppearanceSwitcher />}
+          notice={
+            installPrompt === undefined ? null : (
+              <InstallOffer
+                source={installPrompt}
+                hasSavedShopping={
+                  state.completedTrips.length > 0 ||
+                  state.priceMemories.length > 0 ||
+                  state.barcodeLinks.length > 0
+                }
+              />
+            )
+          }
+          footer={<AppFooter />}
         />
         {qaPanel}
       </>
@@ -279,6 +466,8 @@ export function ShoppingAppShell({
       <>
         <PriceEntrySurface
           trip={state.activeTrip}
+          initialMode={readPriceEntryModePreference()}
+          onModeChange={writePriceEntryModePreference}
           {...(overlay.initialLabel === undefined
             ? {}
             : { initialLabel: overlay.initialLabel })}
@@ -390,6 +579,7 @@ export function ShoppingAppShell({
             priceReader={scanPrice}
             productLookup={productLookup}
             initialMode={overlay.mode}
+            onModeChange={writeScanModePreference}
             context={overlay.context}
             locale={SHOPPING_LOCALE}
             onCancel={() => {
@@ -438,7 +628,7 @@ export function ShoppingAppShell({
               }
 
               setLastAddedMessage(
-                `${record.label} added from a remembered price. ${remainingFeedback(
+                `${record.label} added at its remembered price. ${remainingFeedback(
                   result.state.activeTrip,
                   SHOPPING_LOCALE,
                 )}`,
@@ -522,10 +712,28 @@ export function ShoppingAppShell({
               });
             }
 
-            return result.error.kind === "application" &&
+            if (
+              result.error.kind === "application" &&
               result.error.code === "history-unreadable"
-              ? "history-unreadable"
+            ) {
+              return "history-unreadable";
+            }
+
+            return result.state.persistence.status === "degraded" &&
+              result.state.persistence.issue.code === "storage-full"
+              ? "storage-full"
               : "not-saved";
+          }}
+          onDiscard={() => {
+            const result = controller.discardEmptyTrip();
+
+            if (!result.ok) {
+              return false;
+            }
+
+            setOverlay(NO_OVERLAY);
+            setLastAddedMessage("Trip cancelled. Nothing was saved.");
+            return true;
           }}
           historyNotice={<HistoryIntegrityNotice controller={controller} />}
           historyNeedsAttention={state.historyIntegrity.status === "degraded"}
@@ -592,7 +800,7 @@ export function ShoppingAppShell({
               }
 
               setLastAddedMessage(
-                `Item corrected. ${remainingFeedback(
+                `Item updated. ${remainingFeedback(
                   result.state.activeTrip,
                   SHOPPING_LOCALE,
                 )}`,
@@ -651,7 +859,12 @@ export function ShoppingAppShell({
                 setLastAddedMessage("");
                 openTripOverlay({
                   kind: "scan",
-                  mode: scanBarcode === null ? "price" : "barcode",
+                  mode:
+                    scanBarcode === null
+                      ? "price"
+                      : scanPrice === null
+                        ? "barcode"
+                        : readScanModePreference("barcode"),
                   context: {},
                 });
               },
@@ -690,7 +903,7 @@ export function ShoppingAppShell({
           }
 
           setLastAddedMessage(
-            `${record.label} added from a remembered price. ${remainingFeedback(
+            `${record.label} added at its remembered price. ${remainingFeedback(
               result.state.activeTrip,
               SHOPPING_LOCALE,
             )}`,

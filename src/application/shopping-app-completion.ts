@@ -207,6 +207,7 @@ export const createCompletionUseCases = ({
     const mergedMemories = mergePriceMemories(
       nextState.priceMemories,
       observedMemories,
+      clock.now(),
     );
 
     if (mergedMemories !== nextState.priceMemories) {
@@ -305,6 +306,10 @@ export const createCompletionUseCases = ({
       return success(nextState, true, "memory-only");
     }
 
+    if (!saveResult.ok && saveResult.issue.code === "history-conflict") {
+      return failure(state, applicationError("completed-trip-not-found"));
+    }
+
     const completedTrips = upsertCompletedTrip(
       state.completedTrips,
       tripResult.value,
@@ -351,14 +356,39 @@ export const createCompletionUseCases = ({
 
     const sessionOnly = ports.persistence === SESSION_ONLY_PERSISTENCE_PORT;
 
-    if (
-      (state.persistence.status === "degraded" && !sessionOnly) ||
-      state.completionCleanupPending
-    ) {
+    if (state.completionCleanupPending) {
       return failure(
         state,
         applicationError("completion-not-saved"),
       );
+    }
+
+    if (state.persistence.status === "degraded" && !sessionOnly) {
+      const summaryId = state.completedSummary.id;
+      const durable = ports.persistence.readCompletedHistory();
+
+      if (
+        !durable.ok ||
+        !durable.completedTrips.some((trip) => trip.id === summaryId)
+      ) {
+        return failure(
+          state,
+          applicationError("completion-not-saved"),
+        );
+      }
+
+      const nextState = publish({
+        ...state,
+        lifecycle: "idle",
+        activeTrip: null,
+        completedSummary: null,
+        completedTrips: Object.freeze([...durable.completedTrips]),
+        persistence: HEALTHY_PERSISTENCE,
+        undo: null,
+        recovery: null,
+      });
+
+      return success(nextState, true, "persisted");
     }
 
     const nextState = publish({

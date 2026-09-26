@@ -44,6 +44,7 @@ export interface ScanSurfaceProps {
   readonly priceReader: PriceTagReaderPort | null;
   readonly productLookup: ProductLookupPort | null;
   readonly initialMode: ScanMode;
+  readonly onModeChange?: (mode: ScanMode) => void;
   readonly context?: ScanContext;
   readonly onCancel: () => void;
   readonly onEnterPrice: (target: PriceEntryTarget) => void;
@@ -108,6 +109,7 @@ export default function ScanSurface({
   priceReader,
   productLookup,
   initialMode,
+  onModeChange,
   context: initialContext = {},
   onCancel,
   onEnterPrice,
@@ -416,6 +418,7 @@ export default function ScanSurface({
 
     setMode(next);
     setManualError("");
+    onModeChange?.(next);
 
     if (!cameraWanted) {
       restartCamera();
@@ -768,7 +771,7 @@ export default function ScanSurface({
             ) : null}
             <div className={styles.row}>
               <button type="submit" className={styles.primary}>
-                Look up barcode
+                Use barcode
               </button>
               {camera.isAvailable() ? (
                 <button type="button" className={styles.secondary} onClick={restartCamera}>

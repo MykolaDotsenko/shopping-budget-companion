@@ -215,7 +215,7 @@ describe("StartTripScreen", () => {
 
     const repeat = screen.getByRole("button", { name: /Shop again/i });
     expect(repeat.textContent).toContain("€37.50 budget");
-    expect(repeat.textContent).toContain("€2.00 reserve");
+    expect(repeat.textContent).toContain("€2.00 safety buffer");
 
     await user.click(repeat);
 
@@ -301,6 +301,39 @@ describe("StartTripScreen", () => {
     });
   });
 
+  it("keeps a collapsed safety buffer visible and reopens it when it is invalid", async () => {
+    const user = userEvent.setup();
+    const controller = createController();
+
+    render(<StartTripScreen controller={controller} />);
+
+    const summary = screen.getByText("Add a safety buffer");
+    await user.click(summary);
+    await user.type(screen.getByRole("textbox", { name: /Safety buffer/i }), "7");
+    await user.click(summary);
+
+    expect(screen.getByText("Safety buffer €7.00")).not.toBeNull();
+
+    await user.click(screen.getByText("Safety buffer €7.00"));
+    const input = screen.getByRole("textbox", { name: /Safety buffer/i });
+    await user.clear(input);
+    await user.type(input, "7.555");
+    await user.click(screen.getByText("Add a safety buffer"));
+
+    expect(screen.getByText("Safety buffer needs a valid amount")).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "€50" }));
+
+    expect(controller.getSnapshot().lifecycle).toBe("idle");
+    expect(
+      (screen.getByText("Add a safety buffer").closest("details") as HTMLDetailsElement)
+        .open,
+    ).toBe(true);
+    expect(document.activeElement).toBe(
+      screen.getByRole("textbox", { name: /Safety buffer/i }),
+    );
+  });
+
   it("keeps the trip idle when the buffer exceeds the selected budget", async () => {
     const user = userEvent.setup();
     const controller = createController();
@@ -362,9 +395,12 @@ describe("StartTripScreen", () => {
     );
 
     expect(controller.getSnapshot().lifecycle).toBe("idle");
-    expect(screen.getByRole("alert").textContent).toContain(
-      "Use no more than two decimal places.",
-    );
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("Use no more than two decimal places.");
+    expect(alert.closest("form")).not.toBeNull();
+    expect(
+      screen.getByRole("textbox", { name: "Custom budget" }).getAttribute("aria-invalid"),
+    ).toBe("true");
   });
 
   it("lets the domain reject a zero custom budget without duplicating the rule", async () => {

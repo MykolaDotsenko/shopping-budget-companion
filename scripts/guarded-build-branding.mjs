@@ -2,9 +2,10 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const PUBLIC_METADATA = Object.freeze({
-  title: "<title>Shopping Budget Companion</title>",
+  title:
+    "<title>Shopping Budget Companion — know what’s left before checkout</title>",
   description:
-    'content="A mobile-first shopping budget companion with exact money, local-first persistence, fast price entry, and repeat-trip price memory."',
+    'content="Set a shopping limit, add prices as you go and always see what’s left before checkout. No account, no bank connection, works offline once opened."',
   theme: '<meta name="theme-color" content="#f4f1eb" />',
   applicationName:
     '<meta name="application-name" content="Shopping Budget Companion" />',

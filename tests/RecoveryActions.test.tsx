@@ -10,6 +10,7 @@ import { mvpMinorUnits, type MinorUnits } from "../src/domain/money";
 import { createPriceMemoryRecord } from "../src/domain/price-memory";
 import {
   createActiveTrip,
+  createCartItem,
   isoTimestamp,
   reduceTrip,
   type ActiveTrip,
@@ -46,6 +47,26 @@ const must = <T,>(result: { ok: true; value: T } | { ok: false }): T => {
 
 const money = (value: number): MinorUnits => must(mvpMinorUnits(value));
 const time = (value: string): IsoTimestamp => must(isoTimestamp(value));
+
+const withItem = (trip: ActiveTrip): ActiveTrip => {
+  const item = must(
+    createCartItem({
+      id: `${trip.id}-item`,
+      unitPriceMinor: money(250),
+      quantity: 1,
+      priceSource: { kind: "manual" },
+      priceConfidence: { kind: "confirmed", confirmedAt: time(START) },
+      createdAt: START,
+    }),
+  );
+  const next = must(reduceTrip(trip, { type: "add-item", item }));
+
+  if (next.status !== "active") {
+    throw new Error("Expected active trip");
+  }
+
+  return next;
+};
 
 const completedTrip = (id: string): CompletedTrip => {
   const trip: ActiveTrip = must(
@@ -112,7 +133,6 @@ describe("RecoveryScreen exits", () => {
 
     render(<RecoveryScreen controller={controller} />);
 
-    await user.click(screen.getByText("Other ways to continue"));
     expect(
       screen.getByRole("button", { name: "Continue without saving" }),
     ).not.toBeNull();
@@ -136,7 +156,6 @@ describe("RecoveryScreen exits", () => {
 
     render(<RecoveryScreen controller={controller} />);
 
-    await user.click(screen.getByText("Other ways to continue"));
 
     expect(
       screen.queryByRole("button", { name: "Set aside and start fresh" }),
@@ -158,7 +177,7 @@ describe("RecoveryScreen exits", () => {
 
     render(<ShoppingAppShell controller={controller} />);
 
-    await user.click(screen.getByText("Other ways to continue"));
+    await screen.findByRole("button", { name: "Continue without saving" });
     await user.click(
       screen.getByRole("button", { name: "Continue without saving" }),
     );
@@ -502,7 +521,7 @@ describe("session-only mode never asks to repair what it chose not to save", () 
 
     render(<ShoppingAppShell controller={controller} />);
 
-    await user.click(screen.getByText("Other ways to continue"));
+    await screen.findByRole("button", { name: "Continue without saving" });
     await user.click(
       screen.getByRole("button", { name: "Continue without saving" }),
     );
@@ -542,7 +561,7 @@ describe("session-only mode never asks to repair what it chose not to save", () 
 
     render(<ShoppingAppShell controller={controller} />);
 
-    await user.click(screen.getByText("Other ways to continue"));
+    await screen.findByRole("button", { name: "Continue without saving" });
     await user.click(
       screen.getByRole("button", { name: "Continue without saving" }),
     );
@@ -556,7 +575,7 @@ describe("session-only mode never asks to repair what it chose not to save", () 
     );
 
     expect(
-      screen.getByText(/This session is not saving/).textContent,
+      (await screen.findByText(/This session is not saving/)).textContent,
     ).toMatch(/stay as they are/);
     expect(
       screen.queryByText("Fix the local-save warning before changing trip history."),
@@ -603,8 +622,8 @@ describe("PersistenceHealthNotice session-only copy", () => {
 describe("trip overlays belong to their trip", () => {
   it("never reopens a finish surface over the next trip once its trip is gone", async () => {
     const user = userEvent.setup();
-    const open = must(
-      createActiveTrip({ id: "trip-open", budgetMinor: money(3_000), startedAt: START }),
+    const open = withItem(
+      must(createActiveTrip({ id: "trip-open", budgetMinor: money(3_000), startedAt: START })),
     );
     const completed = must(
       reduceTrip(open, { type: "complete-trip", completedAt: time(START) }),
@@ -646,7 +665,7 @@ describe("trip overlays belong to their trip", () => {
     render(<ShoppingAppShell controller={controller} />);
 
     await user.click(screen.getByRole("button", { name: /Finish trip/ }));
-    const finish = screen.getByRole("main", { name: "Ready to finish this trip?" });
+    const finish = await screen.findByRole("main", { name: "Ready to finish this trip?" });
 
     control.failHistoryRead = false;
     await user.click(within(finish).getByRole("button", { name: "Retry" }));
@@ -673,8 +692,8 @@ describe("trip overlays belong to their trip", () => {
 describe("finishing a trip edited after its completion was recorded", () => {
   it("keeps the finish surface and its failure in view when the new id cannot be recorded", async () => {
     const user = userEvent.setup();
-    const recorded = must(
-      createActiveTrip({ id: "trip-open", budgetMinor: money(3_000), startedAt: START }),
+    const recorded = withItem(
+      must(createActiveTrip({ id: "trip-open", budgetMinor: money(3_000), startedAt: START })),
     );
     const completed = must(
       reduceTrip(recorded, { type: "complete-trip", completedAt: time(START) }),
@@ -721,7 +740,7 @@ describe("finishing a trip edited after its completion was recorded", () => {
     render(<ShoppingAppShell controller={controller} />);
 
     await user.click(screen.getByRole("button", { name: /Finish trip/ }));
-    const finish = screen.getByRole("main", { name: "Ready to finish this trip?" });
+    const finish = await screen.findByRole("main", { name: "Ready to finish this trip?" });
     const confirm = within(finish).getByRole("button", { name: "Finish trip" });
     await user.click(confirm);
 
@@ -730,7 +749,7 @@ describe("finishing a trip edited after its completion was recorded", () => {
       activeTrip: { id: "trip-1", budgetMinor: 3_500 },
     });
     expect(
-      screen.getByRole("main", { name: "Ready to finish this trip?" }),
+      await screen.findByRole("main", { name: "Ready to finish this trip?" }),
     ).toBe(finish);
     expect(within(finish).getByRole("alert")).not.toBeNull();
     expect(document.activeElement).not.toBe(document.body);
@@ -780,6 +799,30 @@ describe("PersistenceHealthNotice after a successful retry", () => {
   });
 });
 
+describe("history with a damaged entry", () => {
+  it("still lets the shopper shop again from a readable trip", async () => {
+    const user = userEvent.setup();
+    const { storage } = memoryStorage({
+      [HISTORY_STORAGE_KEY]: partlyDamagedHistory(),
+    });
+    const controller = boot(storage);
+
+    render(<ShoppingAppShell controller={controller} />);
+
+    await user.click(screen.getByRole("button", { name: /View trip history/ }));
+    const shopAgain = await screen.findByRole("button", { name: "Shop again" });
+
+    expect((shopAgain as HTMLButtonElement).disabled).toBe(false);
+
+    await user.click(shopAgain);
+
+    expect(controller.getSnapshot()).toMatchObject({
+      lifecycle: "active",
+      historyIntegrity: { status: "degraded" },
+    });
+  });
+});
+
 describe("shell flow with damaged history", () => {
   it("lets the shopper set history aside from the finish surface and finish", async () => {
     const user = userEvent.setup();
@@ -793,7 +836,7 @@ describe("shell flow with damaged history", () => {
     render(<ShoppingAppShell controller={controller} />);
 
     await user.click(screen.getByRole("button", { name: /Finish trip/ }));
-    const finish = screen.getByRole("main", { name: "Ready to finish this trip?" });
+    const finish = await screen.findByRole("main", { name: "Ready to finish this trip?" });
     await user.click(within(finish).getByRole("button", { name: "Finish trip" }));
 
     expect(within(finish).getByRole("alert").textContent).toMatch(

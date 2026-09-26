@@ -1,40 +1,41 @@
-import type { RefObject } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
-import { formatEur, signedMinorUnits } from "../../domain/money";
+import {
+  formatEur,
+  moneyInputValue,
+  parseEurDraft,
+  type MinorUnits,
+} from "../../domain/money";
 import {
   cartTotal,
   checkoutDifference,
   itemCount,
   lineTotal,
-  remaining,
   type CompletedTrip,
 } from "../../domain/shopping-trip";
 import styles from "./HistoryScreen.module.css";
+import {
+  budgetOutcome,
+  formatAbsoluteEur,
+  moneyInputErrorMessage,
+} from "./shopping-feedback";
 
 export interface HistoryTripCardProps {
   readonly trip: CompletedTrip;
   readonly locale: string;
   readonly canChangeHistory: boolean;
+  readonly canRepeat: boolean;
   readonly deleting: boolean;
   readonly confirmationCancelRef: RefObject<HTMLButtonElement | null>;
   readonly onStartSimilar: (trip: CompletedTrip) => void;
   readonly onRequestDelete: (trip: CompletedTrip) => void;
   readonly onCancelDelete: () => void;
   readonly onConfirmDelete: (trip: CompletedTrip) => void;
+  readonly onSaveCheckout: (
+    trip: CompletedTrip,
+    actualCheckoutMinor: MinorUnits,
+  ) => boolean;
 }
-
-const formatAbsoluteEur = (
-  value: number,
-  locale: string,
-): string => {
-  const amount = signedMinorUnits(Math.abs(value));
-
-  if (!amount.ok) {
-    throw new RangeError("History reconciliation exceeded safe integer bounds");
-  }
-
-  return formatEur(amount.value, locale);
-};
 
 const differenceLabel = (
   trip: CompletedTrip,
@@ -47,27 +48,12 @@ const differenceLabel = (
   }
 
   if (difference === 0) {
-    return "Checkout matched";
+    return "Receipt matched";
   }
 
   return difference > 0
-    ? `${formatAbsoluteEur(difference, locale)} more at checkout`
-    : `${formatAbsoluteEur(difference, locale)} less at checkout`;
-};
-
-const budgetOutcomeLabel = (
-  trip: CompletedTrip,
-  locale: string,
-): string => {
-  const amount = remaining(trip);
-
-  if (amount === 0) {
-    return "On budget";
-  }
-
-  return amount > 0
-    ? `${formatAbsoluteEur(amount, locale)} under budget`
-    : `${formatAbsoluteEur(amount, locale)} over budget`;
+    ? `Paid ${formatAbsoluteEur(difference, locale)} more`
+    : `Paid ${formatAbsoluteEur(difference, locale)} less`;
 };
 
 const completedLabel = (
@@ -90,16 +76,67 @@ export function HistoryTripCard({
   trip,
   locale,
   canChangeHistory,
+  canRepeat,
   deleting,
   confirmationCancelRef,
   onStartSimilar,
   onRequestDelete,
   onCancelDelete,
   onConfirmDelete,
+  onSaveCheckout,
 }: HistoryTripCardProps) {
   const tracked = cartTotal(trip);
   const quantity = itemCount(trip);
   const difference = differenceLabel(trip, locale);
+  const outcome = budgetOutcome(trip, locale);
+  const checkoutErrorId = useId();
+  const [checkoutRaw, setCheckoutRaw] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [checkoutSaved, setCheckoutSaved] = useState(false);
+  const checkoutInputRef = useRef<HTMLInputElement>(null);
+  const checkoutToggleRef = useRef<HTMLButtonElement>(null);
+  const editingCheckout = checkoutRaw !== null;
+  const wasEditingCheckout = useRef(false);
+
+  useEffect(() => {
+    if (editingCheckout) {
+      checkoutInputRef.current?.focus();
+    } else if (wasEditingCheckout.current) {
+      checkoutToggleRef.current?.focus();
+    }
+
+    wasEditingCheckout.current = editingCheckout;
+  }, [editingCheckout]);
+
+  const closeCheckout = (): void => {
+    setCheckoutRaw(null);
+    setCheckoutError("");
+  };
+
+  const saveCheckout = (): void => {
+    const parsed =
+      checkoutRaw === null || checkoutRaw.trim() === ""
+        ? null
+        : parseEurDraft({ raw: checkoutRaw, mode: "decimal" });
+
+    if (parsed === null) {
+      setCheckoutError("Enter the receipt total first.");
+      return;
+    }
+
+    if (!parsed.ok) {
+      setCheckoutError(moneyInputErrorMessage(parsed.error.code));
+      return;
+    }
+
+    if (!onSaveCheckout(trip, parsed.value)) {
+      setCheckoutError("The receipt total could not be saved. Nothing was changed.");
+      return;
+    }
+
+    closeCheckout();
+    setCheckoutSaved(true);
+  };
 
   return (
     <li className={styles.trip}>
@@ -108,7 +145,7 @@ export function HistoryTripCard({
           <span className={styles.completedAt}>
             {completedLabel(trip, locale)}
           </span>
-          <strong>{formatEur(tracked, locale)} tracked</strong>
+          <strong>{formatEur(tracked, locale)} cart total</strong>
         </div>
         <span className={styles.itemCount}>
           {quantity} {quantity === 1 ? "item" : "items"}
@@ -121,7 +158,7 @@ export function HistoryTripCard({
           <dd>{formatEur(trip.budgetMinor, locale)}</dd>
         </div>
         <div>
-          <dt>Checkout</dt>
+          <dt>Receipt</dt>
           <dd>
             {trip.actualCheckoutMinor === undefined
               ? "Not added"
@@ -130,21 +167,102 @@ export function HistoryTripCard({
         </div>
         <div>
           <dt>Budget outcome</dt>
-          <dd>{budgetOutcomeLabel(trip, locale)}</dd>
+          <dd data-outcome={outcome.status}>{outcome.label}</dd>
         </div>
       </dl>
 
       {difference ? (
-        <p className={styles.difference}>{difference}</p>
-      ) : (
-        <p className={styles.neutral}>
-          No checkout comparison recorded.
+        <p
+          className={styles.difference}
+          data-direction={(checkoutDifference(trip) ?? 0) > 0 ? "more" : "within"}
+        >
+          {difference}
         </p>
-      )}
+      ) : null}
+
+      {editingCheckout ? (
+        <form
+          className={styles.checkoutForm}
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveCheckout();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              closeCheckout();
+            }
+          }}
+        >
+          <label className={styles.checkoutField}>
+            <span>Receipt total</span>
+            <span className={styles.checkoutInput}>
+              <span aria-hidden="true">€</span>
+              <input
+                ref={checkoutInputRef}
+                value={checkoutRaw}
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0.00"
+                aria-invalid={checkoutError !== ""}
+                aria-describedby={checkoutError === "" ? undefined : checkoutErrorId}
+                onChange={(event) => {
+                  setCheckoutRaw(event.currentTarget.value);
+                  setCheckoutError("");
+                }}
+              />
+            </span>
+          </label>
+          <div className={styles.confirmationActions}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={closeCheckout}
+            >
+              Cancel
+            </button>
+            <button type="submit" className={styles.saveCheckoutButton}>
+              Save
+            </button>
+          </div>
+          {checkoutError === "" ? null : (
+            <p id={checkoutErrorId} className={styles.error} role="alert">
+              {checkoutError}
+            </p>
+          )}
+        </form>
+      ) : canChangeHistory ? (
+        <button
+          ref={checkoutToggleRef}
+          type="button"
+          className={styles.checkoutToggle}
+          onClick={() => {
+            setCheckoutSaved(false);
+            setCheckoutRaw(
+              trip.actualCheckoutMinor === undefined
+                ? ""
+                : moneyInputValue(trip.actualCheckoutMinor),
+            );
+          }}
+        >
+          {trip.actualCheckoutMinor === undefined
+            ? "Add receipt total"
+            : "Change receipt total"}
+        </button>
+      ) : null}
+
+      {checkoutSaved ? (
+        <p className={styles.status} role="status">
+          Receipt total saved.
+        </p>
+      ) : null}
 
       {trip.items.length > 0 ? (
         <details className={styles.tripDetails}>
-          <summary>View items · {trip.items.length}</summary>
+          <summary>
+            View {quantity} {quantity === 1 ? "item" : "items"}
+          </summary>
           <ul>
             {trip.items.map((item, index) => (
               <li key={item.id}>
@@ -167,12 +285,29 @@ export function HistoryTripCard({
         <button
           type="button"
           className={styles.repeatTripButton}
-          disabled={!canChangeHistory}
+          disabled={!canRepeat}
           onClick={() => {
             onStartSimilar(trip);
           }}
         >
           Shop again
+        </button>
+
+        <button
+          type="button"
+          className={styles.deleteTripButton}
+          data-delete-trip-id={trip.id}
+          aria-expanded={deleting}
+          disabled={!canChangeHistory}
+          onClick={() => {
+            if (deleting) {
+              onCancelDelete();
+            } else {
+              onRequestDelete(trip);
+            }
+          }}
+        >
+          Delete trip
         </button>
 
         {deleting ? (
@@ -209,23 +344,11 @@ export function HistoryTripCard({
                   onConfirmDelete(trip);
                 }}
               >
-                Delete trip
+                Yes, delete
               </button>
             </div>
           </section>
-        ) : (
-          <button
-            type="button"
-            className={styles.deleteTripButton}
-            data-delete-trip-id={trip.id}
-            disabled={!canChangeHistory}
-            onClick={() => {
-              onRequestDelete(trip);
-            }}
-          >
-            Delete trip
-          </button>
-        )}
+        ) : null}
       </div>
     </li>
   );

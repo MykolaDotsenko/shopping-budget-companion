@@ -53,6 +53,25 @@ const withValidatedItems = (
   });
 };
 
+export const restoreTripItems = (
+  trip: ActiveTrip,
+  items: readonly CartItem[],
+): Result<ActiveTrip, DomainError> => {
+  const restored: CartItem[] = [...trip.items];
+
+  for (const item of items) {
+    const itemResult = validateCartItem(item);
+
+    if (!itemResult.ok) {
+      return itemResult;
+    }
+
+    restored.push(itemResult.value);
+  }
+
+  return withValidatedItems(trip, restored);
+};
+
 const hasOwn = <K extends PropertyKey>(
   value: object,
   key: K,

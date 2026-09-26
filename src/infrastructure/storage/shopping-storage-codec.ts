@@ -4,8 +4,10 @@ import {
   createCartItem,
   isoTimestamp,
   reduceTrip,
+  restoreTripItems,
   storeId,
   type ActiveTrip,
+  type CartItem,
   type CompletedTrip,
   type IsoTimestamp,
   type PriceConfidence,
@@ -39,6 +41,7 @@ export type PersistenceIssueCode =
   | "invalid-data"
   | "serialization-failed"
   | "write-failed"
+  | "storage-full"
   | "remove-failed"
   | "history-conflict"
   | "invalid-history-entry"
@@ -226,7 +229,7 @@ const decodeActiveTripData = (
     return null;
   }
 
-  let trip: ActiveTrip = tripResult.value;
+  const items: CartItem[] = [];
 
   for (const item of data.items) {
     const unitPriceMinor = mvpMinorUnits(item.unitPriceMinor);
@@ -256,19 +259,12 @@ const decodeActiveTripData = (
       return null;
     }
 
-    const nextTrip = reduceTrip(trip, {
-      type: "add-item",
-      item: itemResult.value,
-    });
-
-    if (!nextTrip.ok || nextTrip.value.status !== "active") {
-      return null;
-    }
-
-    trip = nextTrip.value;
+    items.push(itemResult.value);
   }
 
-  return trip;
+  const restored = restoreTripItems(tripResult.value, items);
+
+  return restored.ok ? restored.value : null;
 };
 
 const toActiveTripDataV1 = (trip: ActiveTrip): ActiveTripDataV1 => ({
@@ -388,9 +384,25 @@ const hasDuplicateTripIds = (
 
 
 
+const validatedCompletedTrips = new WeakSet<CompletedTrip>();
+let lastHistoryDecode: {
+  readonly raw: string;
+  readonly result: DecodeHistoryResult;
+} | null = null;
+
 export const decodeHistorySnapshot = (
   raw: string,
 ): DecodeHistoryResult => {
+  if (lastHistoryDecode !== null && lastHistoryDecode.raw === raw) {
+    return lastHistoryDecode.result;
+  }
+
+  const result = decodeHistoryRaw(raw);
+  lastHistoryDecode = { raw, result };
+  return result;
+};
+
+const decodeHistoryRaw = (raw: string): DecodeHistoryResult => {
   let parsed: unknown;
 
   try {
@@ -467,6 +479,7 @@ export const decodeHistorySnapshot = (
       continue;
     }
 
+    validatedCompletedTrips.add(trip);
     trips.push(trip);
   }
 
@@ -512,6 +525,12 @@ export const encodeHistorySnapshot = (
 
   for (const trip of trips) {
     const candidate = toCompletedTripDataV1(trip);
+
+    if (validatedCompletedTrips.has(trip)) {
+      encodedTrips.push(candidate);
+      continue;
+    }
+
     const validated = completedTripDataV1Schema.safeParse(candidate);
 
     if (!validated.success || decodeCompletedTripData(candidate) === null) {
@@ -521,6 +540,7 @@ export const encodeHistorySnapshot = (
       };
     }
 
+    validatedCompletedTrips.add(trip);
     encodedTrips.push(validated.data);
   }
 
@@ -532,7 +552,10 @@ export const encodeHistorySnapshot = (
     },
   };
 
-  const validatedEnvelope = historyStorageEnvelopeV1Schema.safeParse(envelope);
+  const validatedEnvelope = historyStorageEnvelopeV1Schema.safeParse({
+    ...envelope,
+    data: { trips: [] },
+  });
 
   if (!validatedEnvelope.success) {
     return {
@@ -545,9 +568,20 @@ export const encodeHistorySnapshot = (
   }
 
   try {
+    const raw = JSON.stringify(envelope);
+    lastHistoryDecode = {
+      raw,
+      result: {
+        ok: true,
+        trips: Object.freeze([...trips]),
+        invalidEntryCount: 0,
+        savedAt: savedAt.value,
+      },
+    };
+
     return {
       ok: true,
-      raw: JSON.stringify(envelope),
+      raw,
       savedAt: savedAt.value,
     };
   } catch {

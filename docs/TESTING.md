@@ -55,7 +55,7 @@ npm run test:e2e
 3. `typecheck` — strict TypeScript (`tsc --noEmit`);
 4. `test:coverage` — every Vitest unit and component test, with the coverage floors below;
 5. `build` — the public production build;
-6. `build:check` — the public build validator (`scripts/validate-build.mjs`): install manifest, icons and service worker, the [public bundle budget](#public-bundle-budget), engine isolation and the guarded-evidence marker scan.
+6. `build:check` — the public build validator (`scripts/validate-build.mjs`): install manifest, icons, install-dialog screenshots (real size, not precached) and service worker, the [public bundle budget](#public-bundle-budget), engine isolation and the guarded-evidence marker scan.
 
 `npm run test:e2e` builds the public app and runs the public Playwright suite in Chromium, Firefox and WebKit. Tests tagged for a guarded evidence surface run only with `PLAYWRIGHT_GUARDED_SURFACE=1`, which CI sets while it serves that surface.
 
@@ -212,7 +212,7 @@ At minimum cover:
 
 Automation must prove:
 
-- the public release artifact contains a valid install manifest, install icons and generated service worker;
+- the public release artifact contains a valid install manifest, install icons, install-dialog screenshots and generated service worker;
 - guarded evidence builds do not create competing service workers;
 - after one successful online install/cache pass, the shell opens when network requests are unavailable;
 - an active trip restores offline with exact canonical values;
@@ -395,19 +395,19 @@ The production build has separate total, initial-load and on-demand engine budge
 
 CI currently enforces:
 
-- total public JavaScript without the engines: <= 430,000 raw / 128,000 gzip bytes;
-- initial JavaScript referenced by the public HTML: <= 395,000 raw / 115,000 gzip bytes, and it must contain neither engine;
-- any single JavaScript chunk: <= 395,000 raw bytes;
+- total public JavaScript without the engines: <= 443,000 raw / 132,000 gzip bytes;
+- initial JavaScript referenced by the public HTML: <= 396,000 raw / 116,000 gzip bytes, and it must contain neither engine;
+- any single JavaScript chunk: <= 230,000 raw bytes (React ships as its own chunk, so an app update does not re-download it);
 - exactly one barcode engine chunk: <= 60,000 raw / 20,000 gzip bytes, outside the initial bundle;
 - exactly one barcode engine WASM file: <= 1,200,000 bytes, whose SHA-256 must equal the bundled `zxing-wasm` reader build;
 - exactly one price reader chunk: <= 40,000 raw / 14,000 gzip bytes, outside the initial bundle;
 - every self-hosted price reader file present, within its own budget, byte-identical to its pinned package file, <= 10,500,000 bytes together, and absent from the service worker precache;
-- total public CSS: <= 80,000 raw / 13,000 gzip bytes;
-- initial CSS referenced by the public HTML: <= 70,000 raw / 11,100 gzip bytes.
+- total public CSS: <= 81,500 raw / 15,600 gzip bytes;
+- initial CSS referenced by the public HTML: <= 63,000 raw / 10,600 gzip bytes.
 
 The engine budgets apply only to a feature the build ships. With `VITE_SHOPPING_BARCODE_SCANNER=0` the validator skips the barcode engine chunk and WASM checks and reports "barcode scanning switched off"; with `VITE_SHOPPING_PRICE_OCR=0` it skips the price reader chunk and file checks, reports "price tag reading switched off" and fails if the build still ships the price reader files. CI builds and validates one build with both switches at `0`.
 
-The build validator classifies module scripts, module-preload links and stylesheets from generated HTML, so a camera capability can be code-split without silently joining the startup path. Its guarded-evidence marker scan reads every public JavaScript chunk except the two lazy engine chunks. The total budgets were raised explicitly for the lazy scan surface (D-053, D-055), and the initial CSS gzip budget by 100 bytes for the price entry "Read price tag" control (D-055).
+The build validator classifies module scripts, module-preload links and stylesheets from generated HTML, so a camera capability can be code-split without silently joining the startup path. Its guarded-evidence marker scan reads every public JavaScript chunk except the two lazy engine chunks. The total budgets were raised explicitly for the lazy scan surface (D-053, D-055), and the initial CSS gzip budget by 100 bytes for the price entry "Read price tag" control (D-055). The 2026-09-26 release audit moved trip history and the recovery screen out of the startup bundle (history is fetched in the background once a trip has been finished), tightened the initial budgets to what remains, and raised the total gzip budgets because those screens now compress as separate files. Field borders of at least 3:1, state colours, the pinned remaining amount and the privacy footer then raised both CSS gzip budgets by 300 bytes. Cancelling an empty trip and the install offer raised the initial and total JavaScript budgets by 5,000 raw / 1,500 gzip bytes and the initial CSS budget by 1,000 raw bytes; they stay in the startup bundle because both are on the screens a shopper opens first. Adding a receipt total from a history card raised the total CSS budgets by 1,500 raw / 300 gzip bytes, all in the history screen's own lazy stylesheet. Making room when browser storage is full, and adding a receipt total from history, raised the total JavaScript budgets by 5,000 raw / 500 gzip bytes and the initial ones by 3,000 raw / 500 gzip bytes; the storage-full notice stays in the startup bundle so it works offline mid-trip. The second release audit's fixes (a pinned keypad, ghost-tap guards, recovering a wiped open trip, a labelled Undo, keypad read-back and inline field errors) raised the initial and total JavaScript budgets by 3,000 raw bytes and the initial CSS budget by 1,000.
 
 Protect:
 

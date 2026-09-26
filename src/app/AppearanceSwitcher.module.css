@@ -1,6 +1,7 @@
 .appearance {
   display: grid;
   gap: 12px;
+  padding-top: 14px;
   border-top: 1px solid var(--shopping-border);
 }
 
@@ -45,7 +46,7 @@
 
 .options {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 4rem), 1fr));
   gap: 8px;
 }
 

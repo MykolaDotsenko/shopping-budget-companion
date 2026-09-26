@@ -611,6 +611,37 @@ describe("completed trip history persistence", () => {
     expect(decoded.savedAt).toBe(RECONCILE_TIME);
   });
 
+  it("reads back a history it just wrote, and still checks any other stored text", () => {
+    const trip = createCompletedTrip(770);
+    const encoded = encodeHistorySnapshot([trip], RECONCILE_TIME);
+
+    if (!encoded.ok) {
+      throw new Error("Expected history encoding");
+    }
+
+    const reread = decodeHistorySnapshot(encoded.raw);
+    expect(reread).toMatchObject({ ok: true, invalidEntryCount: 0, trips: [trip] });
+
+    const tampered = encoded.raw.replace('"budgetMinor":5000', '"budgetMinor":-1');
+    expect(tampered).not.toBe(encoded.raw);
+    expect(decodeHistorySnapshot(tampered)).toMatchObject({
+      ok: true,
+      trips: [],
+      invalidEntryCount: 1,
+    });
+    expect(decodeHistorySnapshot(encoded.raw)).toMatchObject({ ok: true, trips: [trip] });
+  });
+
+  it("refuses to write a trip whose stored form would not read back", () => {
+    const valid = createCompletedTrip(770);
+    const broken = { ...valid, id: "trip-2", budgetMinor: -1 } as unknown as typeof valid;
+
+    expect(encodeHistorySnapshot([valid, broken], RECONCILE_TIME)).toMatchObject({
+      ok: false,
+      issue: { code: "invalid-data" },
+    });
+  });
+
   it("quarantines an invalid individual history entry without losing valid trips", () => {
     const encoded = encodeHistorySnapshot(
       [createCompletedTrip()],
@@ -1070,6 +1101,41 @@ describe("active trip persistence", () => {
     );
 
     expect(persisted).toEqual(validEnvelope());
+  });
+
+  it("reports full browser storage apart from other write failures", () => {
+    const fullStorage = (name: string): StorageLike => ({
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException("The quota has been exceeded.", name);
+      },
+      removeItem: () => {},
+    });
+
+    expect(
+      writeActiveTrip(fullStorage("QuotaExceededError"), createTrip(), SAVE_TIME),
+    ).toEqual({
+      health: "degraded",
+      issue: {
+        kind: "persistence",
+        code: "storage-full",
+        storageKey: ACTIVE_TRIP_STORAGE_KEY,
+      },
+    });
+    expect(
+      completeTripPersistence(
+        fullStorage("NS_ERROR_DOM_QUOTA_REACHED"),
+        createCompletedTrip(),
+        COMPLETE_TIME,
+      ),
+    ).toMatchObject({
+      ok: false,
+      stage: "history-write",
+      issue: { code: "storage-full", storageKey: HISTORY_STORAGE_KEY },
+    });
+    expect(
+      writeActiveTrip(fullStorage("SecurityError"), createTrip(), SAVE_TIME),
+    ).toMatchObject({ issue: { code: "write-failed" } });
   });
 
   it("preserves the valid in-memory trip when setItem fails", () => {

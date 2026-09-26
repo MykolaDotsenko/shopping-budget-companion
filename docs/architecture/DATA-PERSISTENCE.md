@@ -41,7 +41,7 @@ Current durable subsystems:
 3. Price Memory;
 4. barcode names (barcode links, D-054).
 
-QA/retention evidence uses its own `budget-cart:qa:*` keys in the same browser storage (timing QA in tab-scoped `sessionStorage`) and is never canonical shopping state. The appearance preference is convenience state outside these rules.
+QA/retention evidence uses its own `budget-cart:qa:*` keys in the same browser storage (timing QA in tab-scoped `sessionStorage`) and is never canonical shopping state. The appearance, scan-mode, price-entry-mode and install-offer preferences are convenience state outside these rules.
 
 ## Active-trip durability
 
@@ -126,7 +126,11 @@ Session-only is a choice, not a fault: its single notice says nothing is saved, 
 
 ## History rewrites
 
-Every rewrite of completed history (append on completion, checkout update, deleting a trip, clearing history) re-reads the stored record first and refuses to write when it cannot be read. Completion returns the history exactly as written, and deletion is computed from that durable list, never from what the session happened to load.
+Every rewrite of completed history (append on completion, checkout update, deleting a trip, clearing history, making room) re-reads the stored record first and refuses to write when it cannot be read. Completion returns the history exactly as written, and deletion is computed from that durable list, never from what the session happened to load.
+
+## Full storage
+
+A write refused by the browser's storage quota is reported as `storage-full`, apart from other write failures, and nothing is deleted to make room without the shopper's confirmation. Browser storage is shared by every site on the origin, and a trip takes roughly 10 KB of history, so a long history can fill it. The notice then offers to remove the oldest trips from history (a tenth of them, at least one, never the trip on an open summary; remembered prices stay), retries the save that failed, and can be used again if that was not enough. On an open summary whose trip is already in history, Done keeps the trip as it was last saved when a later receipt total could not be saved; a receipt total for a trip deleted in another tab is refused with that reason instead of blocking Done. This works during a trip too, because removing old trips cannot touch the open trip. A finish refused for lack of room keeps the trip open and says how to make room.
 
 ## Completion transaction
 
@@ -261,7 +265,7 @@ It must not silently fabricate canonical financial state.
 
 ### Completed history
 
-Delete one trip or clear history only through an explicit user action and safe history write.
+Delete one trip, remove the oldest trips when storage is full, or clear history only through an explicit user action and safe history write.
 
 ### Price Memory
 
@@ -287,9 +291,15 @@ It must never own canonical shopping state or financial mutation ordering.
 
 ## Multiple tabs
 
-Current product does not silently merge concurrent financial edits.
+The stored records are the source of truth; a tab's in-memory copy is a cache of them.
 
-If multi-tab synchronization becomes a feature, define conflict ownership first.
+- Each storage port remembers the raw records it last read or wrote and reports when another tab has changed them.
+- Before any command that writes, a tab whose own saves are healthy reloads the stored records and applies the command to them: an item added in each of two tabs keeps both, and a trip another tab finished or started is never reopened or overwritten.
+- A `storage` event, returning to a hidden tab and restoring a page from the back/forward cache reload the same way, so an idle tab shows what another tab did.
+- A tab whose own saves are failing keeps its unsaved view instead of reloading, so retrying saves what the shopper sees.
+- A finished-trip summary stays open when the reloaded history does not contain it, unless another tab has started a trip.
+
+Concurrent edits are never merged below the command level; the second tab's command runs on the first tab's result.
 
 ## Write strategy
 
@@ -325,6 +335,7 @@ At minimum:
 - unsupported future version;
 - serialization failure;
 - write failure;
+- full storage (quota) and making room;
 - remove failure;
 - history conflict;
 - idempotent completion of the same shopping;

@@ -2,11 +2,7 @@ import { useMemo, useState } from "react";
 
 import { useShoppingAppState } from "../../application/react/use-shopping-app-state";
 import type { ShoppingAppController } from "../../application/shopping-app-controller";
-import {
-  formatEur,
-  parseEurDraft,
-  signedMinorUnits,
-} from "../../domain/money";
+import { formatEur, moneyInputValue, parseEurDraft } from "../../domain/money";
 import {
   cartTotal,
   checkoutDifference,
@@ -16,6 +12,11 @@ import {
 import { HistoryIntegrityNotice } from "./HistoryIntegrityNotice";
 import { PersistenceHealthNotice } from "./PersistenceHealthNotice";
 import styles from "./CompletedSummaryScreen.module.css";
+import {
+  budgetOutcome,
+  formatAbsoluteEur,
+  moneyInputErrorMessage,
+} from "./shopping-feedback";
 import { SHOPPING_LOCALE } from "./shopping-locale";
 
 export interface CompletedSummaryScreenProps {
@@ -26,25 +27,6 @@ export interface CompletedSummaryScreenProps {
   readonly onViewHistory: () => void;
   readonly locale?: string;
 }
-
-const rawMoney = (minor: number): string => {
-  const euros = Math.floor(minor / 100);
-  const cents = minor % 100;
-  return `${euros}.${String(cents).padStart(2, "0")}`;
-};
-
-const formatAbsoluteEur = (
-  value: number,
-  locale: string,
-): string => {
-  const result = signedMinorUnits(Math.abs(value));
-
-  if (!result.ok) {
-    throw new RangeError("Checkout difference exceeded safe integer bounds");
-  }
-
-  return formatEur(result.value, locale);
-};
 
 const reconciliationCopy = (
   trip: CompletedTrip,
@@ -57,20 +39,20 @@ const reconciliationCopy = (
   }
 
   if (difference === 0) {
-    return "Checkout matched the tracked cart exactly.";
+    return "Your receipt matches your cart total exactly.";
   }
 
   if (difference > 0) {
-    return `${formatAbsoluteEur(
+    return `You paid ${formatAbsoluteEur(
       difference,
       locale,
-    )} more than the tracked cart.`;
+    )} more than your cart total.`;
   }
 
-  return `${formatAbsoluteEur(
+  return `You paid ${formatAbsoluteEur(
     difference,
     locale,
-  )} less than the tracked cart.`;
+  )} less than your cart total.`;
 };
 
 export function CompletedSummaryScreen({
@@ -85,7 +67,7 @@ export function CompletedSummaryScreen({
   const [checkoutRaw, setCheckoutRaw] = useState(() =>
     trip.actualCheckoutMinor === undefined
       ? ""
-      : rawMoney(trip.actualCheckoutMinor),
+      : moneyInputValue(trip.actualCheckoutMinor),
   );
   const [inputError, setInputError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
@@ -97,6 +79,8 @@ export function CompletedSummaryScreen({
   const total = cartTotal(currentTrip);
   const quantity = itemCount(currentTrip);
   const reconciliation = reconciliationCopy(currentTrip, locale);
+  const paidMore = (checkoutDifference(currentTrip) ?? 0) > 0;
+  const outcome = budgetOutcome(currentTrip, locale);
 
   const parsedCheckout = useMemo(() => {
     if (checkoutRaw.trim() === "") {
@@ -114,33 +98,36 @@ export function CompletedSummaryScreen({
     setStatusMessage("");
 
     if (parsedCheckout === null) {
-      setInputError("Enter the checkout total first.");
+      setInputError("Enter the receipt total first.");
       return;
     }
 
     if (!parsedCheckout.ok) {
-      setInputError(
-        "Enter a valid euro total with no more than two decimals.",
-      );
+      setInputError(moneyInputErrorMessage(parsedCheckout.error.code));
       return;
     }
 
     const result = controller.setActualCheckout(parsedCheckout.value);
 
     if (!result.ok) {
-      setInputError("Could not apply that checkout total.");
+      setInputError(
+        result.error.kind === "application" &&
+          result.error.code === "completed-trip-not-found"
+          ? "This trip was deleted from history, so its receipt total can’t be saved."
+          : "Could not save that receipt total.",
+      );
       return;
     }
 
     if (!result.changed) {
-      setStatusMessage("Checkout total is already up to date.");
+      setStatusMessage("This receipt total is already saved.");
       return;
     }
 
     setStatusMessage(
       result.durability === "persisted"
-        ? "Checkout total saved."
-        : "Checkout total updated here, but it is not safely saved yet.",
+        ? "Receipt total saved."
+        : "Receipt total updated here, but it isn’t saved yet.",
     );
   };
 
@@ -180,10 +167,12 @@ export function CompletedSummaryScreen({
       <section className={styles.shell}>
         <header className={styles.header}>
           <p className={styles.eyebrow}>Trip finished</p>
-          <h1 id="completed-title">Your shopping trip is complete</h1>
+          <h1 id="completed-title" tabIndex={-1}>
+            Your shopping trip is complete
+          </h1>
           <p>
-            The tracked trip is now history. Adding the checkout total is
-            optional and only helps explain any difference.
+            Saved to History. Add your receipt total to see how close you
+            were.
           </p>
         </header>
 
@@ -195,12 +184,15 @@ export function CompletedSummaryScreen({
         <HistoryIntegrityNotice controller={controller} />
 
         <section className={styles.hero} aria-label="Completed trip summary">
-          <span>Tracked cart</span>
+          <span>Cart total</span>
           <strong>{formatEur(total, locale)}</strong>
           <small>
             {quantity} {quantity === 1 ? "item" : "items"} · budget{" "}
             {formatEur(currentTrip.budgetMinor, locale)}
           </small>
+          <p className={styles.outcome} data-outcome={outcome.status}>
+            {outcome.label}
+          </p>
         </section>
 
         <section
@@ -209,8 +201,8 @@ export function CompletedSummaryScreen({
         >
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.sectionKicker}>Optional reconciliation</p>
-              <h2 id="checkout-title">What did checkout actually cost?</h2>
+              <p className={styles.sectionKicker}>Optional</p>
+              <h2 id="checkout-title">What did you pay?</h2>
             </div>
             {currentTrip.actualCheckoutMinor !== undefined ? (
               <strong>
@@ -220,20 +212,20 @@ export function CompletedSummaryScreen({
           </div>
 
           <p className={styles.supporting}>
-            Enter the receipt or checkout total if you want to compare it
-            with your tracked cart. This does not change the cart itself.
+            Enter the total from your receipt to compare it with your cart.
+            Your cart stays as it is.
           </p>
 
           <div className={styles.checkoutRow}>
             <label className={styles.field}>
-              <span>Actual checkout total</span>
+              <span>Receipt total</span>
               <div className={styles.inputShell}>
                 <span aria-hidden="true">€</span>
                 <input
                   value={checkoutRaw}
                   inputMode="decimal"
                   autoComplete="off"
-                  placeholder={rawMoney(total)}
+                  placeholder="0.00"
                   aria-invalid={Boolean(inputError)}
                   onChange={(event) => {
                     setCheckoutRaw(event.currentTarget.value);
@@ -254,7 +246,7 @@ export function CompletedSummaryScreen({
               className={styles.saveButton}
               onClick={saveCheckout}
             >
-              Save checkout total
+              Save receipt total
             </button>
           </div>
 
@@ -265,14 +257,14 @@ export function CompletedSummaryScreen({
           ) : null}
 
           {reconciliation ? (
-            <p className={styles.difference} role="status">
+            <p
+              className={styles.difference}
+              role="status"
+              data-direction={paidMore ? "more" : "within"}
+            >
               {reconciliation}
             </p>
-          ) : (
-            <p className={styles.neutral}>
-              No checkout total added. Your completed trip is still valid.
-            </p>
-          )}
+          ) : null}
         </section>
 
         {statusMessage ? (

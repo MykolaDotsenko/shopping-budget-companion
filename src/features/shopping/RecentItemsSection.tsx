@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatEur, signedMinorUnits } from "../../domain/money";
 import {
-  priceMemoryAgeDays,
+  lastBoughtByProduct,
+  productIdFromLabel,
   recentPriceMemories,
   type PriceMemoryRecord,
 } from "../../domain/price-memory";
@@ -10,6 +11,7 @@ import {
   isoTimestamp,
   projectAddItem,
   type ActiveTrip,
+  type CompletedTrip,
   type IsoTimestamp,
 } from "../../domain/shopping-trip";
 import styles from "./RecentItemsSection.module.css";
@@ -18,6 +20,7 @@ import { SHOPPING_LOCALE } from "./shopping-locale";
 export interface RecentItemsSectionProps {
   readonly trip: ActiveTrip;
   readonly records: readonly PriceMemoryRecord[];
+  readonly completedTrips?: readonly CompletedTrip[];
   readonly now?: IsoTimestamp;
   readonly onUseRemembered: (
     record: PriceMemoryRecord,
@@ -31,11 +34,18 @@ export interface RecentItemsSectionProps {
   readonly activeTripSaving?: boolean;
 }
 
+const localDay = (timestamp: string): number => {
+  const date = new Date(timestamp);
+  return Math.floor(
+    (date.getTime() - date.getTimezoneOffset() * 60_000) / 86_400_000,
+  );
+};
+
 const ageLabel = (
   record: PriceMemoryRecord,
   now: IsoTimestamp,
 ): string => {
-  const days = priceMemoryAgeDays(record, now);
+  const days = Math.max(0, localDay(now) - localDay(record.observedAt));
 
   if (days === 0) {
     return "Seen today";
@@ -61,6 +71,10 @@ const absoluteMoney = (
   return formatEur(amount.value, locale);
 };
 
+const REPEAT_TAP_WINDOW_MS = 800;
+
+const NO_TRIPS: readonly CompletedTrip[] = [];
+
 const currentTimestamp = (): IsoTimestamp => {
   const parsed = isoTimestamp(new Date().toISOString());
 
@@ -74,6 +88,7 @@ const currentTimestamp = (): IsoTimestamp => {
 export function RecentItemsSection({
   trip,
   records,
+  completedTrips = NO_TRIPS,
   now,
   onUseRemembered,
   onEnterCurrentPrice,
@@ -83,13 +98,59 @@ export function RecentItemsSection({
   activeTripSaving = true,
 }: RecentItemsSectionProps) {
   const effectiveNow = now ?? currentTimestamp();
-  const recent = useMemo(
-    () => recentPriceMemories(records, { limit }),
-    [limit, records],
+  const lastBoughtAt = useMemo(
+    () => lastBoughtByProduct(completedTrips),
+    [completedTrips],
   );
+  const remembered = useMemo(
+    () => recentPriceMemories(records, { limit: records.length, lastBoughtAt }),
+    [lastBoughtAt, records],
+  );
+  const inCart = useMemo(
+    () =>
+      new Set(
+        trip.items.flatMap((item) => {
+          const productId =
+            item.label === undefined ? null : productIdFromLabel(item.label);
+
+          return productId?.ok === true ? [productId.value] : [];
+        }),
+      ),
+    [trip.items],
+  );
+  const [showAll, setShowAll] = useState(false);
+  const recent = showAll ? remembered : remembered.slice(0, limit);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const confirmationCancelRef = useRef<HTMLButtonElement>(null);
+  const lastUseRef = useRef<{ readonly id: string; readonly at: number } | null>(
+    null,
+  );
+
+  const addRemembered = (record: PriceMemoryRecord, now: number): boolean => {
+    const last = lastUseRef.current;
+
+    if (
+      last !== null &&
+      last.id === record.id &&
+      now - last.at < REPEAT_TAP_WINDOW_MS
+    ) {
+      return true;
+    }
+
+    setErrorMessage("");
+    const accepted = onUseRemembered(record);
+
+    if (accepted === false) {
+      setErrorMessage(
+        `Could not add ${record.label}. Try again or enter the current price.`,
+      );
+      return false;
+    }
+
+    lastUseRef.current = { id: record.id, at: now };
+    return true;
+  };
 
   const restoreRememberedTrigger = (memoryId: string): void => {
     queueMicrotask(() => {
@@ -128,12 +189,11 @@ export function RecentItemsSection({
           <p className={styles.kicker}>Faster repeat shopping</p>
           <h2 id="recent-items-title">Recent Items</h2>
         </div>
-        <span>{recent.length} remembered</span>
+        <span>{remembered.length} remembered</span>
       </div>
 
       <p className={styles.intro}>
-        These are old observed prices, not live store prices. Use one only
-        when it still looks right, or enter the current price instead.
+        Prices from past trips. Check the shelf, or enter today’s price.
       </p>
 
       {persistenceDegraded ? (
@@ -170,12 +230,14 @@ export function RecentItemsSection({
                 <small>
                   Remembered · {ageLabel(record, effectiveNow)}
                   {record.storeId === undefined ? "" : " · Store-specific"}
+                  {inCart.has(record.productId) ? " · In this cart" : ""}
                 </small>
               </div>
 
               {isPending && projection.ok ? (
                 <div
                   className={styles.confirmation}
+                  role="group"
                   aria-label={`Confirm remembered price for ${record.label}`}
                   onKeyDown={(event) => {
                     if (event.key === "Escape") {
@@ -208,14 +270,8 @@ export function RecentItemsSection({
                     <button
                       type="button"
                       className={styles.dangerButton}
-                      onClick={() => {
-                        setErrorMessage("");
-                        const accepted = onUseRemembered(record);
-
-                        if (accepted === false) {
-                          setErrorMessage(
-                            `Could not add ${record.label}. Try again or enter the current price.`,
-                          );
+                      onClick={(event) => {
+                        if (!addRemembered(record, event.timeStamp)) {
                           return;
                         }
 
@@ -234,21 +290,14 @@ export function RecentItemsSection({
                     className={styles.rememberedButton}
                     aria-label={`Use remembered price for ${record.label}`}
                     data-use-remembered-memory-id={record.id}
-                    onClick={() => {
-                      setErrorMessage("");
-
+                    onClick={(event) => {
                       if (crossesNominalBudget) {
+                        setErrorMessage("");
                         setPendingId(record.id);
                         return;
                       }
 
-                      const accepted = onUseRemembered(record);
-
-                      if (accepted === false) {
-                        setErrorMessage(
-                          `Could not add ${record.label}. Try again or enter the current price.`,
-                        );
-                      }
+                      addRemembered(record, event.timeStamp);
                     }}
                   >
                     Use remembered price
@@ -272,6 +321,19 @@ export function RecentItemsSection({
           );
         })}
       </ul>
+
+      {remembered.length > limit ? (
+        <button
+          type="button"
+          className={styles.moreButton}
+          aria-expanded={showAll}
+          onClick={() => {
+            setShowAll((current) => !current);
+          }}
+        >
+          {showAll ? "Show fewer" : `Show all ${remembered.length}`}
+        </button>
+      ) : null}
     </section>
   );
 }

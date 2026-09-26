@@ -26,9 +26,11 @@ export interface PriceEntryDraft {
   readonly mode: MoneyDraftMode;
 }
 
-export const initialPriceEntryDraft = (): PriceEntryDraft => ({
+export const initialPriceEntryDraft = (
+  mode: MoneyDraftMode = "decimal",
+): PriceEntryDraft => ({
   raw: "",
-  mode: "decimal",
+  mode,
 });
 
 export const priceEntryDraftFor = (price: MinorUnits): PriceEntryDraft => {
@@ -77,7 +79,7 @@ export const appendPriceDigit = (
   draft: PriceEntryDraft,
   digit: string,
 ): PriceEntryDraft => {
-  if (!/^\d$/.test(digit)) {
+  if (!/^\d$/.test(digit) || /[.,]\d{2}$/.test(draft.raw)) {
     return draft;
   }
 

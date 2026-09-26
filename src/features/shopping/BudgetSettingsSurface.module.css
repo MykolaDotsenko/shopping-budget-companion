@@ -36,6 +36,7 @@
 
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
@@ -116,7 +117,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 16px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--shopping-field-border);
   border-radius: 16px;
   background: var(--shopping-raised);
 }

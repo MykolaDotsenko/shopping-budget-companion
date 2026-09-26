@@ -32,8 +32,8 @@ A shopper can:
 - active-trip persistence;
 - degraded persistence UX;
 - reload recovery;
-- finish trip;
-- optional actual checkout total;
+- finish trip, or cancel a trip that has no items without saving it;
+- optional actual checkout total, also addable or correctable later from history;
 - completed-trip history;
 - keyboard/assistive-technology access.
 
@@ -45,7 +45,7 @@ A shopper can:
 - local history deletion;
 - independent Price Memory deletion, which also clears remembered barcode names;
 - retention/timing evidence tooling that does not own shopping state;
-- installable offline application shell with prompt-based updates;
+- installable offline application shell with prompt-based updates, and a start-screen install offer (the browser's prompt, or Add to Home Screen steps on Safari for iPhone and iPad before anything is saved there);
 - optional barcode identification with local barcode names and tap-only online name lookup;
 - optional price-tag reading that pre-fills price entry for confirmation (D-055).
 
@@ -141,6 +141,8 @@ Committed active-trip mutations attempt local persistence promptly.
 
 The UI must not silently represent failed persistence as durable success.
 
+When the browser refuses a write because storage is full, the app says so and, only after the shopper confirms, removes the oldest trips from history to make room, then retries the save.
+
 ### FR-014 — Reload recovery
 
 Valid saved active state restores after reload.
@@ -157,13 +159,15 @@ History must become durable before active-trip cleanup.
 
 Failed history persistence must not erase the active trip.
 
+A trip with no items is not finished into history: the shopper can cancel it instead, which removes the saved open trip and returns to the start.
+
 ### FR-016 — Completion cleanup failure
 
 If history is durable but active cleanup fails, completion remains durable and the app exposes cleanup-pending/degraded state.
 
 ### FR-017 — Actual checkout total
 
-A completed trip may store actual checkout total.
+A completed trip may store actual checkout total, entered on the summary or later from its history card.
 
 Derived difference does not rewrite item prices.
 

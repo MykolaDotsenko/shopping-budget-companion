@@ -36,7 +36,8 @@ Transitions:
 - START_TRIP(valid) → ACTIVE;
 - START_TRIP(invalid) → IDLE + validation error;
 - SHOP_AGAIN(valid completed source + safe persistence) → ACTIVE with a fresh empty trip;
-- OPEN_HISTORY → IDLE + history overlay state.
+- OPEN_HISTORY → IDLE + history overlay state;
+- SET_PAST_TRIP_CHECKOUT (from a history card) → IDLE with the receipt total saved on that trip in history; refused and nothing changes while history cannot be changed (unreadable, persistence DEGRADED, completion cleanup pending or `session-only`).
 
 ### ACTIVE
 
@@ -54,8 +55,11 @@ Transitions:
 - FINISH_TRIP(history already records different shopping under this id) → save the open trip under a new id, then finish it under that id; if that save or the history write fails → ACTIVE under the new id (when saved) + persistence DEGRADED;
 - FINISH_TRIP(history-write failure) → ACTIVE + persistence DEGRADED;
 - FINISH_TRIP(stored history unreadable) → ACTIVE + history integrity DAMAGED; nothing is written and the active trip stays durable;
+- CANCEL_EMPTY_TRIP(no items) → IDLE with no history entry; the saved active record is removed and persistence is HEALTHY (session-only writes nothing and stays DEGRADED(`session-only`)); if the record cannot be removed → ACTIVE, unchanged;
+- CANCEL_EMPTY_TRIP(trip has items) → refused, ACTIVE unchanged;
 - RETRY_HISTORY_READ (the open trip is the same shopping as a recorded trip) → IDLE; the stale copy is cleared, or completion cleanup stays pending with persistence DEGRADED if that fails;
-- active-state write failure → ACTIVE + persistence DEGRADED.
+- active-state write failure → ACTIVE + persistence DEGRADED;
+- MAKE_ROOM (persistence DEGRADED(`storage-full`), after confirmation) → the oldest trips leave history, then the failed save is retried: persistence HEALTHY when it now fits, otherwise still DEGRADED(`storage-full`); refused, with nothing removed, while history cannot be read.
 
 ### COMPLETED_SUMMARY
 
@@ -70,6 +74,7 @@ Transitions:
 - SHOP_AGAIN(valid completed source, including the open summary's own trip) → ACTIVE with a new trip id and empty cart;
 - OPEN_HISTORY (View trip history) → COMPLETED_SUMMARY + history overlay state; Back returns to the summary;
 - DELETE_TRIP(the summary's own trip) / CLEAR_HISTORY → IDLE, with the history overlay still open; deleting any other trip stays in COMPLETED_SUMMARY;
+- SET_PAST_TRIP_CHECKOUT → COMPLETED_SUMMARY; when it is the summary's own trip, the summary shows the new receipt total too;
 - SET_ASIDE_HISTORY / RETRY_HISTORY_READ → COMPLETED_SUMMARY; a set-aside saves the summary's trip into the new history;
 - DISMISS_SUMMARY → IDLE; refused (`completion-not-saved`) while persistence is DEGRADED other than `session-only`, or completion cleanup is pending, until a save retry succeeds.
 
@@ -351,7 +356,7 @@ UPDATE_WAITING ── Later ──→ NO_UPDATE   (prompt dismissed, nothing rel
 UPDATE_WAITING ── Update app ──→ new worker activates, page reloads
 ```
 
-The prompt is shown only while the lifecycle is IDLE; in BOOTING, ACTIVE, COMPLETED_SUMMARY and RECOVERY it is withheld, so an update never reloads an open trip, a finished-trip summary or a recovery screen. Installing is the browser's own flow from the web manifest; the app keeps no install state.
+The prompt is shown only while the lifecycle is IDLE; in BOOTING, ACTIVE, COMPLETED_SUMMARY and RECOVERY it is withheld, so an update never reloads an open trip, a finished-trip summary or a recovery screen. Installing is the browser's own flow from the web manifest. The start screen (IDLE only) offers the browser's install prompt when the browser provides one; on Safari for iPhone and iPad it instead explains Add to Home Screen, but only while nothing is saved there, because a Home Screen app starts with its own empty storage and earlier trips would look lost. Dismissing the offer is remembered as a convenience preference.
 
 ## Planned transitions
 

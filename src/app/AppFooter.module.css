@@ -1,0 +1,24 @@
+.footer {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  color: var(--shopping-muted);
+  font-size: 0.82rem;
+}
+
+.footer a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--shopping-accent);
+  font-weight: 700;
+}
+
+.footer a:focus-visible {
+  outline: 3px solid var(--shopping-focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}

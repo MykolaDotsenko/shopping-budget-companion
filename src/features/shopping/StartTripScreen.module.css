@@ -169,11 +169,16 @@
 
 .customToggle {
   justify-self: center;
-  min-width: 10rem;
+  min-width: min(10rem, 100%);
   padding: 0 18px;
   border: 1px solid var(--border-subtle);
   background: var(--shopping-panel);
   color: var(--accent-primary);
+}
+
+.customToggle[aria-expanded="true"] {
+  border-color: var(--accent-primary);
+  background: var(--shopping-accent-soft);
 }
 
 .reserveDetails {
@@ -189,7 +194,22 @@
   font-size: 0.92rem;
   font-weight: 650;
   cursor: pointer;
-  list-style-position: inside;
+  list-style: none;
+}
+
+.reserveSummary::-webkit-details-marker {
+  display: none;
+}
+
+.reserveSummary::before {
+  content: "+" / "";
+  margin-right: 8px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.reserveDetails[open] > .reserveSummary::before {
+  content: "−" / "";
 }
 
 .reserveSummary:hover {
@@ -232,10 +252,10 @@
   min-height: 54px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
   padding: 0 14px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--shopping-field-border);
   border-radius: 16px;
   background: var(--shopping-raised);
 }
@@ -247,6 +267,7 @@
 }
 
 .currency {
+  align-self: center;
   color: var(--text-secondary);
   font-size: 1.1rem;
   font-weight: 700;
@@ -255,6 +276,7 @@
 .amountInput {
   width: 100%;
   min-width: 0;
+  min-height: 52px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -266,7 +288,8 @@
 }
 
 .amountInput::placeholder {
-  color: color-mix(in srgb, var(--text-secondary) 62%, transparent);
+  color: var(--text-secondary);
+  opacity: 1;
 }
 
 .hint {
@@ -287,6 +310,18 @@
   color: var(--accent-contrast);
   padding: 0 22px;
   box-shadow: var(--shopping-primary-action-shadow);
+}
+
+.error:empty,
+.fieldError:empty {
+  display: contents;
+}
+
+.fieldError {
+  color: var(--error-text);
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.4;
 }
 
 .error {

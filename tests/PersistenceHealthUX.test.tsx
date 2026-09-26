@@ -353,6 +353,30 @@ describe("RecoveryScreen", () => {
     expect(persistence.saveCalls).toHaveLength(0);
   });
 
+  it("says the browser is blocking storage rather than talking about a saved trip", () => {
+    const controller = createShoppingAppController({
+      persistence: createPersistence({
+        ok: false,
+        activeTrip: null,
+        issue: { code: "storage-unavailable" },
+        recoveryRequired: true,
+      }),
+      clock: createClock(START),
+      ids,
+    });
+    controller.bootstrap();
+
+    render(<RecoveryScreen controller={controller} />);
+
+    expect(screen.getByText("Saving is off")).not.toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "This browser isn’t letting the app save" }),
+    ).not.toBeNull();
+    expect(screen.queryByText(/saved record stays untouched/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Continue without saving" })).not.toBeNull();
+  });
+
   it("retries recovery by reading again and never calls save", async () => {
     const user = userEvent.setup();
     const persistence = createPersistence({

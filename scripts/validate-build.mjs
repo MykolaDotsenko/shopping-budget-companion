@@ -16,6 +16,12 @@ const requiredPwaFiles = [
   "sw.js",
   "pwa-icon-192.png",
   "pwa-icon-512.png",
+  "pwa-maskable-512.png",
+  "apple-touch-icon.png",
+  "favicon-32.png",
+  "og-image.jpg",
+  "404.html",
+  "privacy/index.html",
 ];
 
 for (const file of requiredPwaFiles) {
@@ -48,21 +54,111 @@ for (const requiredSize of ["192x192", "512x512"]) {
   }
 }
 
+if (!(manifest.icons ?? []).some((icon) => icon.purpose === "maskable")) {
+  throw new Error("Public PWA manifest is missing a maskable icon.");
+}
+
+const imageSize = (bytes) => {
+  if (bytes.toString("latin1", 0, 8) === "\x89PNG\r\n\x1a\n") {
+    return {
+      type: "image/png",
+      width: bytes.readUInt32BE(16),
+      height: bytes.readUInt32BE(20),
+    };
+  }
+
+  let offset = 2;
+
+  while (bytes[0] === 0xff && bytes[1] === 0xd8 && offset + 9 < bytes.length) {
+    const marker = bytes[offset + 1];
+
+    if (bytes[offset] !== 0xff) {
+      return null;
+    }
+
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return {
+        type: "image/jpeg",
+        width: bytes.readUInt16BE(offset + 7),
+        height: bytes.readUInt16BE(offset + 5),
+      };
+    }
+
+    offset += 2 + bytes.readUInt16BE(offset + 2);
+  }
+
+  return null;
+};
+
+const screenshotRatios = new Map();
+
+if ((manifest.screenshots ?? []).length === 0) {
+  throw new Error("Public PWA manifest has no screenshots for the install dialog.");
+}
+
+for (const screenshot of manifest.screenshots) {
+  const size = imageSize(await readFile(path.join(dist, screenshot.src)));
+  const [width, height] = screenshot.sizes.split("x").map(Number);
+  const ratio = (width / height).toFixed(3);
+
+  if (
+    size === null ||
+    size.type !== screenshot.type ||
+    size.width !== width ||
+    size.height !== height
+  ) {
+    throw new Error(
+      `Manifest screenshot ${screenshot.src} is not a ${screenshot.sizes} ${screenshot.type}.`,
+    );
+  }
+
+  if (
+    Math.min(width, height) < 320 ||
+    Math.max(width, height) > 3840 ||
+    Math.max(width, height) / Math.min(width, height) > 2.3 ||
+    !["narrow", "wide"].includes(screenshot.form_factor) ||
+    !screenshot.label
+  ) {
+    throw new Error(
+      `Manifest screenshot ${screenshot.src} would not be shown in the install dialog.`,
+    );
+  }
+
+  if ((screenshotRatios.get(screenshot.form_factor) ?? ratio) !== ratio) {
+    throw new Error(
+      `Manifest screenshots for ${screenshot.form_factor} screens must share one aspect ratio.`,
+    );
+  }
+
+  screenshotRatios.set(screenshot.form_factor, ratio);
+}
+
 const indexHtml = await readFile(path.join(dist, "index.html"), "utf8");
 
 if (!indexHtml.includes('rel="manifest"')) {
   throw new Error("Public build does not link its web app manifest.");
 }
 
-const MAX_PUBLIC_JS_BYTES = 430_000;
-const MAX_INITIAL_JS_BYTES = 395_000;
-const MAX_SINGLE_JS_CHUNK_BYTES = 395_000;
-const MAX_PUBLIC_JS_GZIP_BYTES = 128_000;
-const MAX_INITIAL_JS_GZIP_BYTES = 115_000;
-const MAX_PUBLIC_CSS_BYTES = 80_000;
-const MAX_INITIAL_CSS_BYTES = 70_000;
-const MAX_PUBLIC_CSS_GZIP_BYTES = 13_000;
-const MAX_INITIAL_CSS_GZIP_BYTES = 11_100;
+for (const marker of [
+  'rel="apple-touch-icon"',
+  'property="og:image" content="https://',
+  'name="twitter:card"',
+  'rel="canonical"',
+]) {
+  if (!indexHtml.includes(marker)) {
+    throw new Error(`Public build is missing its share metadata: ${marker}`);
+  }
+}
+
+const MAX_PUBLIC_JS_BYTES = 443_000;
+const MAX_INITIAL_JS_BYTES = 396_000;
+const MAX_SINGLE_JS_CHUNK_BYTES = 230_000;
+const MAX_PUBLIC_JS_GZIP_BYTES = 132_000;
+const MAX_INITIAL_JS_GZIP_BYTES = 116_000;
+const MAX_PUBLIC_CSS_BYTES = 81_500;
+const MAX_INITIAL_CSS_BYTES = 63_000;
+const MAX_PUBLIC_CSS_GZIP_BYTES = 15_600;
+const MAX_INITIAL_CSS_GZIP_BYTES = 10_600;
 const barcodeScannerEnabled = process.env.VITE_SHOPPING_BARCODE_SCANNER !== "0";
 const priceOcrEnabled = process.env.VITE_SHOPPING_PRICE_OCR !== "0";
 const BARCODE_ENGINE_CHUNK_PREFIX = "zxing-fallback-detector-";
@@ -347,6 +443,10 @@ if (!serviceWorker.includes('url:"index.html"')) {
 
 if (serviceWorker.includes('url:"assets/ocr/')) {
   throw new Error("The price reader files must not be precached for every visitor.");
+}
+
+if (serviceWorker.includes('url:"screenshots/')) {
+  throw new Error("The install screenshots must not be precached for every visitor.");
 }
 
 for (const file of initialJsFiles) {

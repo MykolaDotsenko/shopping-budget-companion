@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 const scan = async (page) =>
   new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
 
 test("has no detectable WCAG A/AA violations on the start screen", async ({
@@ -13,6 +13,24 @@ test("has no detectable WCAG A/AA violations on the start screen", async ({
   test.skip(browserName !== "chromium", "axe scan runs once in Chromium");
 
   await page.goto("/");
+
+  const results = await scan(page);
+  expect(results.violations).toEqual([]);
+});
+
+test("has no detectable WCAG A/AA violations with the install offer on the start screen", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", "axe scan runs once in Chromium");
+
+  await page.goto("/");
+  await page.evaluate(() => {
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    event.prompt = () => Promise.resolve();
+    window.dispatchEvent(event);
+  });
+  await expect(page.getByRole("heading", { name: "Install the app" })).toBeVisible();
 
   const results = await scan(page);
   expect(results.violations).toEqual([]);
@@ -41,6 +59,15 @@ test("has no detectable WCAG A/AA violations through the explicit Dark core flow
   await page.getByRole("button", { name: "Add price" }).click();
   await expect(
     page.getByRole("heading", { name: "What does this item cost?" }),
+  ).toBeVisible();
+
+  results = await scan(page);
+  expect(results.violations).toEqual([]);
+
+  await page.getByRole("textbox", { name: "Price" }).fill("53.41");
+  await page.getByRole("button", { name: "Add · €53.41" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Add this price anyway?" }),
   ).toBeVisible();
 
   results = await scan(page);
@@ -74,6 +101,15 @@ test("has no detectable WCAG A/AA violations through the explicit Aurora core fl
 
   results = await scan(page);
   expect(results.violations).toEqual([]);
+
+  await page.getByRole("textbox", { name: "Price" }).fill("53.41");
+  await page.getByRole("button", { name: "Add · €53.41" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Add this price anyway?" }),
+  ).toBeVisible();
+
+  results = await scan(page);
+  expect(results.violations).toEqual([]);
 });
 
 test("has no detectable WCAG A/AA violations with the recent-budget shortcut", async ({
@@ -84,6 +120,9 @@ test("has no detectable WCAG A/AA violations with the recent-budget shortcut", a
 
   await page.goto("/");
   await page.getByRole("button", { name: "€50", exact: true }).click();
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("textbox", { name: "Price" }).fill("4.79");
+  await page.getByRole("button", { name: "Add · €4.79" }).click();
   await page.getByRole("button", { name: "Finish trip" }).click();
   await page.getByRole("button", { name: "Finish trip" }).click();
   await page.getByRole("button", { name: "Done" }).click();
@@ -289,6 +328,14 @@ test("has no detectable WCAG A/AA violations on finish, completed-summary, and h
 
   results = await scan(page);
   expect(results.violations).toEqual([]);
+
+  await page.getByRole("button", { name: "Add receipt total" }).click();
+  await expect(page.getByRole("textbox", { name: "Receipt total" })).toBeFocused();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Enter the receipt total first.");
+
+  results = await scan(page);
+  expect(results.violations).toEqual([]);
 });
 
 test("keeps history data confirmations accessible and restores trigger focus", async ({
@@ -297,6 +344,9 @@ test("keeps history data confirmations accessible and restores trigger focus", a
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "€50", exact: true }).click();
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("textbox", { name: "Price" }).fill("4.79");
+  await page.getByRole("button", { name: "Add · €4.79" }).click();
   await page.getByRole("button", { name: "Finish trip" }).click();
   await page.getByRole("button", { name: "Finish trip" }).click();
   await page
@@ -323,6 +373,28 @@ test("keeps history data confirmations accessible and restores trigger focus", a
 
   await page.keyboard.press("Escape");
   await expect(clearHistory).toBeFocused();
+});
+
+test("has no detectable WCAG A/AA violations when cancelling an empty trip", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", "axe scan runs once in Chromium");
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "€50", exact: true }).click();
+  await page.getByRole("button", { name: "Finish trip" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Nothing to finish yet" }),
+  ).toBeVisible();
+  const results = await scan(page);
+  expect(results.violations).toEqual([]);
+
+  await page.getByRole("button", { name: "Cancel trip" }).click();
+  await expect(
+    page.getByRole("heading", { name: "How much can you spend today?" }),
+  ).toBeFocused();
 });
 
 test("returns focus to Finish trip when finish review is cancelled with Escape", async ({
@@ -358,7 +430,7 @@ test("has no detectable WCAG A/AA violations on nominal over-budget review", asy
   await page.getByRole("textbox", { name: "Price" }).fill("53.41");
   await page.getByRole("button", { name: "Add · €53.41" }).click();
 
-  const cancel = page.getByRole("button", { name: "Cancel" }).last();
+  const cancel = page.getByRole("button", { name: "Change price" });
   await expect(cancel).toBeFocused();
   await expect(
     page.getByRole("heading", { name: "Add this price anyway?" }),
@@ -412,7 +484,7 @@ test("returns keyboard focus to the edited item after cancel and save", async ({
   await page.keyboard.press("Enter");
 
   await expect(
-    page.getByText("Item corrected. €44.71 remaining.", {
+    page.getByRole("main").getByText("Item updated. €44.71 left.", {
       exact: true,
     }),
   ).toBeVisible();

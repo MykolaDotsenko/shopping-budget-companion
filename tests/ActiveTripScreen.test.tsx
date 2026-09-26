@@ -201,23 +201,18 @@ describe("ActiveTripScreen", () => {
     expect(
       screen.getByText("€31.42 of €50.00"),
     ).not.toBeNull();
-    expect(
-      screen.getByText(/^€2\.00 kept in reserve\./),
-    ).not.toBeNull();
+    expect(screen.getByText("plus a €2.00 safety buffer")).not.toBeNull();
 
     const progress = screen.getByRole("progressbar", {
       name: "Shopping budget used",
     });
 
-    expect(progress.getAttribute("aria-valuetext")).toContain(
-      "€31.42 in cart",
+    expect(progress.getAttribute("aria-valuetext")).toBe(
+      "€31.42 in cart of €50.00. €16.58 safe to spend, plus a €2.00 safety buffer.",
     );
-    expect(progress.getAttribute("aria-valuetext")).toContain(
-      "€16.58 available before your reserve",
-    );
-    expect(
-      screen.getByText("Safe limit €48.00 · Reserve €2.00"),
-    ).not.toBeNull();
+    expect(progress.getAttribute("data-status")).toBe("within");
+    expect(screen.getByText("Safe limit €48.00")).not.toBeNull();
+    expect(screen.getByText("Safety buffer €2.00")).not.toBeNull();
   });
 
   it("distinguishes using the reserve from exceeding the nominal budget", () => {
@@ -236,10 +231,13 @@ describe("ActiveTripScreen", () => {
     expect(screen.getByText("€0.00")).not.toBeNull();
     expect(screen.getByText("safe to spend")).not.toBeNull();
     expect(
-      screen.getByText(
-        "Safety buffer reached · €1.00 remains in your nominal budget",
-      ),
+      screen.getByText("€1.00 of your €2.00 safety buffer left"),
     ).not.toBeNull();
+    expect(
+      screen
+        .getByRole("progressbar", { name: "Shopping budget used" })
+        .getAttribute("data-status"),
+    ).toBe("reserve");
   });
 
   it("shows exact nominal overage instead of a misleading negative remaining label", () => {
@@ -257,9 +255,30 @@ describe("ActiveTripScreen", () => {
 
     expect(screen.getByText("€3.41")).not.toBeNull();
     expect(screen.getByText("over your limit")).not.toBeNull();
-    expect(
-      screen.getByText("€3.41 over your limit"),
-    ).not.toBeNull();
+    expect(screen.queryByText(/safety buffer/)).toBeNull();
+
+    const progress = screen.getByRole("progressbar", {
+      name: "Shopping budget used",
+    });
+
+    expect(progress.getAttribute("data-status")).toBe("over");
+    expect(progress.getAttribute("aria-valuetext")).toBe(
+      "€53.41 in cart of €50.00. €3.41 over your limit.",
+    );
+  });
+
+  it("shows the remaining amount once, without repeating it or the budget labels", () => {
+    renderScreen(
+      createTrip({
+        items: [createItem({ id: "bread", price: 2_363 })],
+      }),
+    );
+
+    expect(screen.getAllByText("€26.37")).toHaveLength(1);
+    expect(screen.getByText("left")).not.toBeNull();
+    expect(screen.getByText("€23.63 of €50.00")).not.toBeNull();
+    expect(screen.queryByText(/available before/)).toBeNull();
+    expect(screen.queryByText(/^Budget €/)).toBeNull();
   });
 
   it("renders cart lines from canonical item data without requiring labels", () => {
@@ -359,10 +378,10 @@ describe("ActiveTripScreen", () => {
 
     expect(screen.queryByText("Confirmed · Manual")).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Edit Item 1" }));
     expect(onEditItem).toHaveBeenCalledWith(item);
 
-    await user.click(screen.getByRole("button", { name: "Remove" }));
+    await user.click(screen.getByRole("button", { name: "Remove Item 1" }));
     expect(onRemoveItem).toHaveBeenCalledWith(item);
   });
 

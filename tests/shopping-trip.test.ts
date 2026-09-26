@@ -18,12 +18,14 @@ import {
   latestTripTimestamp,
   laterTimestamp,
   lineTotal,
+  mergeTripChanges,
   nominalOverage,
   mostRecentCompletedTrip,
   projectAddItem,
   projectSpendingPlan,
   reduceTrip,
   remaining,
+  restoreTripItems,
   safeLimit,
   safeOverage,
   safeRemaining,
@@ -1090,6 +1092,48 @@ describe("trip reducer", () => {
   });
 });
 
+describe("restoring stored items", () => {
+  it("gives the same trip as adding each item in order", () => {
+    const items = [
+      createItem({ id: "item-1", price: 379, quantity: 2, label: "Milk" }),
+      createItem({ id: "item-2", price: 1_250 }),
+      createItem({ id: "item-3", price: 129, quantity: 3 }),
+    ];
+    const replayed = items.reduce(addItem, createTrip());
+
+    expect(unwrap(restoreTripItems(createTrip(), items))).toEqual(replayed);
+  });
+
+  it("rejects what adding the items one by one would reject", () => {
+    const first = createItem({ id: "item-1", price: 379 });
+
+    expectDomainError(
+      restoreTripItems(createTrip(), [first, createItem({ id: "item-1", price: 100 })]),
+      "duplicate-item-id",
+    );
+    expectDomainError(
+      restoreTripItems(addItem(createTrip(), first), [createItem({ id: "item-1", price: 5 })]),
+      "duplicate-item-id",
+    );
+    expectDomainError(
+      restoreTripItems(createTrip(), [{ ...first, quantity: 0 }]),
+      "invalid-quantity",
+    );
+  });
+
+  it("restores a long trip in one pass", () => {
+    const items = Array.from({ length: 2_000 }, (_, index) =>
+      createItem({ id: `item-${index}`, price: 100 + (index % 50) }),
+    );
+    const restored = unwrap(restoreTripItems(createTrip(), items));
+
+    expect(restored.items).toHaveLength(2_000);
+    expect(cartTotal(restored)).toBe(
+      items.reduce((total, item) => total + Number(item.unitPriceMinor), 0),
+    );
+  });
+});
+
 describe("trip completion", () => {
   it("completes an active trip without adding derived totals to canonical state", () => {
     let trip = createTrip(5_000, 200);
@@ -1402,5 +1446,61 @@ describe("property-based shopping invariants", () => {
       ),
       { numRuns: 1_500 },
     );
+  });
+});
+
+describe("merging a trip changed in two places", () => {
+  it("keeps the changes from both sides and lets the saved side win a clash", () => {
+    const bread = createItem({ id: "bread", price: 250, label: "Bread" });
+    const tea = createItem({ id: "tea", price: 300, label: "Tea" });
+    const base = addItem(addItem(createTrip(), bread), tea);
+    const mine = {
+      ...base,
+      items: [
+        { ...bread, unitPriceMinor: money(200) },
+        createItem({ id: "jam", price: 410, label: "Jam", createdAt: LATER }),
+      ],
+    };
+    const theirs = {
+      ...base,
+      items: [
+        { ...bread, unitPriceMinor: money(220), quantity: 2 },
+        tea,
+        createItem({ id: "milk", price: 139, label: "Milk", createdAt: LATER }),
+      ],
+    };
+
+    const merged = mergeTripChanges(base, mine, theirs);
+
+    expect(
+      merged?.items.map((item) => [item.id, item.unitPriceMinor, item.quantity]),
+    ).toEqual([
+      ["bread", 220, 2],
+      ["milk", 139, 1],
+      ["jam", 410, 1],
+    ]);
+  });
+
+  it("keeps a budget change made on one side and the saved one when both changed it", () => {
+    const base = createTrip(5_000);
+
+    expect(mergeTripChanges(base, createTrip(6_000), base)?.budgetMinor).toBe(6_000);
+    expect(mergeTripChanges(base, createTrip(6_000), createTrip(7_000))?.budgetMinor).toBe(
+      7_000,
+    );
+  });
+
+  it("does not merge two different trips", () => {
+    const other = unwrap(
+      createActiveTrip({
+        id: "trip-2",
+        currency: "EUR",
+        budgetMinor: money(5_000),
+        safetyBufferMinor: money(0),
+        startedAt: START,
+      }),
+    );
+
+    expect(mergeTripChanges(createTrip(), createTrip(), other)).toBeNull();
   });
 });

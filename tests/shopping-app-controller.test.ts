@@ -935,6 +935,122 @@ describe("ShoppingAppController repeat trip", () => {
   });
 });
 
+describe("ShoppingAppController cancelling an empty trip", () => {
+  it("returns to the start without a history entry and removes the saved trip", () => {
+    const persistence = createPersistence();
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(START, NEXT),
+      ids,
+    });
+
+    controller.bootstrap();
+    controller.startTrip({ budgetMinor: money(5_000) });
+
+    const result = controller.discardEmptyTrip();
+
+    expect(result).toMatchObject({
+      ok: true,
+      changed: true,
+      durability: "persisted",
+      state: {
+        lifecycle: "idle",
+        activeTrip: null,
+        completedSummary: null,
+        completedTrips: [],
+        persistence: { status: "healthy" },
+        undo: null,
+      },
+    });
+    expect(persistence.clearCompletedActiveCalls).toBe(1);
+    expect(persistence.completeCalls).toHaveLength(0);
+  });
+
+  it("refuses a trip that has items and leaves it untouched", () => {
+    const persistence = createPersistence();
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(START, NEXT),
+      ids,
+    });
+
+    controller.bootstrap();
+    controller.startTrip({ budgetMinor: money(5_000) });
+    controller.addManualItem({ unitPriceMinor: money(250), quantity: 1 });
+    const before = controller.getSnapshot();
+
+    const result = controller.discardEmptyTrip();
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "trip-not-empty" },
+    });
+    expect(controller.getSnapshot()).toBe(before);
+    expect(persistence.clearCompletedActiveCalls).toBe(0);
+  });
+
+  it("keeps the trip open when its saved copy cannot be removed", () => {
+    const persistence = createPersistence();
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(START, NEXT),
+      ids,
+    });
+
+    controller.bootstrap();
+    controller.startTrip({ budgetMinor: money(5_000) });
+    persistence.queueClearResult({ ok: false, issue: writeFailure });
+    const before = controller.getSnapshot();
+
+    const result = controller.discardEmptyTrip();
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "discard-not-saved" },
+    });
+    expect(controller.getSnapshot()).toBe(before);
+    expect(before.lifecycle).toBe("active");
+  });
+
+  it("clears the saving warning once the unsaved empty trip is gone", () => {
+    const persistence = createPersistence();
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(START, NEXT),
+      ids,
+    });
+
+    controller.bootstrap();
+    persistence.queueSaveResult({ ok: false, issue: writeFailure });
+    controller.startTrip({ budgetMinor: money(5_000) });
+    expect(controller.getSnapshot().persistence.status).toBe("degraded");
+
+    const result = controller.discardEmptyTrip();
+
+    expect(result.state).toMatchObject({
+      lifecycle: "idle",
+      persistence: { status: "healthy" },
+    });
+  });
+
+  it("needs an open trip", () => {
+    const persistence = createPersistence();
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(START),
+      ids,
+    });
+
+    controller.bootstrap();
+
+    expect(controller.discardEmptyTrip()).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "no-active-trip" },
+    });
+    expect(persistence.clearCompletedActiveCalls).toBe(0);
+  });
+});
+
 describe("ShoppingAppController addManualItem", () => {
   it("creates one canonical confirmed manual item and persists the exact committed trip", () => {
     const persistence = createPersistence({
@@ -1758,6 +1874,331 @@ describe("ShoppingAppController trip completion", () => {
     expect(state.activeTrip).toBeNull();
     expect(state.completedSummary).toBeNull();
     expect(state.completedTrips).toEqual([completedResult.value]);
+  });
+});
+
+describe("ShoppingAppController receipt total for a past trip", () => {
+  it("adds the receipt total to a trip in history and saves it", () => {
+    const past = createCompletedTrip("trip-past", NEXT);
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: null,
+      completedTrips: [past],
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+
+    const result = controller.setCompletedTripCheckout(past.id, money(4_812));
+
+    expect(result).toMatchObject({ ok: true, changed: true, durability: "persisted" });
+    expect(result.state.completedTrips[0]?.actualCheckoutMinor).toBe(4_812);
+    expect(persistence.replaceCompletedHistoryCalls).toHaveLength(1);
+    expect(persistence.replaceCompletedHistoryCalls[0]?.trips).toEqual([
+      { ...past, actualCheckoutMinor: 4_812 },
+    ]);
+  });
+
+  it("writes nothing when the receipt total is already saved", () => {
+    const past = {
+      ...createCompletedTrip("trip-past", NEXT),
+      actualCheckoutMinor: money(4_812),
+    };
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: null,
+      completedTrips: [past],
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+
+    const result = controller.setCompletedTripCheckout(past.id, money(4_812));
+
+    expect(result).toMatchObject({ ok: true, changed: false, durability: "unchanged" });
+    expect(persistence.replaceCompletedHistoryCalls).toHaveLength(0);
+  });
+
+  it("refuses a trip that is no longer in history", () => {
+    const persistence = createPersistence();
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+
+    const result = controller.setCompletedTripCheckout(
+      createCompletedTrip("trip-gone", NEXT).id,
+      money(1_000),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "completed-trip-not-found" },
+    });
+    expect(persistence.replaceCompletedHistoryCalls).toHaveLength(0);
+  });
+
+  it("keeps history as it was when the change cannot be saved", () => {
+    const past = createCompletedTrip("trip-past", NEXT);
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: null,
+      completedTrips: [past],
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+    persistence.queueHistoryReplaceResult({ ok: false, issue: historyWriteFailure });
+    const before = controller.getSnapshot();
+
+    const result = controller.setCompletedTripCheckout(past.id, money(4_812));
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "history-write-unavailable" },
+    });
+    expect(controller.getSnapshot()).toBe(before);
+    expect(before.completedTrips[0]?.actualCheckoutMinor).toBeUndefined();
+  });
+
+  it("updates the open summary when its trip gets a receipt total from history", () => {
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: createTrip(5_000, 0),
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(NEXT, LATER),
+      ids,
+    });
+    controller.bootstrap();
+    const finished = controller.completeTrip();
+    const summaryId = finished.state.completedSummary?.id;
+
+    if (summaryId === undefined) {
+      throw new Error("Expected an open summary");
+    }
+
+    const result = controller.setCompletedTripCheckout(summaryId, money(4_672));
+
+    expect(result).toMatchObject({ ok: true, durability: "persisted" });
+    expect(result.state.completedSummary?.actualCheckoutMinor).toBe(4_672);
+    expect(result.state.completedTrips[0]?.actualCheckoutMinor).toBe(4_672);
+    expect(result.state.lifecycle).toBe("completed-summary");
+  });
+});
+
+describe("ShoppingAppController leaving a summary whose receipt was not saved", () => {
+  it("closes the summary and keeps the trip as it was last saved", () => {
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: createTrip(5_000, 0),
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(NEXT, LATER),
+      ids,
+    });
+    controller.bootstrap();
+    controller.completeTrip();
+    persistence.queueCompletedSaveResult({ ok: false, issue: historyWriteFailure });
+    controller.setActualCheckout(money(4_672));
+    expect(controller.getSnapshot().persistence.status).toBe("degraded");
+
+    const result = controller.dismissCompletedSummary();
+
+    expect(result).toMatchObject({
+      ok: true,
+      state: {
+        lifecycle: "idle",
+        completedSummary: null,
+        persistence: { status: "healthy" },
+      },
+    });
+    expect(result.state.completedTrips).toHaveLength(1);
+    expect(result.state.completedTrips[0]?.actualCheckoutMinor).toBeUndefined();
+  });
+
+  it("keeps the summary open while its trip is not in history", () => {
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: createTrip(5_000, 0),
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(NEXT, LATER),
+      ids,
+    });
+    controller.bootstrap();
+    controller.completeTrip();
+    persistence.queueCompletedSaveResult({ ok: false, issue: historyWriteFailure });
+    controller.setActualCheckout(money(4_672));
+    persistence.queueHistoryReadResult({ ok: true, completedTrips: [] });
+
+    expect(controller.dismissCompletedSummary()).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "completion-not-saved" },
+      state: { lifecycle: "completed-summary" },
+    });
+  });
+
+  it("says the trip is gone when it was deleted from history elsewhere, without blocking Done", () => {
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: createTrip(5_000, 0),
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(NEXT, LATER),
+      ids,
+    });
+    controller.bootstrap();
+    controller.completeTrip();
+    persistence.queueCompletedSaveResult({
+      ok: false,
+      issue: { code: "history-conflict", storageKey: "budget-cart:history" },
+    });
+
+    expect(controller.setActualCheckout(money(4_672))).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "completed-trip-not-found" },
+      state: { persistence: { status: "healthy" } },
+    });
+    expect(controller.dismissCompletedSummary()).toMatchObject({ ok: true });
+  });
+});
+
+describe("ShoppingAppController making room in history", () => {
+  it("removes the oldest trips first and never the trip in the open summary", () => {
+    const oldest = createCompletedTrip("trip-oldest", "2026-09-21T09:01:00.000Z");
+    const older = createCompletedTrip("trip-older", "2026-09-21T09:02:00.000Z");
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: createTrip(5_000, 0),
+      completedTrips: [older, oldest],
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(NEXT, LATER),
+      ids,
+    });
+    controller.bootstrap();
+    const summaryId = controller.completeTrip().state.completedSummary?.id;
+
+    const result = controller.deleteOldestCompletedTrips(10);
+
+    expect(result).toMatchObject({ ok: true, durability: "persisted" });
+    expect(persistence.replaceCompletedHistoryCalls[0]?.trips.map((trip) => trip.id)).toEqual([
+      summaryId,
+    ]);
+    expect(result.state.completedSummary?.id).toBe(summaryId);
+    expect(result.state.completedTrips.map((trip) => trip.id)).toEqual([summaryId]);
+  });
+
+  it("removes only as many trips as asked, oldest first", () => {
+    const trips = [
+      createCompletedTrip("trip-b", "2026-09-23T09:00:00.000Z"),
+      createCompletedTrip("trip-a", "2026-09-22T09:00:00.000Z"),
+      createCompletedTrip("trip-c", "2026-09-24T09:00:00.000Z"),
+    ];
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: null,
+      completedTrips: trips,
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+
+    controller.deleteOldestCompletedTrips(2);
+
+    expect(persistence.replaceCompletedHistoryCalls[0]?.trips.map((trip) => trip.id)).toEqual([
+      "trip-c",
+    ]);
+  });
+
+  it("refuses when history has nothing to remove", () => {
+    const persistence = createPersistence();
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+
+    expect(controller.deleteOldestCompletedTrips(10)).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "completed-trip-not-found" },
+    });
+    expect(persistence.replaceCompletedHistoryCalls).toHaveLength(0);
+  });
+
+  it("changes nothing while history cannot be read", () => {
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: null,
+      completedTrips: [createCompletedTrip("trip-a", NEXT)],
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+    persistence.queueHistoryReadResult({
+      ok: false,
+      issue: { code: "read-failed", storageKey: "budget-cart:history" },
+      completedTrips: [],
+    });
+
+    const result = controller.deleteOldestCompletedTrips(10);
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "history-write-unavailable" },
+      state: { historyIntegrity: { status: "degraded" } },
+    });
+    expect(persistence.replaceCompletedHistoryCalls).toHaveLength(0);
+    expect(controller.deleteOldestCompletedTrips(10)).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "history-write-unavailable" },
+    });
+  });
+
+  it("keeps history as it was when the shorter history cannot be written", () => {
+    const persistence = createPersistence({
+      ok: true,
+      activeTrip: null,
+      completedTrips: [createCompletedTrip("trip-a", NEXT)],
+    });
+    const controller = createShoppingAppController({
+      persistence,
+      clock: createClock(LATER),
+      ids,
+    });
+    controller.bootstrap();
+    persistence.queueHistoryReplaceResult({ ok: false, issue: historyWriteFailure });
+    const before = controller.getSnapshot();
+
+    expect(controller.deleteOldestCompletedTrips(10)).toMatchObject({
+      ok: false,
+      error: { kind: "application", code: "history-write-unavailable" },
+    });
+    expect(controller.getSnapshot()).toBe(before);
   });
 });
 

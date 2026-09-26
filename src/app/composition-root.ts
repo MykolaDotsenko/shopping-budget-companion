@@ -23,6 +23,12 @@ import {
   priceOcrEnabled,
   productLookupEnabled,
 } from "../infrastructure/runtime/feature-flags";
+import {
+  listenForInstallPrompt,
+  type InstallPromptSource,
+} from "../infrastructure/runtime/install-prompt";
+import { requestPersistentStorage } from "../infrastructure/runtime/persistent-storage";
+import { subscribeToStorageChangesFromOtherTabs } from "../infrastructure/runtime/storage-change-events";
 import { createActiveTripPersistencePort } from "../infrastructure/storage/active-trip-persistence-port";
 import { createBarcodeLinkPersistencePort } from "../infrastructure/storage/barcode-link-storage";
 import { surfaceStorageScope } from "../infrastructure/runtime/deployment-surface";
@@ -81,6 +87,32 @@ export const bootstrapBrowserShoppingAppController = (
   controller.bootstrap();
   return controller;
 };
+
+export const keepHistoryFromEviction = (
+  controller: ShoppingAppController,
+): (() => void) => {
+  let requested = false;
+
+  const check = (): void => {
+    if (!requested && controller.getSnapshot().completedTrips.length > 0) {
+      requested = true;
+      void requestPersistentStorage();
+    }
+  };
+
+  check();
+  return controller.subscribe(check);
+};
+
+export const listenForAppInstallPrompt = (): InstallPromptSource =>
+  listenForInstallPrompt();
+
+export const followStorageChangesFromOtherTabs = (
+  controller: ShoppingAppController,
+): (() => void) =>
+  subscribeToStorageChangesFromOtherTabs(() => {
+    controller.refreshFromStorage();
+  });
 
 export const createBrowserCameraPort = (): CameraPort | null =>
   barcodeScannerEnabled || priceOcrEnabled ? createBrowserCamera() : null;

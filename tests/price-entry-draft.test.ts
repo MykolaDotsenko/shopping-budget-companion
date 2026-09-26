@@ -81,6 +81,16 @@ describe("price entry draft model", () => {
     });
   });
 
+  it("stops keypad digits at two decimal places but not in cents mode", () => {
+    const euros = appendPriceDigit({ raw: "4.79", mode: "decimal" }, "5");
+    const comma = appendPriceDigit({ raw: "4,79", mode: "decimal" }, "5");
+    const cents = appendPriceDigit({ raw: "479", mode: "auto-cents" }, "5");
+
+    expect(euros.raw).toBe("4.79");
+    expect(comma.raw).toBe("4,79");
+    expect(cents.raw).toBe("4795");
+  });
+
   it("adds one decimal separator and preserves incomplete typing", () => {
     let draft = initialPriceEntryDraft();
     draft = appendPriceDigit(draft, "4");

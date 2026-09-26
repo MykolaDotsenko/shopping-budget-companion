@@ -25,6 +25,15 @@ const unwrap = <T, E>(result: Result<T, E>): T => {
 const money = (value: number) => unwrap(mvpMinorUnits(value));
 const time = (value: string): IsoTimestamp => unwrap(isoTimestamp(value));
 
+const createEmptyTrip = (): ActiveTrip =>
+  unwrap(
+    createActiveTrip({
+      id: "empty-trip",
+      budgetMinor: money(5_000),
+      startedAt: START,
+    }),
+  );
+
 const createTrip = (): ActiveTrip => {
   const base = unwrap(
     createActiveTrip({
@@ -123,5 +132,72 @@ describe("FinishTripSurface", () => {
     expect(
       screen.getByRole("button", { name: "Finish trip" }),
     ).not.toBeNull();
+  });
+
+  it("offers to cancel an empty trip instead of saving it to history", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onDiscard = vi.fn(() => true);
+
+    render(
+      <FinishTripSurface
+        trip={createEmptyTrip()}
+        onCancel={vi.fn()}
+        onConfirm={onConfirm}
+        onDiscard={onDiscard}
+        locale="en-IE"
+      />,
+    );
+
+    expect(
+      screen.getByRole("main", { name: "Nothing to finish yet" }),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Finish trip" })).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Keep shopping" }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel trip" }));
+
+    expect(onDiscard).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("says so when an empty trip could not be cancelled", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <FinishTripSurface
+        trip={createEmptyTrip()}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+        onDiscard={() => false}
+        locale="en-IE"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cancel trip" }));
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      "The trip could not be cancelled. Try again.",
+    );
+  });
+
+  it("keeps the normal review for a trip with items even when cancelling is offered", () => {
+    render(
+      <FinishTripSurface
+        trip={createTrip()}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+        onDiscard={vi.fn(() => true)}
+        locale="en-IE"
+      />,
+    );
+
+    expect(
+      screen.getByRole("main", { name: "Ready to finish this trip?" }),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel trip" })).toBeNull();
   });
 });

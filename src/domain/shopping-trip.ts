@@ -48,4 +48,5 @@ export {
   sameTripContents,
 } from "./shopping-trip-selectors";
 
-export { reduceTrip } from "./shopping-trip-reducer";
+export { reduceTrip, restoreTripItems } from "./shopping-trip-reducer";
+export { mergeTripChanges } from "./shopping-trip-merge";

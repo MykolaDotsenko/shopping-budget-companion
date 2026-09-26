@@ -1,4 +1,11 @@
-import type { CSSProperties, ReactNode, Ref } from "react";
+import {
+  useCallback,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+} from "react";
 
 import { useShoppingAppState } from "../../application/react/use-shopping-app-state";
 import { needsSaveAttention } from "../../application/session-only-persistence";
@@ -17,6 +24,7 @@ import {
 import { HistoryIntegrityNotice } from "./HistoryIntegrityNotice";
 import { PersistenceHealthNotice } from "./PersistenceHealthNotice";
 import { RecentItemsSection } from "./RecentItemsSection";
+import { trustLabel } from "./item-trust";
 import styles from "./ActiveTripScreen.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
 
@@ -43,40 +51,6 @@ export interface ActiveTripScreenProps {
   readonly locale?: string;
 }
 
-const confidenceLabel = (item: CartItem): string => {
-  switch (item.priceConfidence.kind) {
-    case "confirmed":
-      return "Confirmed";
-    case "remembered":
-      return "Remembered";
-    case "estimated":
-      return "Estimated";
-    default: {
-      const exhaustive: never = item.priceConfidence;
-      return exhaustive;
-    }
-  }
-};
-
-const sourceLabel = (item: CartItem): string => {
-  switch (item.priceSource.kind) {
-    case "manual":
-      return "Manual";
-    case "price-memory":
-      return "Price memory";
-    case "shelf-scan":
-      return "Shelf scan";
-    case "encoded-barcode":
-      return "Barcode";
-    case "retailer-feed":
-      return "Retailer feed";
-    default: {
-      const exhaustive: never = item.priceSource;
-      return exhaustive;
-    }
-  }
-};
-
 const clampPercentage = (value: number): number =>
   Math.min(100, Math.max(0, value));
 
@@ -99,6 +73,14 @@ const formatSignedAmount = (
   return formatEur(amount.value, locale);
 };
 
+const GHOST_TAP_MS = 600;
+
+const UNDO_LABELS = {
+  add: "Undo last add",
+  edit: "Undo last edit",
+  remove: "Undo last removal",
+} as const;
+
 export function ActiveTripScreen({
   controller,
   onAddPrice,
@@ -119,7 +101,23 @@ export function ActiveTripScreen({
   utilityControl,
   locale = SHOPPING_LOCALE,
 }: ActiveTripScreenProps) {
+  const lastRemovalAt = useRef(Number.NEGATIVE_INFINITY);
   const state = useShoppingAppState(controller);
+  const [heroVisible, setHeroVisible] = useState(true);
+  const observeHero = useCallback((hero: HTMLElement | null) => {
+    if (hero === null || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setHeroVisible(entry?.isIntersecting ?? true);
+    });
+    observer.observe(hero);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   const trip = state.activeTrip;
   if (state.lifecycle !== "active" || trip === null) {
     return null;
@@ -169,19 +167,31 @@ export function ActiveTripScreen({
   } as CSSProperties;
 
   const totalQuantity = itemCount(trip);
-  const remainingContext = nominalOverBudget
-    ? `${formatSignedAmount(Math.abs(nominalRemaining), locale)} over your limit`
+  const status = nominalOverBudget
+    ? "over"
     : reserveInUse
-      ? `Safety buffer reached · ${formatSignedAmount(
-          nominalRemaining,
-          locale,
-        )} remains in your nominal budget`
-      : hasBuffer
-        ? `${formatSignedAmount(protectedRemaining, locale)} available before your reserve`
-        : `${formatSignedAmount(nominalRemaining, locale)} available before your limit`;
+      ? "reserve"
+      : "within";
+  const heroContext =
+    !hasBuffer || nominalOverBudget
+      ? null
+      : reserveInUse
+        ? `${formatSignedAmount(nominalRemaining, locale)} of your ${formatEur(
+            trip.safetyBufferMinor,
+            locale,
+          )} safety buffer left`
+        : `plus a ${formatEur(trip.safetyBufferMinor, locale)} safety buffer`;
+  const statusSentence = `${formatSignedAmount(heroAmount, locale)} ${heroLabel}${
+    heroContext === null ? "" : `, ${heroContext}`
+  }`;
 
   return (
     <main className={styles.screen}>
+      {heroVisible ? null : (
+        <p className={styles.stickyRemaining} data-status={status} aria-hidden="true">
+          <strong>{formatSignedAmount(heroAmount, locale)}</strong> {heroLabel}
+        </p>
+      )}
       <section className={styles.shell} aria-labelledby="active-trip-title">
         <header className={styles.header}>
           <div>
@@ -197,18 +207,11 @@ export function ActiveTripScreen({
           </p>
         </header>
 
-        {utilityControl}
-
         <section
+          ref={observeHero}
           className={styles.hero}
           aria-label="Current spending status"
-          data-status={
-            nominalOverBudget
-              ? "over"
-              : reserveInUse
-                ? "reserve"
-                : "within"
-          }
+          data-status={status}
         >
           <p
             key={heroAmount}
@@ -218,7 +221,9 @@ export function ActiveTripScreen({
             {formatSignedAmount(heroAmount, locale)}
           </p>
           <p className={styles.heroLabel}>{heroLabel}</p>
-          <p className={styles.heroContext}>{remainingContext}</p>
+          {heroContext === null ? null : (
+            <p className={styles.heroContext}>{heroContext}</p>
+          )}
         </section>
 
         <PersistenceHealthNotice
@@ -242,14 +247,11 @@ export function ActiveTripScreen({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(spentPercent)}
-            aria-valuetext={
-              hasBuffer
-                ? `${formatEur(total, locale)} in cart. ${remainingContext}. Reserve ${formatEur(
-                    trip.safetyBufferMinor,
-                    locale,
-                  )}.`
-                : `${formatEur(total, locale)} in cart. ${remainingContext}.`
-            }
+            aria-valuetext={`${formatEur(total, locale)} in cart of ${formatEur(
+              trip.budgetMinor,
+              locale,
+            )}. ${statusSentence}.`}
+            data-status={status}
             style={capacityStyle}
           >
             <span className={styles.capacityFill} aria-hidden="true" />
@@ -262,44 +264,26 @@ export function ActiveTripScreen({
             ) : null}
           </div>
 
-          <div className={styles.capacityLabels} aria-hidden="true">
-            <span>Cart {formatEur(total, locale)}</span>
-            <span>
-              {hasBuffer
-                ? `Safe limit ${formatEur(protectedLimit, locale)} · Reserve ${formatEur(
-                    trip.safetyBufferMinor,
-                    locale,
-                  )}`
-                : `Budget ${formatEur(trip.budgetMinor, locale)}`}
-            </span>
-          </div>
-
           {hasBuffer ? (
-            <p className={styles.reserveNote}>
-              {formatEur(trip.safetyBufferMinor, locale)} kept in reserve.
-              Nominally{" "}
-              {nominalRemaining >= 0
-                ? `${formatSignedAmount(nominalRemaining, locale)} remains`
-                : `${formatSignedAmount(Math.abs(nominalRemaining), locale)} over budget`}.
-            </p>
+            <div className={styles.capacityLabels} aria-hidden="true">
+              <span>Safe limit {formatEur(protectedLimit, locale)}</span>
+              <span>
+                Safety buffer {formatEur(trip.safetyBufferMinor, locale)}
+              </span>
+            </div>
           ) : null}
-
         </section>
 
         {feedbackMessage || (state.undo !== null && onUndo) ? (
-          <div className={styles.feedback}>
-            {feedbackMessage ? (
-              <p role="status" aria-live="polite">
-                {feedbackMessage}
-              </p>
-            ) : null}
+          <div className={styles.feedback} data-status={status}>
+            {feedbackMessage ? <p>{feedbackMessage}</p> : null}
             {state.undo !== null && onUndo ? (
               <button
                 type="button"
                 className={styles.undoButton}
                 onClick={onUndo}
               >
-                Undo
+                {feedbackMessage ? "Undo" : UNDO_LABELS[state.undo.description]}
               </button>
             ) : null}
           </div>
@@ -331,7 +315,7 @@ export function ActiveTripScreen({
                 <button
                   ref={adjustBudgetButtonRef}
                   type="button"
-                  className={styles.adjustBudgetButton}
+                  className={styles.finishButton}
                   onClick={onAdjustBudget}
                 >
                   Adjust budget
@@ -357,6 +341,7 @@ export function ActiveTripScreen({
           <RecentItemsSection
             trip={trip}
             records={state.priceMemories}
+            completedTrips={state.completedTrips}
             persistenceDegraded={needsSaveAttention(
               state.priceMemoryPersistence,
             )}
@@ -387,11 +372,12 @@ export function ActiveTripScreen({
             <ul className={styles.itemList}>
               {trip.items.map((item, index) => {
                 const itemTotal = lineTotal(item);
+                const itemName = item.label ?? `Item ${index + 1}`;
 
                 return (
                   <li key={item.id} className={styles.item}>
                     <div className={styles.itemIdentity}>
-                      <strong>{item.label ?? `Item ${index + 1}`}</strong>
+                      <strong>{itemName}</strong>
                       {item.quantity > 1 ? (
                         <span>
                           {formatEur(item.unitPriceMinor, locale)} × {item.quantity}
@@ -403,7 +389,7 @@ export function ActiveTripScreen({
                           className={styles.itemTrust}
                           data-confidence={item.priceConfidence.kind}
                         >
-                          {confidenceLabel(item)} · {sourceLabel(item)}
+                          {trustLabel(item)}
                         </small>
                       ) : null}
                     </div>
@@ -418,8 +404,13 @@ export function ActiveTripScreen({
                             <button
                               type="button"
                               className={styles.itemActionButton}
+                              aria-label={`Edit ${itemName}`}
                               data-edit-item-id={item.id}
-                              onClick={() => {
+                              onClick={(event) => {
+                                if (event.timeStamp - lastRemovalAt.current < GHOST_TAP_MS) {
+                                  return;
+                                }
+
                                 onEditItem(item);
                               }}
                             >
@@ -430,7 +421,13 @@ export function ActiveTripScreen({
                             <button
                               type="button"
                               className={styles.removeButton}
-                              onClick={() => {
+                              aria-label={`Remove ${itemName}`}
+                              onClick={(event) => {
+                                if (event.timeStamp - lastRemovalAt.current < GHOST_TAP_MS) {
+                                  return;
+                                }
+
+                                lastRemovalAt.current = event.timeStamp;
                                 onRemoveItem(item);
                               }}
                             >
@@ -446,6 +443,8 @@ export function ActiveTripScreen({
             </ul>
           )}
         </section>
+
+        {utilityControl}
       </section>
     </main>
   );

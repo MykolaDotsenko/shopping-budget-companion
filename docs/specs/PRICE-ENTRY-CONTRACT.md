@@ -19,7 +19,7 @@ The common add-price flow must be:
 
 ## Modes
 
-The UI supports the current money-draft modes implemented by the price-entry draft model: decimal ("Euros"), the default, and auto-cents ("Cents mode").
+The UI supports the current money-draft modes implemented by the price-entry draft model: decimal ("Euros"), the default, and auto-cents ("Cents mode"). Price entry opens in the mode the shopper chose last (a convenience preference), and while the draft is empty the status line explains the current mode.
 
 ### Decimal mode
 

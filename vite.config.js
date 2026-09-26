@@ -84,20 +84,25 @@ export default defineConfig(() => {
         injectRegister: "auto",
         includeAssets: [
           "favicon.svg",
+          "favicon-32.png",
+          "apple-touch-icon.png",
           "pwa-icon-192.png",
           "pwa-icon-512.png",
+          "pwa-maskable-512.png",
         ],
         manifest: {
           id: "./",
           name: "Shopping Budget Companion",
           short_name: "Shop Budget",
           description:
-            "Stay under your shopping limit with exact local-first budget tracking.",
+            "Set a shopping limit, add prices as you go and always see what’s left before checkout.",
+          lang: "en",
+          categories: ["shopping", "utilities"],
           start_url: "./",
           scope: "./",
           display: "standalone",
-          background_color: "#f5f3ee",
-          theme_color: "#f5f3ee",
+          background_color: "#f4f1eb",
+          theme_color: "#f4f1eb",
           icons: [
             {
               src: "pwa-icon-192.png",
@@ -110,6 +115,35 @@ export default defineConfig(() => {
               sizes: "512x512",
               type: "image/png",
               purpose: "any",
+            },
+            {
+              src: "pwa-maskable-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
+            },
+          ],
+          screenshots: [
+            {
+              src: "screenshots/trip.jpg",
+              sizes: "780x1688",
+              type: "image/jpeg",
+              form_factor: "narrow",
+              label: "See what’s left of your budget while you shop",
+            },
+            {
+              src: "screenshots/entry.jpg",
+              sizes: "780x1688",
+              type: "image/jpeg",
+              form_factor: "narrow",
+              label: "Add a price and see what will be left before you add it",
+            },
+            {
+              src: "screenshots/summary.jpg",
+              sizes: "780x1688",
+              type: "image/jpeg",
+              form_factor: "narrow",
+              label: "Compare your receipt with your budget when you finish",
             },
           ],
         },
@@ -124,6 +158,7 @@ export default defineConfig(() => {
             /\/cohort(?:\/|$)/,
             /\/camera-tools(?:\/|$)/,
             /\/study(?:\/|$)/,
+            /\/privacy(?:\/|$)/,
           ],
           globPatterns: [
             "**/*.{js,css,html,svg,png,webmanifest}",
@@ -152,6 +187,20 @@ export default defineConfig(() => {
         },
       }),
     ],
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: "react",
+                test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              },
+            ],
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         "#app-entry": path.resolve(

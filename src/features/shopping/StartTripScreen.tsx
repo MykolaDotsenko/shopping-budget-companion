@@ -129,6 +129,8 @@ export interface StartTripScreenProps {
   readonly onOpenHistory?: () => void;
   readonly locale?: string;
   readonly utilityControl?: ReactNode;
+  readonly notice?: ReactNode;
+  readonly footer?: ReactNode;
 }
 
 export function StartTripScreen({
@@ -142,6 +144,8 @@ export function StartTripScreen({
   onOpenHistory,
   locale = SHOPPING_LOCALE,
   utilityControl,
+  notice,
+  footer,
 }: StartTripScreenProps) {
   const customRegionId = useId();
   const reserveInputId = useId();
@@ -151,12 +155,16 @@ export function StartTripScreen({
   const [customOpen, setCustomOpen] = useState(false);
   const [customBudget, setCustomBudget] = useState("");
   const [reserveRaw, setReserveRaw] = useState("");
+  const [bufferOpen, setBufferOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const customInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (customOpen) {
       customInputRef.current?.focus();
+      customInputRef.current
+        ?.closest("form")
+        ?.scrollIntoView?.({ block: "nearest" });
     }
   }, [customOpen]);
 
@@ -186,6 +194,11 @@ export function StartTripScreen({
     };
   };
 
+  const bufferPreview = parseBuffer();
+  const bufferSummary = bufferPreview.ok
+    ? formatEur(bufferPreview.value, locale)
+    : "needs a valid amount";
+
   const start = (budgetMinor: MinorUnits): void => {
     setErrorMessage("");
 
@@ -195,6 +208,10 @@ export function StartTripScreen({
       setErrorMessage(
         `Safety buffer: ${buffer.message}`,
       );
+      setBufferOpen(true);
+      queueMicrotask(() => {
+        document.getElementById(reserveInputId)?.focus();
+      });
       return;
     }
 
@@ -254,7 +271,7 @@ export function StartTripScreen({
         aria-labelledby="start-trip-title"
       >
         <div className={styles.intro}>
-          <p className={styles.eyebrow}>New shopping trip</p>
+          <p className={styles.eyebrow}>Shopping Budget Companion</p>
           <h1 id="start-trip-title" className={styles.title} tabIndex={-1}>
             How much can you spend today?
           </h1>
@@ -287,7 +304,7 @@ export function StartTripScreen({
                   ? ` · ${formatEur(
                       recentTrip.safetyBufferMinor,
                       locale,
-                    )} reserve`
+                    )} safety buffer`
                   : ""}
               </small>
             </span>
@@ -329,9 +346,69 @@ export function StartTripScreen({
             Custom amount
           </button>
 
-          <details className={styles.reserveDetails}>
+          {customOpen ? (
+            <form
+              id={customRegionId}
+              className={styles.customRegion}
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitCustom();
+              }}
+            >
+              <label
+                htmlFor={customInputId}
+                className={styles.label}
+              >
+                Custom budget
+              </label>
+              <div className={styles.inputShell}>
+                <span aria-hidden="true" className={styles.currency}>
+                  €
+                </span>
+                <input
+                  ref={customInputRef}
+                  id={customInputId}
+                  className={styles.amountInput}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={customBudget}
+                  placeholder="50.00"
+                  aria-invalid={errorMessage !== ""}
+                  aria-describedby={errorMessage ? errorId : undefined}
+                  onChange={(event) => {
+                    setCustomBudget(event.currentTarget.value);
+                    setErrorMessage("");
+                  }}
+                />
+              </div>
+              <div
+                id={errorId}
+                className={styles.fieldError}
+                role={errorMessage ? "alert" : undefined}
+                aria-live="polite"
+              >
+                {errorMessage}
+              </div>
+              <button
+                type="submit"
+                className={styles.startButton}
+              >
+                Start shopping
+              </button>
+            </form>
+          ) : null}
+
+          <details
+            className={styles.reserveDetails}
+            open={bufferOpen}
+            onToggle={(event) => {
+              setBufferOpen(event.currentTarget.open);
+            }}
+          >
             <summary className={styles.reserveSummary}>
-              Add a safety buffer
+              {bufferOpen || reserveRaw.trim() === ""
+                ? "Add a safety buffer"
+                : `Safety buffer ${bufferSummary}`}
             </summary>
             <div className={styles.reserveField}>
               <label
@@ -367,57 +444,16 @@ export function StartTripScreen({
           </details>
         </div>
 
-        {customOpen ? (
-          <form
-            id={customRegionId}
-            className={styles.customRegion}
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitCustom();
-            }}
+        {customOpen ? null : (
+          <div
+            id={errorId}
+            className={styles.error}
+            role={errorMessage ? "alert" : undefined}
+            aria-live="polite"
           >
-            <label
-              htmlFor={customInputId}
-              className={styles.label}
-            >
-              Custom budget
-            </label>
-            <div className={styles.inputShell}>
-              <span aria-hidden="true" className={styles.currency}>
-                €
-              </span>
-              <input
-                ref={customInputRef}
-                id={customInputId}
-                className={styles.amountInput}
-                inputMode="decimal"
-                autoComplete="off"
-                value={customBudget}
-                placeholder="50.00"
-                aria-describedby={errorMessage ? errorId : undefined}
-                onChange={(event) => {
-                  setCustomBudget(event.currentTarget.value);
-                  setErrorMessage("");
-                }}
-              />
-            </div>
-            <button
-              type="submit"
-              className={styles.startButton}
-            >
-              Start shopping
-            </button>
-          </form>
-        ) : null}
-
-        <div
-          id={errorId}
-          className={styles.error}
-          role={errorMessage ? "alert" : undefined}
-          aria-live="polite"
-        >
-          {errorMessage}
-        </div>
+            {errorMessage}
+          </div>
+        )}
 
         {(completedTripCount > 0 ||
           rememberedPriceCount > 0 ||
@@ -440,7 +476,9 @@ export function StartTripScreen({
           No account. Your shopping data stays on this device.
         </p>
 
+        {notice ?? null}
         {utilityControl ?? null}
+        {footer ?? null}
       </section>
     </main>
   );

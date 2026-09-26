@@ -2,10 +2,9 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   formatEur,
+  moneyInputValue,
   parseEurDraft,
-  signedMinorUnits,
   type MinorUnits,
-  type MoneyInputErrorCode,
 } from "../../domain/money";
 import {
   cartTotal,
@@ -13,6 +12,7 @@ import {
   type ActiveTrip,
 } from "../../domain/shopping-trip";
 import styles from "./BudgetSettingsSurface.module.css";
+import { formatAbsoluteEur, moneyInputErrorMessage } from "./shopping-feedback";
 import { SHOPPING_LOCALE } from "./shopping-locale";
 
 export interface SpendingPlanIntent {
@@ -27,44 +27,6 @@ export interface BudgetSettingsSurfaceProps {
   readonly locale?: string;
 }
 
-const rawMoney = (minor: number): string => {
-  const euros = Math.floor(minor / 100);
-  const cents = minor % 100;
-  return `${euros}.${String(cents).padStart(2, "0")}`;
-};
-
-const inputErrorMessage = (code: MoneyInputErrorCode): string => {
-  switch (code) {
-    case "empty":
-      return "Enter an amount.";
-    case "incomplete":
-      return "Finish the amount.";
-    case "invalid-format":
-      return "Use a euro amount like 50.00.";
-    case "negative-not-allowed":
-      return "Use zero or a positive amount.";
-    case "too-many-fraction-digits":
-      return "Use no more than two decimal places.";
-    case "above-product-limit":
-    case "unsafe-integer":
-      return "That amount is too large.";
-    default: {
-      const exhaustive: never = code;
-      return exhaustive;
-    }
-  }
-};
-
-const formatAbsoluteEur = (value: number, locale: string): string => {
-  const amount = signedMinorUnits(Math.abs(value));
-
-  if (!amount.ok) {
-    throw new RangeError("Spending-plan preview exceeded safe integer bounds");
-  }
-
-  return formatEur(amount.value, locale);
-};
-
 export function BudgetSettingsSurface({
   trip,
   onCancel,
@@ -76,9 +38,9 @@ export function BudgetSettingsSurface({
   const messageId = useId();
   const budgetRef = useRef<HTMLInputElement>(null);
   const bufferRef = useRef<HTMLInputElement>(null);
-  const [budgetRaw, setBudgetRaw] = useState(() => rawMoney(trip.budgetMinor));
+  const [budgetRaw, setBudgetRaw] = useState(() => moneyInputValue(trip.budgetMinor));
   const [bufferRaw, setBufferRaw] = useState(() =>
-    trip.safetyBufferMinor === 0 ? "" : rawMoney(trip.safetyBufferMinor),
+    trip.safetyBufferMinor === 0 ? "" : moneyInputValue(trip.safetyBufferMinor),
   );
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -97,7 +59,7 @@ export function BudgetSettingsSurface({
       return {
         ok: false as const,
         field: "budget" as const,
-        message: inputErrorMessage(budget.error.code),
+        message: moneyInputErrorMessage(budget.error.code),
       };
     }
 
@@ -120,7 +82,7 @@ export function BudgetSettingsSurface({
       return {
         ok: false as const,
         field: "buffer" as const,
-        message: inputErrorMessage(buffer.error.code),
+        message: moneyInputErrorMessage(buffer.error.code),
       };
     }
 
@@ -162,7 +124,7 @@ export function BudgetSettingsSurface({
           locale,
         )} over this budget.`,
         secondary:
-          "You can still save this limit; the app will show the over-budget state clearly.",
+          "You can still save it; the trip will show how far over you are.",
       };
     }
 
@@ -173,7 +135,10 @@ export function BudgetSettingsSurface({
         secondary: `${formatAbsoluteEur(
           projection.value.remainingMinor,
           locale,
-        )} remains before the nominal budget.`,
+        )} of this ${formatEur(
+          parsedPlan.safetyBufferMinor,
+          locale,
+        )} safety buffer would be left.`,
       };
     }
 
@@ -194,7 +159,7 @@ export function BudgetSettingsSurface({
           ? `${formatEur(
               parsedPlan.safetyBufferMinor,
               locale,
-            )} stays in reserve.`
+            )} is kept as your safety buffer.`
           : "No safety buffer will be held back.",
     };
   }, [locale, parsedPlan, trip]);
@@ -259,7 +224,7 @@ export function BudgetSettingsSurface({
         </header>
 
         <p className={styles.context}>
-          Your cart stays unchanged. Current tracked total:{" "}
+          Your cart stays as it is. Cart total:{" "}
           <strong>{formatEur(cartTotal(trip), locale)}</strong>.
         </p>
 

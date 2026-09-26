@@ -28,6 +28,10 @@
   gap: 16px;
 }
 
+.header > div {
+  min-width: 0;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--shopping-accent);
@@ -42,6 +46,7 @@
   font-size: clamp(1.55rem, 7vw, 2.2rem);
   line-height: 1.08;
   letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
 }
 
 .cancelButton,
@@ -93,10 +98,10 @@
 .field > input {
   min-height: 48px;
   width: 100%;
-  border: 1px solid var(--shopping-border);
+  border: 1px solid var(--shopping-field-border);
   border-radius: 14px;
   padding: 0 13px;
-  background: var(--shopping-soft);
+  background: var(--shopping-raised);
   color: var(--shopping-text);
   font: inherit;
 }
@@ -112,7 +117,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 16px;
-  border: 1px solid var(--shopping-border);
+  border: 1px solid var(--shopping-field-border);
   border-radius: 16px;
   background: var(--shopping-raised);
 }
@@ -147,13 +152,6 @@
   min-width: 0;
   display: grid;
   gap: 4px;
-}
-
-.quantitySection small,
-.guidance {
-  color: var(--shopping-muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
 }
 
 .stepper {
@@ -201,10 +199,6 @@
   line-height: 1.4;
 }
 
-.guidance {
-  margin: 0;
-}
-
 .error {
   margin: 0;
   color: var(--shopping-danger);
@@ -221,14 +215,26 @@
   box-shadow: var(--shopping-primary-action-shadow);
 }
 
-.saveButton:disabled {
+.saveButton:disabled,
+.stepper button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.removeButton {
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--shopping-danger);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .cancelButton:focus-visible,
 .stepper button:focus-visible,
 .saveButton:focus-visible,
+.removeButton:focus-visible,
 .priceInput:focus-within {
   outline: 3px solid var(--shopping-focus);
   outline-offset: 3px;

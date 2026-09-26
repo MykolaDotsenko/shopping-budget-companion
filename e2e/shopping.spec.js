@@ -128,7 +128,7 @@ test("keeps explicit Dark appearance durable and independent from shopping state
     persisted: "dark",
     page: "#0f1210",
     panel: "#181d19",
-    raised: "#202621",
+    raised: "#262d27",
     accent: "#8fd4b7",
     themeColor: "#0f1210",
   });
@@ -199,7 +199,7 @@ test("keeps explicit Aurora appearance durable and independent from shopping sta
     persisted: "aurora",
     page: "#070912",
     panel: "#101625",
-    raised: "#161e31",
+    raised: "#1c2640",
     accent: "#8de8ff",
     themeColor: "#070912",
   });
@@ -377,7 +377,7 @@ test("starts with a safety buffer and makes safe remaining unambiguous", async (
     page.getByText("safe to spend", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(/^€2\.00 kept in reserve\./),
+    page.getByText("plus a €2.00 safety buffer", { exact: true }),
   ).toBeVisible();
 
   const capacity = page.getByRole("progressbar", {
@@ -386,7 +386,7 @@ test("starts with a safety buffer and makes safe remaining unambiguous", async (
 
   await expect(capacity).toHaveAttribute(
     "aria-valuetext",
-    /€48\.00 available before your reserve/,
+    "€0.00 in cart of €50.00. €48.00 safe to spend, plus a €2.00 safety buffer.",
   );
 });
 
@@ -420,7 +420,7 @@ test("adjusts budget and safety buffer as one canonical mutation", async ({
   await expect(page.getByText("€0.79", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("over your limit", { exact: true })).toBeVisible();
   await expect(
-    page.getByText("Budget updated. €0.79 over your limit.", {
+    page.getByRole("main").getByText("Budget updated. €0.79 over your limit.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -451,7 +451,7 @@ test("keeps an added item in memory when its persistence write fails", async ({
         if (activeTripWrites === 2) {
           throw new DOMException(
             "Simulated add persistence failure",
-            "QuotaExceededError",
+            "UnknownError",
           );
         }
       }
@@ -523,7 +523,7 @@ test("commits exact price and quantity, persists them, and restores the same car
   ).toBeVisible();
   await expect(page.getByText("€46.13", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("€1.29 × 3", { exact: true })).toBeVisible();
-  await expect(page.getByText("€3.87 added. €46.13 remaining.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main").getByText("€3.87 added. €46.13 left.", { exact: true })).toBeVisible();
 
   const persistedBeforeReload = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)),
@@ -578,7 +578,7 @@ test("edits price and quantity, removes the item, undoes removal, and restores t
   ).toBeVisible();
 
   await page
-    .getByRole("button", { name: "Save correction" })
+    .getByRole("button", { name: "Save changes" })
     .click();
 
   await expect(
@@ -588,7 +588,7 @@ test("edits price and quantity, removes the item, undoes removal, and restores t
     page.getByText("€5.29 × 2", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Item corrected. €39.42 remaining.", {
+    page.getByRole("main").getByText("Item updated. €39.42 left.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -617,7 +617,7 @@ test("edits price and quantity, removes the item, undoes removal, and restores t
     page.getByText("€0.00 of €50.00", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Item removed. €50.00 remaining.", {
+    page.getByRole("main").getByText("Item removed. €50.00 left.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -654,7 +654,7 @@ test("offers one-action Undo, persists the restored cart, and survives reload", 
   await page.getByRole("button", { name: "Add · €4.79" }).click();
 
   await expect(
-    page.getByText("€4.79 added. €45.21 remaining.", { exact: true }),
+    page.getByRole("main").getByText("€4.79 added. €45.21 left.", { exact: true }),
   ).toBeVisible();
 
   const undo = page.getByRole("button", { name: "Undo" });
@@ -662,7 +662,7 @@ test("offers one-action Undo, persists the restored cart, and survives reload", 
   await undo.click();
 
   await expect(
-    page.getByText("Last change undone. €50.00 remaining.", {
+    page.getByRole("main").getByText("Last change undone. €50.00 left.", {
       exact: true,
     }),
   ).toBeVisible();
@@ -689,8 +689,12 @@ test("keeps the complete price-entry fast path inside compact phone viewports", 
   page,
 }) => {
   for (const viewport of [
+    { width: 360, height: 640 },
+    { width: 375, height: 667 },
     { width: 360, height: 800 },
     { width: 390, height: 844 },
+    { width: 414, height: 896 },
+    { width: 430, height: 932 },
   ]) {
     await page.setViewportSize(viewport);
     await page.goto("/");
@@ -700,6 +704,14 @@ test("keeps the complete price-entry fast path inside compact phone viewports", 
 
     await page.getByRole("button", { name: "Add price" }).click();
     await page.getByRole("textbox", { name: "Price" }).fill("4.79");
+
+    const zeroKey = page.getByRole("button", { name: "Digit 0" });
+    const zeroBox = await zeroKey.boundingBox();
+    expect(zeroBox).not.toBeNull();
+
+    if (zeroBox !== null) {
+      expect(zeroBox.y + zeroBox.height).toBeLessThanOrEqual(viewport.height);
+    }
 
     expect(await hasHorizontalOverflow(page)).toBe(false);
 
@@ -724,6 +736,46 @@ test("keeps the complete price-entry fast path inside compact phone viewports", 
       });
 
     expect(sheetFitsWithoutInternalScroll).toBe(true);
+  }
+});
+
+test("never hides a keypad key behind the Add bar, even with a buffer and a quantity", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 360, height: 640 },
+    { width: 375, height: 667 },
+    { width: 412, height: 915 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.getByText("Add a safety buffer", { exact: true }).click();
+    await page.getByLabel("Safety buffer").fill("5");
+    await page.getByRole("button", { name: "€25", exact: true }).click();
+    await page.getByRole("button", { name: "Add price" }).click();
+    await page.getByRole("button", { name: "Increase quantity" }).click();
+
+    for (const key of ["Digit 1", "Digit 2", "Decimal separator", "Digit 4", "Digit 9"]) {
+      await page.getByRole("button", { name: key, exact: true }).click();
+    }
+
+    await expect(page.getByRole("textbox", { name: "Price" })).toHaveValue("12.49");
+    await expect(page.getByRole("button", { name: "Add · €24.98" })).toBeVisible();
+
+    const coveredKeys = await page.getByLabel("Price keypad").evaluate((keypad) =>
+      [...keypad.querySelectorAll("button")]
+        .filter((key) => {
+          const box = key.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+
+          return !(hit === key || key.contains(hit)) || box.bottom > window.innerHeight;
+        })
+        .map((key) => key.getAttribute("aria-label")),
+    );
+
+    expect(coveredKeys).toEqual([]);
   }
 });
 
@@ -755,9 +807,9 @@ test("keeps price entry and over-budget correction usable at 200 percent text", 
   await expect(
     page.getByRole("heading", { name: "Add this price anyway?" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Cancel" }).last()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change price" })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Add anyway · €53.41" }),
+    page.getByRole("button", { name: "Add €53.41 anyway" }),
   ).toBeVisible();
   expect(await hasHorizontalOverflow(page)).toBe(false);
 });
@@ -864,7 +916,7 @@ test("completes the Sprint B flagship exact-money shopping journey", async ({
   await expect(page.getByText("safe to spend", { exact: true })).toBeVisible();
   await expect(
     page.getByText(
-      "Safety buffer reached · €1.44 remains in your nominal budget",
+      "€1.44 of your €2.00 safety buffer left",
       { exact: true },
     ),
   ).toBeVisible();
@@ -879,7 +931,7 @@ test("completes the Sprint B flagship exact-money shopping journey", async ({
   await expect(
     page.getByRole("heading", { name: "Add this price anyway?" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).last().click();
+  await page.getByRole("button", { name: "Change price" }).click();
 
   await expect(page.getByRole("textbox", { name: "Price" })).toHaveValue("2.00");
   await page.getByRole("button", { name: "Clear" }).click();
@@ -909,9 +961,9 @@ test("completes the Sprint B flagship exact-money shopping journey", async ({
     page.getByText("€49.76 of €50.00", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(
-      "Safety buffer reached · €0.24 remains in your nominal budget",
-    ),
+    page.getByText("€0.24 of your €2.00 safety buffer left", {
+      exact: true,
+    }),
   ).toBeVisible();
 });
 
@@ -944,10 +996,8 @@ test("finishes a trip loss-safely, reconciles checkout, persists history, and re
     }),
   ).toBeVisible();
   await expect(
-    page.getByText(
-      "No checkout total added. Your completed trip is still valid.",
-    ),
-  ).toBeVisible();
+    page.getByRole("textbox", { name: "Receipt total" }),
+  ).toHaveValue("");
 
   const persistedAfterFinish = await page.evaluate(
     ({ activeKey, historyKey }) => ({
@@ -971,14 +1021,14 @@ test("finishes a trip loss-safely, reconciles checkout, persists history, and re
   });
 
   await page
-    .getByRole("textbox", { name: "Actual checkout total" })
+    .getByRole("textbox", { name: "Receipt total" })
     .fill("5.00");
   await page
-    .getByRole("button", { name: "Save checkout total" })
+    .getByRole("button", { name: "Save receipt total" })
     .click();
 
   await expect(
-    page.getByText("€0.21 more than the tracked cart."),
+    page.getByText("You paid €0.21 more than your cart total."),
   ).toBeVisible();
 
   const persistedAfterCheckout = await page.evaluate(
@@ -995,10 +1045,10 @@ test("finishes a trip loss-safely, reconciles checkout, persists history, and re
   await expect(
     page.getByRole("heading", { name: "Past shopping trips" }),
   ).toBeVisible();
-  await expect(page.getByText("€4.79 tracked")).toBeVisible();
+  await expect(page.getByText("€4.79 cart total")).toBeVisible();
   await expect(page.getByText("€5.00")).toBeVisible();
   await expect(
-    page.getByText("€0.21 more at checkout"),
+    page.getByText("Paid €0.21 more"),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Back" }).click();
@@ -1021,9 +1071,48 @@ test("finishes a trip loss-safely, reconciles checkout, persists history, and re
   await page
     .getByRole("button", { name: "View trip history · 1" })
     .click();
-  await expect(page.getByText("€4.79 tracked")).toBeVisible();
+  await expect(page.getByText("€4.79 cart total")).toBeVisible();
   await expect(
-    page.getByText("€0.21 more at checkout"),
+    page.getByText("Paid €0.21 more"),
+  ).toBeVisible();
+});
+
+test("adds a forgotten receipt total from trip history and keeps it after reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await startQuickBudget(page);
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("textbox", { name: "Price" }).fill("4.79");
+  await page.getByRole("button", { name: "Add · €4.79" }).click();
+  await page.getByRole("button", { name: "Finish trip" }).click();
+  await page.getByRole("button", { name: "Finish trip" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+
+  await page.getByRole("button", { name: /View trip history/ }).click();
+  await expect(page.getByText("Not added", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Add receipt total" }).click();
+  await page.getByRole("textbox", { name: "Receipt total" }).fill("4.99");
+  await page.keyboard.press("Enter");
+
+  await expect(page.getByRole("main").getByRole("status")).toHaveText(
+    "Receipt total saved.",
+  );
+  await expect(page.getByText("Paid €0.20 more", { exact: true })).toBeVisible();
+
+  await page.reload();
+
+  const saved = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)),
+    HISTORY_KEY,
+  );
+  expect(saved.data.trips[0].actualCheckoutMinor).toBe(499);
+
+  await page.getByRole("button", { name: /View trip history/ }).click();
+  await expect(page.getByText("€4.99", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Change receipt total" }),
   ).toBeVisible();
 });
 
@@ -1182,14 +1271,24 @@ test("repeats the last spending plan immediately and after a later reload", asyn
   expect(repeated.history.data.trips).toHaveLength(1);
 
   await page.getByRole("button", { name: "Finish trip" }).click();
-  await page.getByRole("button", { name: "Finish trip" }).click();
-  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Cancel trip" }).click();
 
   await page.reload();
 
+  const cancelled = await page.evaluate(
+    ({ activeKey, historyKey }) => ({
+      active: localStorage.getItem(activeKey),
+      history: JSON.parse(localStorage.getItem(historyKey)),
+    }),
+    { activeKey: ACTIVE_TRIP_KEY, historyKey: HISTORY_KEY },
+  );
+
+  expect(cancelled.active).toBeNull();
+  expect(cancelled.history.data.trips).toHaveLength(1);
+
   const repeatShortcut = page.getByRole("button", { name: /Shop again/i });
   await expect(repeatShortcut).toContainText("€50.00 budget");
-  await expect(repeatShortcut).toContainText("€2.00 reserve");
+  await expect(repeatShortcut).toContainText("€2.00 safety buffer");
 
   await repeatShortcut.click();
 
@@ -1277,7 +1376,7 @@ test("learns named completed items, reuses remembered prices, and keeps current-
     page.getByText("€1.39 of €50.00", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Remembered · Price memory", { exact: true }),
+    page.getByText("Remembered price", { exact: true }),
   ).toBeVisible();
 
   const memoryAfterReuse = await page.evaluate(
@@ -1318,7 +1417,7 @@ test("learns named completed items, reuses remembered prices, and keeps current-
     cartRegion.getByText("Milk 1L", { exact: true }),
   ).toBeVisible();
   await expect(
-    cartRegion.getByText("Remembered · Price memory", { exact: true }),
+    cartRegion.getByText("Remembered price", { exact: true }),
   ).toHaveCount(0);
 
   await page.getByRole("button", { name: "Finish trip" }).click();
@@ -1673,9 +1772,9 @@ test("never clears the active trip when completed-history persistence fails", as
   await page.getByRole("button", { name: "Finish trip" }).click();
   await page.getByRole("button", { name: "Finish trip" }).click();
 
-  await expect(
-    page.getByRole("alert"),
-  ).toContainText("active trip is still intact");
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Storage for this app is full, so the trip was not saved to History. It is still open: choose Keep shopping to make room, then finish again.",
+  );
 
   const persistedAfterFailure = await page.evaluate(
     ({ activeKey, historyKey }) => ({
@@ -1835,7 +1934,7 @@ test("supports keyboard add and returns focus to the canonical Add price action"
 
   const returnedAddPrice = page.getByRole("button", { name: "Add price" });
   await expect(returnedAddPrice).toBeFocused();
-  await expect(page.getByText("€4.79 added")).toBeVisible();
+  await expect(page.getByRole("main").getByText("€4.79 added")).toBeVisible();
   await expect(
     page.getByText("€4.79 of €50.00", { exact: true }),
   ).toBeVisible();
@@ -1890,5 +1989,82 @@ test("reduced motion keeps the shopping flow functional and removes capacity tra
   expect(durationMs).toBeLessThan(1);
   await expect(
     page.getByRole("button", { name: "Add price" }),
+  ).toBeVisible();
+});
+
+test("keeps what is left in view while scrolling a long cart", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await startQuickBudget(page);
+
+  for (const price of ["1.29", "2.49", "7.95", "5.49", "3.30", "4.10"]) {
+    await page.getByRole("button", { name: "Add price" }).click();
+    await page.getByRole("textbox", { name: "Price" }).fill(price);
+    await page.getByRole("button", { name: `Add · €${price}` }).click();
+  }
+
+  const pinned = page.locator("main > p[aria-hidden='true']");
+  await expect(pinned).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Remove" }).last().scrollIntoViewIfNeeded();
+
+  await expect(pinned).toHaveText("€25.38 left");
+});
+
+test("removes only one item when Remove is double-tapped", async ({ page }) => {
+  await page.goto("/");
+  await startQuickBudget(page);
+
+  for (const price of ["1.29", "2.49", "7.95"]) {
+    await page.getByRole("button", { name: "Add price" }).click();
+    await page.getByRole("textbox", { name: "Price" }).fill(price);
+    await page.getByRole("button", { name: `Add · €${price}` }).click();
+  }
+
+  await page.getByRole("button", { name: "Remove" }).first().dblclick();
+
+  await expect(page.getByRole("button", { name: "Remove" })).toHaveCount(2);
+});
+
+test("closes an open sheet with the browser's Back instead of leaving the app", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await startQuickBudget(page);
+
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("textbox", { name: "Price" }).fill("4");
+  await page.goBack();
+
+  await expect(page.getByRole("heading", { name: "Know what’s left" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Price" })).toHaveCount(0);
+  expect(new URL(page.url()).pathname).toBe("/");
+
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("heading", { name: "Know what’s left" })).toBeVisible();
+
+  await expect
+    .poll(() => page.evaluate(() => window.history.state?.shoppingSheet === true))
+    .toBe(false);
+});
+
+test("returns from trip history to the start screen with Back", async ({ page }) => {
+  await page.goto("/");
+  await startQuickBudget(page);
+  await page.getByRole("button", { name: "Add price" }).click();
+  await page.getByRole("textbox", { name: "Price" }).fill("4.79");
+  await page.getByRole("button", { name: "Add · €4.79" }).click();
+  await page.getByRole("button", { name: "Finish trip" }).click();
+  await page.getByRole("button", { name: "Finish trip" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+
+  await page.getByRole("button", { name: /View trip history/ }).click();
+  await expect(page.getByRole("heading", { name: "Past shopping trips" })).toBeVisible();
+
+  await page.goBack();
+
+  await expect(
+    page.getByRole("heading", { name: "How much can you spend today?" }),
   ).toBeVisible();
 });

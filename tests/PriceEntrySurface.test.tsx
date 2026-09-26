@@ -142,7 +142,7 @@ describe("PriceEntrySurface", () => {
       screen.getByText("After adding: €43.21 safe to spend"),
     ).not.toBeNull();
     expect(
-      screen.getByText("€45.21 remains before your nominal limit."),
+      screen.getByText("Your €2.00 safety buffer stays untouched."),
     ).not.toBeNull();
   });
 
@@ -183,7 +183,7 @@ describe("PriceEntrySurface", () => {
       screen.getByText("This item uses €2.00 of your safety buffer."),
     ).not.toBeNull();
     expect(
-      screen.getByText("€2.00 remains before your nominal limit."),
+      screen.getByText("€2.00 of your €5.00 safety buffer would be left."),
     ).not.toBeNull();
   });
 
@@ -207,7 +207,7 @@ describe("PriceEntrySurface", () => {
       screen.getByText("This item uses €1.00 of your safety buffer."),
     ).not.toBeNull();
     expect(
-      screen.getByText("€1.00 remains before your nominal limit."),
+      screen.getByText("€1.00 of your €2.00 safety buffer would be left."),
     ).not.toBeNull();
     expect(
       screen.queryByRole("heading", { name: "Add this price anyway?" }),
@@ -256,9 +256,17 @@ describe("PriceEntrySurface", () => {
     ).not.toBeNull();
     expect(input.readOnly).toBe(true);
     expect(trip.items).toHaveLength(0);
+    expect(screen.queryByLabelText("Projected cart result")).toBeNull();
+    expect(screen.getAllByText(/over your limit/)).toHaveLength(1);
+    expect(
+      screen.getByRole("region", { name: "Add this price anyway?" })
+        .textContent,
+    ).toContain(
+      "This puts you €3.41 over your limit. The cart would be €53.41 of €50.00. Nothing has been added yet.",
+    );
 
     await user.click(
-      screen.getByRole("button", { name: "Add anyway · €53.41" }),
+      screen.getByRole("button", { name: "Add €53.41 anyway" }),
     );
 
     expect(onValidatedItem).toHaveBeenCalledTimes(1);
@@ -291,7 +299,7 @@ describe("PriceEntrySurface", () => {
     );
 
     await user.click(
-      screen.getAllByRole("button", { name: "Cancel" }).at(-1)!,
+      screen.getByRole("button", { name: "Change price" }),
     );
 
     expect(onValidatedItem).not.toHaveBeenCalled();
@@ -334,6 +342,56 @@ describe("PriceEntrySurface", () => {
     ).toBeNull();
   });
 
+  it("closes on Escape from any control and describes the over-budget choice", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onCancel={onCancel}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Price"), "53.41");
+    await user.click(screen.getByRole("button", { name: "Add · €53.41" }));
+
+    const change = screen.getByRole("button", { name: "Change price" });
+    expect(change.getAttribute("aria-describedby")).toBe("over-budget-detail");
+    expect(document.getElementById("over-budget-detail")?.textContent).toMatch(
+      /€3\.41 over your limit/,
+    );
+
+    await user.click(change);
+    screen.getByRole("button", { name: "Digit 1" }).focus();
+    await user.keyboard("{Escape}");
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains a decimal typed in cents mode in cents-mode terms", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onCancel={vi.fn()}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Cents mode" }));
+    await user.type(screen.getByLabelText("Price"), "4.79");
+
+    expect(
+      screen.getByText("Cents mode takes digits only: 479 for €4.79."),
+    ).not.toBeNull();
+    expect(screen.queryByText("Use a price like 4.79 or 4,79.")).toBeNull();
+  });
+
   it("guards Add anyway from rapid duplicate submission", async () => {
     const user = userEvent.setup();
     const onValidatedItem = vi.fn();
@@ -353,7 +411,7 @@ describe("PriceEntrySurface", () => {
     );
 
     const addAnyway = screen.getByRole("button", {
-      name: "Add anyway · €53.41",
+      name: "Add €53.41 anyway",
     });
 
     await user.dblClick(addAnyway);
@@ -479,7 +537,7 @@ describe("PriceEntrySurface", () => {
       screen.getByText("This item uses €1.50 of your safety buffer."),
     ).not.toBeNull();
     expect(
-      screen.getByText("€0.50 remains before your nominal limit."),
+      screen.getByText("€0.50 of your €2.00 safety buffer would be left."),
     ).not.toBeNull();
     expect(
       screen.queryByRole("heading", { name: "Add this price anyway?" }),
@@ -537,7 +595,7 @@ describe("PriceEntrySurface", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Add anyway · €60.00",
+        name: "Add €60.00 anyway",
       }),
     );
 
@@ -589,7 +647,6 @@ describe("PriceEntrySurface", () => {
     await user.click(screen.getByRole("button", { name: "Digit 9" }));
 
     expect((screen.getByLabelText("Price") as HTMLInputElement).value).toBe("4.79");
-    expect(screen.getByText("€4.79")).not.toBeNull();
 
     await user.click(
       screen.getByRole("button", { name: "Add · €4.79" }),
@@ -635,6 +692,34 @@ describe("PriceEntrySurface", () => {
       screen.getByRole("button", { name: "Add · €1.39" }),
     );
 
+    expect(onValidatedItem).toHaveBeenCalledWith({
+      unitPriceMinor: 139,
+      quantity: 1,
+      label: "Milk 1L",
+    });
+  });
+
+  it("adds the named item when Enter is pressed in the name field", async () => {
+    const user = userEvent.setup();
+    const onValidatedItem = vi.fn();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onCancel={vi.fn()}
+        onValidatedItem={onValidatedItem}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Price"), "1.39");
+    await user.click(screen.getByText("Name for next time", { exact: false }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Item name" }),
+      "Milk 1L{Enter}",
+    );
+
+    expect(onValidatedItem).toHaveBeenCalledTimes(1);
     expect(onValidatedItem).toHaveBeenCalledWith({
       unitPriceMinor: 139,
       quantity: 1,
@@ -801,7 +886,7 @@ describe("PriceEntrySurface", () => {
 
     expect(centsMode.getAttribute("aria-pressed")).toBe("true");
     expect(
-      screen.getByText("Fast entry: 479 becomes €4.79."),
+      screen.getByText("Cents mode: type 249 for €2.49."),
     ).not.toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Digit 4" }));
@@ -809,8 +894,8 @@ describe("PriceEntrySurface", () => {
     await user.click(screen.getByRole("button", { name: "Digit 9" }));
 
     expect(screen.getByText("€4.79")).not.toBeNull();
-    expect((screen.getByRole("button", { name: "Euros" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((centsMode as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Euros" }).getAttribute("aria-disabled")).toBe("true");
+    expect(centsMode.getAttribute("aria-disabled")).toBe("true");
 
     await user.click(
       screen.getByRole("button", { name: "Add · €4.79" }),
@@ -820,6 +905,135 @@ describe("PriceEntrySurface", () => {
       unitPriceMinor: 479,
       quantity: 1,
     });
+  });
+
+  it("explains how to switch mode once a price is typed, and switches after Clear", async () => {
+    const user = userEvent.setup();
+    const onModeChange = vi.fn();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onModeChange={onModeChange}
+        onCancel={vi.fn()}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Digit 2" }));
+    await user.click(screen.getByRole("button", { name: "Digit 4" }));
+    await user.click(screen.getByRole("button", { name: "Digit 9" }));
+    await user.click(screen.getByRole("button", { name: "Cents mode" }));
+
+    const hint = (): HTMLElement | null =>
+      document.getElementById(
+        screen.getByRole("group", { name: "Price entry mode" }).getAttribute("aria-describedby") ??
+          "",
+      );
+    expect(hint()?.textContent).toBe("Clear the price to switch to cents.");
+    expect(hint()?.hasAttribute("data-shown")).toBe(true);
+    expect(screen.getByLabelText("Price keypad").nextElementSibling?.textContent).toBe(
+      "Clear the price to switch to cents.",
+    );
+    expect(onModeChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Euros" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(hint()?.textContent).toBe("Cents mode needs no decimal point.");
+    expect(hint()?.hasAttribute("data-shown")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Cents mode" }));
+
+    expect(onModeChange).toHaveBeenCalledWith("auto-cents");
+    expect(
+      screen.getByRole("button", { name: "Cents mode" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("does not repeat a typed amount that already reads as money", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onCancel={vi.fn()}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    const status = (): string =>
+      document.getElementById(
+        screen.getByRole("textbox", { name: "Price" }).getAttribute("aria-describedby") ?? "",
+      )?.textContent ?? "";
+
+    await user.type(screen.getByRole("textbox", { name: "Price" }), "4.99");
+    expect(status()).toBe("");
+
+    await user.clear(screen.getByRole("textbox", { name: "Price" }));
+    await user.type(screen.getByRole("textbox", { name: "Price" }), "4,9");
+    expect(status()).toBe("€4.90");
+  });
+
+  it("reads back what the keypad has entered for screen reader users", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onCancel={vi.fn()}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    const echo = (): string => {
+      const region = screen.getByLabelText("Price keypad").nextElementSibling;
+      expect(region?.getAttribute("aria-live")).toBe("polite");
+      return region?.textContent ?? "";
+    };
+
+    expect(echo()).toBe("");
+
+    await user.click(screen.getByRole("button", { name: "Digit 4" }));
+    await user.click(screen.getByRole("button", { name: "Decimal separator" }));
+    await user.click(screen.getByRole("button", { name: "Digit 7" }));
+
+    expect(echo()).toBe("Price 4.7");
+
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(echo()).toBe("Price cleared");
+  });
+
+  it("opens in the mode the shopper chose last and reports a change of mode", async () => {
+    const user = userEvent.setup();
+    const onModeChange = vi.fn();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        initialMode="auto-cents"
+        onModeChange={onModeChange}
+        onCancel={vi.fn()}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Cents mode" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(screen.getByText("Cents mode: type 249 for €2.49.")).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Euros" }));
+
+    expect(onModeChange).toHaveBeenCalledWith("decimal");
+    expect(screen.getByText("Type the price, like 2.49. A name is optional.")).not.toBeNull();
   });
 
   it("does not auto-open the software keyboard on coarse-pointer devices", async () => {

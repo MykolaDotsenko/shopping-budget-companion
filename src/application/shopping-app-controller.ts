@@ -4,6 +4,7 @@ import {
   rememberedPriceForLabel,
   upsertBarcodeLink,
 } from "../domain/barcode-link";
+import type { MinorUnits } from "../domain/money";
 import {
   parseProductCode,
   type BarcodeSymbology,
@@ -14,6 +15,7 @@ import {
   createCartItem,
   latestTripTimestamp,
   laterTimestamp,
+  mergeTripChanges,
   reduceTrip,
   sameTripContents,
   type ActiveTrip,
@@ -109,6 +111,7 @@ export const createShoppingAppController = ({
   barcodeLinkPersistence = EMPTY_BARCODE_LINK_PERSISTENCE_PORT,
 }: ShoppingAppControllerDependencies): ShoppingAppController => {
   let state = initialState();
+  let durableTrip: ActiveTrip | null = null;
   const listeners = new Set<() => void>();
   const ports: CompletionPorts & { barcodeLinks: BarcodeLinkPersistencePort } = {
     persistence,
@@ -118,6 +121,10 @@ export const createShoppingAppController = ({
 
   const publish = (nextState: ShoppingAppState): ShoppingAppState => {
     state = freezeState(nextState);
+
+    if (state.persistence.status === "healthy") {
+      durableTrip = state.activeTrip;
+    }
 
     for (const listener of listeners) {
       listener();
@@ -154,15 +161,9 @@ export const createShoppingAppController = ({
     ids,
   });
 
-  const bootstrap = (): ShoppingAppState => {
-    if (
-      state.lifecycle !== "booting" &&
-      state.lifecycle !== "recovery"
-    ) {
-      return state;
-    }
-
+  const loadPersistedState = (): ShoppingAppState => {
     const result = ports.persistence.bootstrap();
+    durableTrip = result.activeTrip;
     const memoryResult = ports.priceMemory.bootstrap();
     const linkResult = ports.barcodeLinks.bootstrap();
     const bootstrapIssueTime =
@@ -193,7 +194,7 @@ export const createShoppingAppController = ({
           );
 
     if (result.ok) {
-      return publish({
+      return {
         lifecycle: result.activeTrip === null ? "idle" : "active",
         activeTrip: result.activeTrip,
         completedSummary: null,
@@ -207,14 +208,14 @@ export const createShoppingAppController = ({
         barcodeLinkPersistence: linkHealth,
         undo: null,
         recovery: null,
-      });
+      };
     }
 
     const since = bootstrapIssueTime ?? clock.now();
     const persistenceHealth = degradedPersistence(result.issue, since);
 
     if (result.recoveryRequired) {
-      return publish({
+      return {
         lifecycle: "recovery",
         activeTrip: null,
         completedSummary: null,
@@ -231,10 +232,10 @@ export const createShoppingAppController = ({
           result.issue,
           result.recoveryRaw,
         ),
-      });
+      };
     }
 
-    return publish({
+    return {
       lifecycle: result.activeTrip === null ? "idle" : "active",
       activeTrip: result.activeTrip,
       completedSummary: null,
@@ -248,8 +249,154 @@ export const createShoppingAppController = ({
       barcodeLinkPersistence: linkHealth,
       undo: null,
       recovery: null,
-    });
+    };
   };
+
+  const bootstrap = (): ShoppingAppState => {
+    if (
+      state.lifecycle !== "booting" &&
+      state.lifecycle !== "recovery"
+    ) {
+      return state;
+    }
+
+    return publish(loadPersistedState());
+  };
+
+  const changedElsewhere = (): boolean =>
+    ports.persistence.isCurrent?.() === false ||
+    ports.priceMemory.isCurrent?.() === false ||
+    ports.barcodeLinks.isCurrent?.() === false;
+
+  const reconcileUnsavedTrip = (): AppCommandResult => {
+    const previous = state;
+    const mine = previous.activeTrip;
+
+    if (previous.lifecycle !== "active" || mine === null) {
+      return success(state, false, "unchanged");
+    }
+
+    const base = durableTrip?.id === mine.id ? durableTrip : null;
+    const loaded = loadPersistedState();
+
+    if (loaded.lifecycle === "recovery") {
+      return success(publish(loaded), true, "persisted");
+    }
+
+    const theirs = loaded.activeTrip;
+    const next =
+      theirs === null
+        ? loaded.completedTrips.some((trip) => trip.id === mine.id)
+          ? null
+          : mine
+        : theirs.id === mine.id
+          ? mergeTripChanges(base ?? theirs, mine, theirs)
+          : null;
+
+    if (next === null) {
+      return success(publish({ ...loaded, undo: null }), true, "persisted");
+    }
+
+    const saved = theirs !== null && sameTripContents(next, theirs);
+
+    publish({
+      ...loaded,
+      lifecycle: "active",
+      activeTrip: next,
+      completedSummary: null,
+      persistence: saved ? loaded.persistence : previous.persistence,
+      undo: sameTripContents(next, mine) ? previous.undo : null,
+    });
+
+    return success(state, true, saved ? "persisted" : "memory-only");
+  };
+
+  const refreshFromStorage = (): AppCommandResult => {
+    if (
+      state.lifecycle === "booting" ||
+      state.lifecycle === "recovery" ||
+      sessionOnly() ||
+      state.completionCleanupPending ||
+      !changedElsewhere()
+    ) {
+      return success(state, false, "unchanged");
+    }
+
+    if (state.persistence.status !== "healthy") {
+      return reconcileUnsavedTrip();
+    }
+
+    const previous = state;
+    const loaded = loadPersistedState();
+
+    if (loaded.lifecycle === "recovery") {
+      return success(publish(loaded), true, "persisted");
+    }
+
+    const open = previous.activeTrip;
+
+    if (
+      open !== null &&
+      open.items.length > 0 &&
+      loaded.activeTrip === null &&
+      !loaded.completedTrips.some(
+        (trip) => trip.id === open.id || sameTripContents(trip, open),
+      )
+    ) {
+      const now = clock.now();
+      const saveResult = ports.persistence.save(open, now);
+      const nextState = publish({
+        ...loaded,
+        lifecycle: "active",
+        activeTrip: open,
+        completedSummary: null,
+        persistence: saveResult.ok
+          ? HEALTHY_PERSISTENCE
+          : degradedPersistence(saveResult.issue, now),
+        undo: previous.undo,
+      });
+
+      return success(
+        nextState,
+        true,
+        saveResult.ok ? "persisted" : "memory-only",
+      );
+    }
+
+    const summary =
+      loaded.activeTrip === null && previous.completedSummary !== null
+        ? (loaded.completedTrips.find(
+            (trip) => trip.id === previous.completedSummary?.id,
+          ) ?? previous.completedSummary)
+        : null;
+    const keepUndo =
+      previous.undo !== null &&
+      previous.activeTrip !== null &&
+      loaded.activeTrip !== null &&
+      previous.activeTrip.id === loaded.activeTrip.id &&
+      sameTripContents(previous.activeTrip, loaded.activeTrip);
+    const nextState = publish({
+      ...loaded,
+      lifecycle:
+        loaded.activeTrip !== null
+          ? "active"
+          : summary !== null && previous.lifecycle === "completed-summary"
+            ? "completed-summary"
+            : "idle",
+      completedSummary:
+        previous.lifecycle === "completed-summary" ? summary : null,
+      undo: keepUndo ? previous.undo : null,
+    });
+
+    return success(nextState, true, "persisted");
+  };
+
+  const synced =
+    <A extends readonly unknown[], R>(command: (...args: A) => R) =>
+    (...args: A): R => {
+      refreshFromStorage();
+      return command(...args);
+    };
 
   const createAndPersistActiveTrip = (
     input: StartTripInput,
@@ -350,6 +497,34 @@ export const createShoppingAppController = ({
       budgetMinor: source.budgetMinor,
       safetyBufferMinor: source.safetyBufferMinor,
     });
+  };
+
+  const discardEmptyTrip = (): AppCommandResult => {
+    const active = requireActiveTrip(state);
+
+    if (!active.ok) {
+      return failure(state, active.error);
+    }
+
+    if (active.trip.items.length > 0) {
+      return failure(state, applicationError("trip-not-empty"));
+    }
+
+    const keepsStorage = sessionOnly();
+
+    if (!keepsStorage && !ports.persistence.clearCompletedActive().ok) {
+      return failure(state, applicationError("discard-not-saved"));
+    }
+
+    const nextState = publish({
+      ...state,
+      lifecycle: "idle",
+      activeTrip: null,
+      persistence: keepsStorage ? state.persistence : HEALTHY_PERSISTENCE,
+      undo: null,
+    });
+
+    return success(nextState, true, keepsStorage ? "memory-only" : "persisted");
   };
 
   const addManualItem = (
@@ -705,6 +880,120 @@ export const createShoppingAppController = ({
     return replaceCompletedHistory((durable) =>
       durable.filter((trip) => trip.id !== tripId),
     );
+  };
+
+  const setCompletedTripCheckout = (
+    tripId: TripId,
+    actualCheckoutMinor: MinorUnits,
+  ): AppCommandResult => {
+    const existing = state.completedTrips.find(
+      (trip) => trip.id === tripId,
+    );
+
+    if (existing === undefined) {
+      return failure(
+        state,
+        applicationError("completed-trip-not-found"),
+      );
+    }
+
+    if (existing.actualCheckoutMinor === actualCheckoutMinor) {
+      return success(state, false, "unchanged");
+    }
+
+    const updated = reduceTrip(existing, {
+      type: "set-actual-checkout",
+      actualCheckoutMinor,
+    });
+
+    if (!updated.ok) {
+      return failure(state, updated.error);
+    }
+
+    const trip: CompletedTrip = { ...existing, actualCheckoutMinor };
+    const result = replaceCompletedHistory((durable) =>
+      durable.map((candidate) => (candidate.id === tripId ? trip : candidate)),
+    );
+
+    if (!result.ok || state.completedSummary?.id !== tripId) {
+      return result;
+    }
+
+    return success(
+      publish({ ...state, completedSummary: trip }),
+      true,
+      result.durability,
+    );
+  };
+
+  const deleteOldestCompletedTrips = (count: number): AppCommandResult => {
+    const blocked = lifecycleBlock(state);
+
+    if (blocked !== null) {
+      return failure(state, blocked);
+    }
+
+    if (
+      sessionOnly() ||
+      state.historyIntegrity.status === "degraded" ||
+      state.completionCleanupPending
+    ) {
+      return failure(
+        state,
+        applicationError("history-write-unavailable"),
+      );
+    }
+
+    const durable = ports.persistence.readCompletedHistory();
+
+    if (!durable.ok) {
+      return failure(
+        markHistoryUnreadable(durable.issue, durable.completedTrips),
+        applicationError("history-write-unavailable"),
+      );
+    }
+
+    const keptSummaryId = state.completedSummary?.id;
+    const removed = new Set(
+      durable.completedTrips
+        .filter((trip) => trip.id !== keptSummaryId)
+        .sort(
+          (left, right) =>
+            Date.parse(left.completedAt) - Date.parse(right.completedAt),
+        )
+        .slice(0, Math.max(0, count))
+        .map((trip) => trip.id),
+    );
+
+    if (removed.size === 0) {
+      return failure(
+        state,
+        applicationError("completed-trip-not-found"),
+      );
+    }
+
+    const nextTrips = durable.completedTrips.filter(
+      (trip) => !removed.has(trip.id),
+    );
+    const saveResult = ports.persistence.replaceCompletedHistory(
+      nextTrips,
+      clock.now(),
+    );
+
+    if (!saveResult.ok) {
+      return failure(
+        saveResult.stage === "history-read"
+          ? markHistoryUnreadable(saveResult.issue, durable.completedTrips)
+          : state,
+        applicationError("history-write-unavailable"),
+      );
+    }
+
+    publish({ ...state, completedTrips: Object.freeze([...nextTrips]) });
+
+    return state.persistence.status === "healthy"
+      ? success(state, true, "persisted")
+      : retryPersistence();
   };
 
   const clearCompletedHistory = (): AppCommandResult => {
@@ -1136,26 +1425,30 @@ export const createShoppingAppController = ({
     getSnapshot,
     subscribe,
     bootstrap,
-    startTrip,
-    startTripFromCompleted,
-    addManualItem,
-    addRememberedItem,
-    updateSpendingPlan,
-    updateManualItem,
-    removeItem,
-    undo,
-    completeTrip,
-    setActualCheckout,
-    dismissCompletedSummary,
-    deleteCompletedTrip,
-    clearCompletedHistory,
-    clearPriceMemory,
-    retryPersistence,
-    retryHistoryRead,
+    refreshFromStorage,
+    startTrip: synced(startTrip),
+    startTripFromCompleted: synced(startTripFromCompleted),
+    discardEmptyTrip: synced(discardEmptyTrip),
+    addManualItem: synced(addManualItem),
+    addRememberedItem: synced(addRememberedItem),
+    updateSpendingPlan: synced(updateSpendingPlan),
+    updateManualItem: synced(updateManualItem),
+    removeItem: synced(removeItem),
+    undo: synced(undo),
+    completeTrip: synced(completeTrip),
+    setActualCheckout: synced(setActualCheckout),
+    dismissCompletedSummary: synced(dismissCompletedSummary),
+    deleteCompletedTrip: synced(deleteCompletedTrip),
+    setCompletedTripCheckout: synced(setCompletedTripCheckout),
+    deleteOldestCompletedTrips: synced(deleteOldestCompletedTrips),
+    clearCompletedHistory: synced(clearCompletedHistory),
+    clearPriceMemory: synced(clearPriceMemory),
+    retryPersistence: synced(retryPersistence),
+    retryHistoryRead: synced(retryHistoryRead),
     setAsideDamagedHistory,
     setAsideUnreadableActiveTrip,
     continueWithoutSaving,
-    dispatch,
-    identifyBarcode,
+    dispatch: synced(dispatch),
+    identifyBarcode: synced(identifyBarcode),
   });
 };

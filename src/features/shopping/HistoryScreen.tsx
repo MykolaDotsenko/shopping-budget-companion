@@ -50,6 +50,11 @@ export function HistoryScreen({
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const confirmationCancelRef = useRef<HTMLButtonElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
+  const canRepeat =
+    (state.persistence.status === "healthy" ||
+      isSessionOnly(state.persistence)) &&
+    !state.completionCleanupPending;
   const canChangeHistory =
     state.persistence.status === "healthy" &&
     state.historyIntegrity.status === "healthy" &&
@@ -135,6 +140,9 @@ export function HistoryScreen({
 
     setConfirmation({ kind: "none" });
     setStatusMessage("Trip deleted from this device.");
+    queueMicrotask(() => {
+      statusRef.current?.focus();
+    });
   };
 
   const clearHistory = (): void => {
@@ -150,6 +158,9 @@ export function HistoryScreen({
 
     setConfirmation({ kind: "none" });
     setStatusMessage("Trip history cleared from this device.");
+    queueMicrotask(() => {
+      statusRef.current?.focus();
+    });
   };
 
   const clearPriceMemory = (): void => {
@@ -165,6 +176,9 @@ export function HistoryScreen({
 
     setConfirmation({ kind: "none" });
     setStatusMessage("Remembered item prices cleared from this device.");
+    queueMicrotask(() => {
+      statusRef.current?.focus();
+    });
   };
 
   const dataConfirmation: HistoryDataConfirmation =
@@ -186,10 +200,11 @@ export function HistoryScreen({
           </button>
           <div>
             <p className={styles.eyebrow}>Trip history</p>
-            <h1 id="history-title">Past shopping trips</h1>
+            <h1 id="history-title" tabIndex={-1}>
+              Past shopping trips
+            </h1>
             <p>
-              A simple record of what you tracked and, when provided,
-              what checkout actually cost.
+              Your past trips and, when you added one, the receipt total.
             </p>
           </div>
         </header>
@@ -202,7 +217,13 @@ export function HistoryScreen({
         <HistoryIntegrityNotice controller={controller} />
 
         {statusMessage ? (
-          <p className={styles.status} role="status" aria-live="polite">
+          <p
+            ref={statusRef}
+            className={styles.status}
+            role="status"
+            aria-live="polite"
+            tabIndex={-1}
+          >
             {statusMessage}
           </p>
         ) : null}
@@ -226,6 +247,7 @@ export function HistoryScreen({
                 trip={trip}
                 locale={locale}
                 canChangeHistory={canChangeHistory}
+                canRepeat={canRepeat}
                 deleting={
                   confirmation.kind === "delete-trip" &&
                   confirmation.tripId === trip.id
@@ -241,6 +263,13 @@ export function HistoryScreen({
                 }}
                 onCancelDelete={cancelConfirmation}
                 onConfirmDelete={deleteTrip}
+                onSaveCheckout={(candidate, actualCheckoutMinor) => {
+                  resetMessages();
+                  return controller.setCompletedTripCheckout(
+                    candidate.id,
+                    actualCheckoutMinor,
+                  ).ok;
+                }}
               />
             ))}
           </ol>

@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   formatEur,
+  moneyInputValue,
   signedMinorUnits,
   type MinorUnits,
   type SignedMinorUnits,
@@ -22,9 +23,11 @@ import {
 } from "./price-entry-draft";
 import {
   canIncreaseQuantity,
+  canDecreaseQuantity,
   decreaseQuantity,
   increaseQuantity,
 } from "./quantity-draft";
+import { trustLabel } from "./item-trust";
 import styles from "./ItemEditSurface.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
 
@@ -43,12 +46,6 @@ export interface ItemEditSurfaceProps {
   readonly locale?: string;
 }
 
-const rawPrice = (minor: MinorUnits): string => {
-  const euros = Math.floor(minor / 100);
-  const cents = minor % 100;
-  return `${euros}.${String(cents).padStart(2, "0")}`;
-};
-
 const absoluteMoney = (value: number): SignedMinorUnits => {
   const result = signedMinorUnits(Math.abs(value));
 
@@ -59,39 +56,7 @@ const absoluteMoney = (value: number): SignedMinorUnits => {
   return result.value;
 };
 
-const confidenceLabel = (item: CartItem): string => {
-  switch (item.priceConfidence.kind) {
-    case "confirmed":
-      return "Confirmed";
-    case "remembered":
-      return "Remembered";
-    case "estimated":
-      return "Estimated";
-    default: {
-      const exhaustive: never = item.priceConfidence;
-      return exhaustive;
-    }
-  }
-};
-
-const sourceLabel = (item: CartItem): string => {
-  switch (item.priceSource.kind) {
-    case "manual":
-      return "manual";
-    case "price-memory":
-      return "price memory";
-    case "shelf-scan":
-      return "shelf scan";
-    case "encoded-barcode":
-      return "barcode";
-    case "retailer-feed":
-      return "retailer feed";
-    default: {
-      const exhaustive: never = item.priceSource;
-      return exhaustive;
-    }
-  }
-};
+const GHOST_TAP_MS = 500;
 
 export function ItemEditSurface({
   trip,
@@ -102,13 +67,19 @@ export function ItemEditSurface({
   locale = SHOPPING_LOCALE,
 }: ItemEditSurfaceProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const openedAt = useRef(Number.POSITIVE_INFINITY);
+
+  useEffect(() => {
+    openedAt.current = performance.now();
+  }, []);
+
   const [draft, setDraft] = useState<PriceEntryDraft>(() => ({
-    raw: rawPrice(item.unitPriceMinor),
+    raw: moneyInputValue(item.unitPriceMinor),
     mode: "decimal",
   }));
   const [quantity, setQuantity] = useState(item.quantity);
   const [label, setLabel] = useState(item.label ?? "");
-  const [labelError, setLabelError] = useState("");
+  const [labelNotice, setLabelNotice] = useState("");
   const [submissionError, setSubmissionError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -148,12 +119,7 @@ export function ItemEditSurface({
       canonicalLabel !== item.label);
 
   const submit = (): void => {
-    if (
-      validPrice === null ||
-      !changed ||
-      submitted ||
-      labelError !== ""
-    ) {
+    if (validPrice === null || !changed || submitted) {
       return;
     }
 
@@ -167,7 +133,7 @@ export function ItemEditSurface({
     });
 
     if (accepted === false) {
-      setSubmissionError("Could not save this correction. Try again.");
+      setSubmissionError("Could not save these changes. Try again.");
       return;
     }
 
@@ -191,16 +157,19 @@ export function ItemEditSurface({
       projectionSecondary = `${formatEur(
         absoluteMoney(nominal),
         locale,
-      )} remains in your nominal budget.`;
+      )} of your ${formatEur(
+        projectedTrip.safetyBufferMinor,
+        locale,
+      )} safety buffer would be left.`;
     } else if (projectedTrip.safetyBufferMinor > 0) {
       projectionPrimary = `After saving: ${formatEur(
         absoluteMoney(safe),
         locale,
       )} safe to spend`;
-      projectionSecondary = `${formatEur(
-        absoluteMoney(nominal),
+      projectionSecondary = `Your ${formatEur(
+        projectedTrip.safetyBufferMinor,
         locale,
-      )} remains before your nominal limit.`;
+      )} safety buffer stays untouched.`;
     } else {
       projectionPrimary = `After saving: ${formatEur(
         absoluteMoney(nominal),
@@ -224,11 +193,20 @@ export function ItemEditSurface({
         : "";
 
   return (
-    <main className={styles.screen} aria-labelledby="edit-item-title">
+    <main
+      className={styles.screen}
+      aria-labelledby="edit-item-title"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onCancel();
+        }
+      }}
+    >
       <section className={styles.sheet}>
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>Correct item</p>
+            <p className={styles.eyebrow}>Edit item</p>
             <h1 id="edit-item-title">
               {item.label ?? "Edit price and quantity"}
             </h1>
@@ -243,7 +221,7 @@ export function ItemEditSurface({
         </header>
 
         <p className={styles.trust}>
-          {confidenceLabel(item)} · {sourceLabel(item)}
+          {trustLabel(item)}
         </p>
 
         <label className={styles.field}>
@@ -252,25 +230,22 @@ export function ItemEditSurface({
             value={label}
             autoComplete="off"
             spellCheck={false}
-            placeholder="Milk 1L"
-            aria-invalid={Boolean(labelError)}
+            placeholder="e.g. Milk 1L"
             onChange={(event) => {
-              const next = event.currentTarget.value;
+              const characters = [...event.currentTarget.value];
+              const tooLong = characters.length > MAX_ITEM_LABEL_CODE_POINTS;
 
-              if ([...next].length > MAX_ITEM_LABEL_CODE_POINTS) {
-                setLabelError(
-                  `Keep the name within ${MAX_ITEM_LABEL_CODE_POINTS} characters.`,
-                );
-                return;
-              }
-
-              setLabel(next);
-              setLabelError("");
+              setLabel(characters.slice(0, MAX_ITEM_LABEL_CODE_POINTS).join(""));
+              setLabelNotice(
+                tooLong
+                  ? `Names stop at ${MAX_ITEM_LABEL_CODE_POINTS} characters; the rest was left out.`
+                  : "",
+              );
             }}
           />
-          {labelError ? (
-            <small className={styles.error} role="alert">
-              {labelError}
+          {labelNotice ? (
+            <small className={styles.error} role="status">
+              {labelNotice}
             </small>
           ) : null}
         </label>
@@ -299,11 +274,6 @@ export function ItemEditSurface({
                   event.preventDefault();
                   submit();
                 }
-
-                if (event.key === "Escape") {
-                  event.preventDefault();
-                  onCancel();
-                }
               }}
             />
           </div>
@@ -320,22 +290,13 @@ export function ItemEditSurface({
         >
           <div>
             <span id="edit-quantity-title">Quantity</span>
-            <small>Changes apply immediately when you save.</small>
           </div>
           <div className={styles.stepper}>
             <button
               type="button"
-              aria-label={
-                quantity === 1
-                  ? "Remove item by decreasing quantity"
-                  : "Decrease edited quantity"
-              }
+              aria-label="Decrease edited quantity"
+              disabled={!canDecreaseQuantity(quantity)}
               onClick={() => {
-                if (quantity === 1) {
-                  onRemove();
-                  return;
-                }
-
                 setQuantity((current) => decreaseQuantity(current));
               }}
             >
@@ -362,11 +323,6 @@ export function ItemEditSurface({
           </section>
         ) : null}
 
-        <p className={styles.guidance}>
-          Correcting a price records your manual value as confirmed.
-          Quantity-only changes keep the existing price provenance.
-        </p>
-
         {submissionError ? (
           <p className={styles.error} role="alert">
             {submissionError}
@@ -376,15 +332,22 @@ export function ItemEditSurface({
         <button
           type="button"
           className={styles.saveButton}
-          disabled={
-            !changed ||
-            validPrice === null ||
-            submitted ||
-            labelError !== ""
-          }
+          disabled={!changed || validPrice === null || submitted}
           onClick={submit}
         >
-          {submitted ? "Saving…" : "Save correction"}
+          {submitted ? "Saving…" : "Save changes"}
+        </button>
+
+        <button
+          type="button"
+          className={styles.removeButton}
+          onClick={(event) => {
+            if (event.timeStamp - openedAt.current >= GHOST_TAP_MS) {
+              onRemove();
+            }
+          }}
+        >
+          Remove item
         </button>
       </section>
     </main>

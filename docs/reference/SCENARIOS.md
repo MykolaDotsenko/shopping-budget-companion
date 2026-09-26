@@ -53,6 +53,7 @@ Across all scenarios:
 ### Reliability
 
 - **Storage write fails mid-trip** — visible degraded durability.
+- **Browser storage is full** — the cause is named; the oldest trips can be removed to make room, only after confirmation, even mid-trip.
 - **Reload after successful mutation** — state restores.
 - **History write fails during finish** — active trip is not erased.
 - **Active clear fails after history succeeds** — completion remains durable; cleanup pending is exposed.
@@ -61,8 +62,10 @@ Across all scenarios:
 ### Completion / repeat
 
 - **Finish trip** — durable completion before active cleanup.
+- **Started a trip by mistake** — an empty trip can be cancelled without a €0 history entry.
 - **Actual checkout nearly matches** — optional reconciliation is clear.
 - **Actual checkout differs** — difference is visible without rewriting items.
+- **Receipt total forgotten or mistyped** — it can be added or corrected later from history.
 - **View history** — enough context, no finance-dashboard scope.
 - **Shop again** — fresh empty trip using prior spending-plan context.
 - **Price Memory reuse** — remembered value remains clearly remembered.
@@ -99,6 +102,7 @@ These capabilities are **IMPLEMENTED**. None of them is required to complete the
 
 **IMPLEMENTED** (FR-029). Install, precache and offline restore are covered by `e2e/pwa.spec.js`.
 
+- install offered on the start screen, never mid-trip; on Safari for iPhone only before anything is saved there;
 - offline launch after prior cache/install;
 - update while active trip exists;
 - service-worker failure without business-state loss.

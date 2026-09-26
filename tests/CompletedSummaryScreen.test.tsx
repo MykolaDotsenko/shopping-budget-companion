@@ -121,7 +121,7 @@ const createController = (
 };
 
 describe("CompletedSummaryScreen", () => {
-  it("keeps actual checkout optional and explains that the completed trip is valid", () => {
+  it("keeps the receipt total optional without pre-filling or nagging", () => {
     const { controller, trip } = createController();
 
     render(
@@ -136,11 +136,51 @@ describe("CompletedSummaryScreen", () => {
     );
 
     expect(screen.getByText("€4.79")).not.toBeNull();
-    expect(
-      screen.getByText(
-        "No checkout total added. Your completed trip is still valid.",
-      ),
-    ).not.toBeNull();
+    const receipt = screen.getByRole("textbox", { name: "Receipt total" });
+    expect((receipt as HTMLInputElement).value).toBe("");
+    expect(receipt.getAttribute("placeholder")).toBe("0.00");
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("states how the finished trip ended against its budget", () => {
+    const { controller, trip } = createController();
+
+    render(
+      <CompletedSummaryScreen
+        controller={controller}
+        trip={trip}
+        onDone={vi.fn()}
+        onShopAgain={vi.fn()}
+        onViewHistory={vi.fn()}
+        locale="en-IE"
+      />,
+    );
+
+    const outcome = screen.getByText("€45.21 under budget");
+
+    expect(outcome.getAttribute("data-outcome")).toBe("under");
+  });
+
+  it("judges the budget on what was paid once the receipt total is in", async () => {
+    const user = userEvent.setup();
+    const { controller, trip } = createController();
+
+    render(
+      <CompletedSummaryScreen
+        controller={controller}
+        trip={trip}
+        onDone={vi.fn()}
+        onShopAgain={vi.fn()}
+        onViewHistory={vi.fn()}
+        locale="en-IE"
+      />,
+    );
+
+    await user.type(screen.getByRole("textbox", { name: "Receipt total" }), "53.17");
+    await user.click(screen.getByRole("button", { name: "Save receipt total" }));
+
+    const outcome = screen.getByText("Paid €3.17 over budget");
+    expect(outcome.getAttribute("data-outcome")).toBe("over");
   });
 
   it("starts a fresh trip from the completed budget in one action", async () => {
@@ -193,20 +233,20 @@ describe("CompletedSummaryScreen", () => {
 
     await user.type(
       screen.getByRole("textbox", {
-        name: "Actual checkout total",
+        name: "Receipt total",
       }),
       "5.00",
     );
     await user.click(
       screen.getByRole("button", {
-        name: "Save checkout total",
+        name: "Save receipt total",
       }),
     );
 
     expect(
-      screen.getByText("€0.21 more than the tracked cart."),
+      screen.getByText("You paid €0.21 more than your cart total."),
     ).not.toBeNull();
-    expect(screen.getByText("Checkout total saved.")).not.toBeNull();
+    expect(screen.getByText("Receipt total saved.")).not.toBeNull();
     expect(
       controller.getSnapshot().completedSummary?.actualCheckoutMinor,
     ).toBe(500);
@@ -239,13 +279,13 @@ describe("CompletedSummaryScreen", () => {
 
     await user.type(
       screen.getByRole("textbox", {
-        name: "Actual checkout total",
+        name: "Receipt total",
       }),
       "5.00",
     );
     await user.click(
       screen.getByRole("button", {
-        name: "Save checkout total",
+        name: "Save receipt total",
       }),
     );
     await user.click(screen.getByRole("button", { name: "Shop again" }));
@@ -283,13 +323,13 @@ describe("CompletedSummaryScreen", () => {
 
     await user.type(
       screen.getByRole("textbox", {
-        name: "Actual checkout total",
+        name: "Receipt total",
       }),
       "5.00",
     );
     await user.click(
       screen.getByRole("button", {
-        name: "Save checkout total",
+        name: "Save receipt total",
       }),
     );
     await user.click(screen.getByRole("button", { name: "Done" }));

@@ -120,7 +120,7 @@ const sameFlatRecord = (left: object, right: object): boolean => {
 const withoutEditTime = (confidence: PriceConfidence): object =>
   confidence.kind === "confirmed" ? { kind: confidence.kind } : confidence;
 
-const sameCartItem = (left: CartItem, right: CartItem): boolean =>
+export const sameCartItem = (left: CartItem, right: CartItem): boolean =>
   left.id === right.id &&
   left.unitPriceMinor === right.unitPriceMinor &&
   left.quantity === right.quantity &&

@@ -17,7 +17,7 @@
 
 This document owns storage shapes and the validation order. Persistence rules — completion ordering, startup reconciliation, recovery, deletion and write failures — live in [../architecture/DATA-PERSISTENCE.md](../architecture/DATA-PERSISTENCE.md).
 
-The appearance preference is the only settings record. No other settings/meta records are defined until a real requirement exists.
+Four convenience preferences are the only settings records: appearance, scan mode, price entry mode and the install offer. No other settings/meta records are defined until a real requirement exists.
 
 ## Goals
 
@@ -38,15 +38,25 @@ budget-cart:price-memory
 budget-cart:barcode-links
 budget-cart:set-aside:<source>:<setAsideAt>[:<n>]
 shopping-budget:appearance
+shopping-budget:scan-mode
+shopping-budget:price-entry-mode
+shopping-budget:install-offer
 ```
 
 Historical counter keys (`pulse-counter:state`, `counter`) must never be interpreted as shopping money.
 
 Evidence tooling uses its own `budget-cart:qa:*` keys; they are not shopping state and are not defined here.
 
-### Appearance preference
+### Convenience preferences
 
-`shopping-budget:appearance` holds the chosen appearance as a raw, unversioned string: `system`, `light`, `dark` or `aurora`. A missing, unreadable or unknown value reads as `system`. It is convenience state outside the shopping envelopes.
+Each preference is a raw, unversioned string outside the shopping envelopes. A missing, unreadable or unknown value reads as the default, and a failed write is ignored: the choice is simply not remembered next time.
+
+| Key | Values | Default |
+| --- | --- | --- |
+| `shopping-budget:appearance` | `system`, `light`, `dark`, `aurora` | `system` |
+| `shopping-budget:scan-mode` | `barcode`, `price` | the first camera mode the build offers |
+| `shopping-budget:price-entry-mode` | `decimal`, `auto-cents` | `decimal` |
+| `shopping-budget:install-offer` | `dismissed` | offer not dismissed |
 
 ### Deployed-surface scope
 
@@ -58,7 +68,7 @@ surface:/shopping-budget-companion/beta/|budget-cart:active-trip
 surface:/shopping-budget-companion/study/<baseline>/beta/|budget-cart:qa:retention-v1
 ```
 
-The scope is resolved at runtime from the relocatable base, so a copied immutable study baseline, the moving guarded route and the public app never read, overwrite or clear each other's records. The same scope applies to the tab-scoped QA timing evidence in `sessionStorage`. Appearance preference (`shopping-budget:appearance`) stays shared on purpose; it is convenience state. Study baselines published before scoping shipped keep the unscoped keys they were built with.
+The scope is resolved at runtime from the relocatable base, so a copied immutable study baseline, the moving guarded route and the public app never read, overwrite or clear each other's records. The same scope applies to the tab-scoped QA timing evidence in `sessionStorage`. The convenience preferences above stay shared on purpose; they are convenience state. Study baselines published before scoping shipped keep the unscoped keys they were built with.
 
 ## Common envelope
 

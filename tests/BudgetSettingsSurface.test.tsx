@@ -81,7 +81,7 @@ describe("BudgetSettingsSurface", () => {
 
     expect((budget as HTMLInputElement).value).toBe("50.00");
     expect((buffer as HTMLInputElement).value).toBe("2.00");
-    expect(screen.getByText(/Current tracked total:/).textContent).toContain(
+    expect(screen.getByText(/Cart total:/).textContent).toContain(
       "€4.79",
     );
 

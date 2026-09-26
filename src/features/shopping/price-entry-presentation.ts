@@ -1,6 +1,7 @@
 import {
   formatEur,
   signedMinorUnits,
+  type MoneyDraftMode,
 } from "../../domain/money";
 import type {
   ActiveTrip,
@@ -10,6 +11,7 @@ import type { PriceEntryInvalidReason } from "./price-entry-draft";
 
 export const errorMessage = (
   reason: PriceEntryInvalidReason,
+  mode: MoneyDraftMode = "decimal",
 ): string => {
   switch (reason) {
     case "zero-not-allowed":
@@ -22,7 +24,9 @@ export const errorMessage = (
     case "unsafe-integer":
       return "That price is too large.";
     case "invalid-format":
-      return "Use a price like 4.79 or 4,79.";
+      return mode === "auto-cents"
+        ? "Cents mode takes digits only: 479 for €4.79."
+        : "Use a price like 4.79 or 4,79.";
     case "empty":
     case "incomplete":
       return "";
@@ -67,14 +71,14 @@ export const projectionCopy = (
     if (projection.safeRemainingMinor >= 0) {
       return {
         primary: `After adding: ${formatAbsoluteSigned(projection.safeRemainingMinor, locale)} safe to spend`,
-        secondary: `${formatAbsoluteSigned(projection.remainingMinor, locale)} remains before your nominal limit.`,
+        secondary: `Your ${formatEur(trip.safetyBufferMinor, locale)} safety buffer stays untouched.`,
         status: "within",
       };
     }
 
     return {
       primary: `This item uses ${formatAbsoluteSigned(projection.safetyBufferUseMinor, locale)} of your safety buffer.`,
-      secondary: `${formatAbsoluteSigned(projection.remainingMinor, locale)} remains before your nominal limit.`,
+      secondary: `${formatAbsoluteSigned(projection.remainingMinor, locale)} of your ${formatEur(trip.safetyBufferMinor, locale)} safety buffer would be left.`,
       status: "reserve",
     };
   }

@@ -274,6 +274,13 @@ export const restoreHistory = (
   };
 };
 
+const writeFailureCode = (error: unknown): "storage-full" | "write-failed" =>
+  error instanceof DOMException &&
+  (error.name === "QuotaExceededError" ||
+    error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+    ? "storage-full"
+    : "write-failed";
+
 const writeHistory = (
   storage: StorageLike | null | undefined,
   trips: readonly CompletedTrip[],
@@ -300,10 +307,10 @@ const writeHistory = (
 
   try {
     storage.setItem(HISTORY_STORAGE_KEY, encoded.raw);
-  } catch {
+  } catch (error) {
     return {
       health: "degraded",
-      issue: persistenceIssue("write-failed", HISTORY_STORAGE_KEY),
+      issue: persistenceIssue(writeFailureCode(error), HISTORY_STORAGE_KEY),
     };
   }
 
@@ -468,10 +475,10 @@ export const writeActiveTrip = (
 
   try {
     storage.setItem(ACTIVE_TRIP_STORAGE_KEY, encoded.raw);
-  } catch {
+  } catch (error) {
     return {
       health: "degraded",
-      issue: persistenceIssue("write-failed"),
+      issue: persistenceIssue(writeFailureCode(error)),
     };
   }
 

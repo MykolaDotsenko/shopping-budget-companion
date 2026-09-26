@@ -13,10 +13,10 @@ const publicHtml = `<!doctype html>
     <meta name="application-name" content="Shopping Budget Companion" />
     <meta
       name="description"
-      content="A mobile-first shopping budget companion with exact money, local-first persistence, fast price entry, and repeat-trip price memory."
+      content="Set a shopping limit, add prices as you go and always see what’s left before checkout. No account, no bank connection, works offline once opened."
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Shopping Budget Companion</title>
+    <title>Shopping Budget Companion — know what’s left before checkout</title>
   </head>
   <body><div id="root"></div></body>
 </html>`;
@@ -63,7 +63,11 @@ describe("internal shopping build metadata", () => {
       "utf8",
     );
 
-    expect(sourceIndex).toContain("<title>Shopping Budget Companion</title>");
+    expect(sourceIndex).toContain(
+      "<title>Shopping Budget Companion — know what’s left before checkout</title>",
+    );
+    expect(sourceIndex).toContain('property="og:image"');
+    expect(sourceIndex).toContain('rel="apple-touch-icon"');
     expect(sourceIndex).toContain(
       'name="application-name" content="Shopping Budget Companion"',
     );

@@ -10,9 +10,14 @@
 
 .heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
+}
+
+.heading > * {
+  min-width: 0;
 }
 
 .kicker,
@@ -120,7 +125,7 @@
 .actions,
 .confirmationActions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
   gap: 8px;
 }
 
@@ -138,10 +143,9 @@
 }
 
 .rememberedButton {
-  border: 1px solid transparent;
-  background: var(--shopping-accent);
-  color: var(--shopping-accent-contrast);
-  box-shadow: var(--shopping-primary-action-shadow);
+  border: 1px solid var(--shopping-accent);
+  background: var(--shopping-raised);
+  color: var(--shopping-accent);
 }
 
 .secondaryButton {
@@ -153,7 +157,7 @@
 .dangerButton {
   border: 1px solid transparent;
   background: var(--shopping-danger);
-  color: #fff;
+  color: var(--shopping-panel);
 }
 
 .confirmation {
@@ -184,6 +188,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+.moreButton {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--shopping-accent);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.moreButton:focus-visible,
 .rememberedButton:focus-visible,
 .secondaryButton:focus-visible,
 .dangerButton:focus-visible {

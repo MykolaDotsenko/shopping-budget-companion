@@ -24,16 +24,45 @@
 }
 
 .sheet {
+  --sheet-padding: 18px;
+  --sheet-gap: 12px;
+
   width: min(100%, 34rem);
   max-height: calc(100dvh - 24px);
-  overflow-y: auto;
-  display: grid;
-  gap: 16px;
-  padding: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sheet-gap);
+  padding: var(--sheet-padding);
   border: 1px solid var(--shopping-border-strong);
   border-radius: 26px;
   background: var(--shopping-raised);
   box-shadow: var(--shopping-elevated-shadow);
+}
+
+.sheet > * {
+  flex-shrink: 0;
+}
+
+.sheet > .sheetBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sheet-gap);
+  margin: calc(-1 * var(--sheet-padding)) calc(-1 * var(--sheet-padding)) 0;
+  padding: var(--sheet-padding) var(--sheet-padding) 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(var(--shopping-raised) 40%, transparent) top / 100% 24px no-repeat local,
+    linear-gradient(transparent, var(--shopping-raised) 60%) bottom / 100% 24px no-repeat local,
+    linear-gradient(color-mix(in srgb, var(--text) 18%, transparent), transparent) top / 100% 10px no-repeat scroll,
+    linear-gradient(transparent, color-mix(in srgb, var(--text) 18%, transparent)) bottom / 100% 10px no-repeat scroll;
+}
+
+.sheetBody > * {
+  flex-shrink: 0;
 }
 
 .header {
@@ -120,22 +149,27 @@
 }
 
 .modeButton[aria-pressed="true"] {
-  background: var(--shopping-raised);
-  color: var(--text);
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
-.modeButton:disabled {
+.modeButton:disabled,
+.modeButton[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.56;
 }
 
 .modeHint,
-.utilityRow p,
 .status {
   margin: 0;
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.4;
+}
+
+.modeHint[data-shown] {
+  color: var(--text);
+  font-weight: 750;
 }
 
 .amountBlock {
@@ -150,6 +184,7 @@
 
 .amountLabelRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -167,7 +202,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 18px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--shopping-field-border);
   border-radius: 18px;
   background: var(--shopping-raised);
 }
@@ -200,7 +235,8 @@
 }
 
 .amountInput::placeholder {
-  color: color-mix(in srgb, var(--muted) 58%, transparent);
+  color: var(--shopping-muted);
+  opacity: 1;
 }
 
 .status {
@@ -238,11 +274,6 @@
 .quantityCopy span {
   font-size: 0.9rem;
   font-weight: 800;
-}
-
-.quantityCopy small {
-  color: var(--muted);
-  font-size: 0.74rem;
 }
 
 .quantityStepper {
@@ -404,7 +435,7 @@
 .addAnywayButton {
   border: 1px solid transparent;
   background: var(--danger);
-  color: #ffffff;
+  color: var(--panel);
 }
 
 .addAnywayButton:disabled {
@@ -421,11 +452,12 @@
 .keypad {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 58px;
   gap: 8px;
 }
 
 .key {
-  min-height: 58px;
+  min-height: 44px;
   border: 1px solid var(--border);
   background: var(--shopping-raised);
   color: var(--text);
@@ -441,19 +473,23 @@
   opacity: 0.42;
 }
 
-.utilityRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.keypadEcho {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.utilityRow p {
-  text-align: right;
+.footer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
 }
 
 .clearButton {
-  flex: 0 0 auto;
   padding: 0 16px;
   border: 1px solid var(--border);
   background: transparent;
@@ -466,7 +502,7 @@
 }
 
 .addButton {
-  width: 100%;
+  min-width: 0;
   min-height: 60px;
   border: 1px solid transparent;
   background: var(--accent);
@@ -482,23 +518,38 @@
 }
 
 .labelDetails {
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
+  margin-top: -6px;
 }
 
 .labelDetails summary {
   min-height: 44px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+  list-style: none;
   color: var(--muted);
   font-size: 0.84rem;
   font-weight: 780;
   cursor: pointer;
 }
 
+.labelDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.labelDetails summary::before {
+  content: "+" / "";
+  margin-right: -4px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.labelDetails[open] summary::before {
+  content: "−" / "";
+}
+
 .labelDetails summary span {
+  margin-left: auto;
   color: var(--text);
   font-size: 0.72rem;
   font-weight: 700;
@@ -525,7 +576,7 @@
 .labelField input {
   min-height: 48px;
   width: 100%;
-  border: 1px solid var(--border);
+  border: 1px solid var(--shopping-field-border);
   border-radius: 14px;
   padding: 0 13px;
   background: var(--shopping-raised);
@@ -569,18 +620,11 @@
   }
 
   .sheet {
+    --sheet-padding: 14px;
+
     max-height: calc(100dvh - 16px);
-    gap: 12px;
-    padding: 14px;
+    padding: var(--sheet-padding);
     border-radius: 22px;
-  }
-
-  .key {
-    min-height: 54px;
-  }
-
-  .utilityRow {
-    align-items: flex-start;
   }
 
   .quantitySection {
@@ -598,16 +642,17 @@
 
 @media (max-height: 860px) {
   .sheet {
-    gap: 6px;
-    padding-block: 8px;
+    --sheet-padding: 8px;
+    --sheet-gap: 6px;
+
+    padding-block: var(--sheet-padding);
   }
 
   .modeGroup {
     gap: 2px;
   }
 
-  .modeHint,
-  .utilityRow p {
+  .modeHint:not([data-shown]) {
     display: none;
   }
 
@@ -634,8 +679,9 @@
     padding: 8px 10px;
   }
 
-  .key {
-    min-height: 48px;
+  .keypad {
+    grid-auto-rows: 48px;
+    gap: 6px;
   }
 
   .addButton {
@@ -643,17 +689,52 @@
   }
 
   .labelDetails {
-    border-top: 0;
-    padding-top: 0;
+    margin-top: -4px;
   }
 
   .labelDetails summary {
-    min-height: 32px;
+    min-height: 44px;
     font-size: 0.76rem;
   }
 
   .labelDetails summary span {
     font-size: 0.7rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .sheet {
+    --sheet-gap: 5px;
+  }
+
+  .eyebrow {
+    display: none;
+  }
+
+  .cancelButton,
+  .modeButton {
+    min-height: 44px;
+  }
+
+  .amountShell {
+    min-height: 56px;
+  }
+
+  .quantitySection {
+    padding-block: 4px;
+  }
+
+  .quantityStepper {
+    grid-template-columns: 44px minmax(44px, auto) 44px;
+  }
+
+  .quantityButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .projection {
+    padding-block: 6px;
   }
 }
 
@@ -703,5 +784,10 @@
   .confirmationCancel,
   .addAnywayButton {
     border: 1px solid ButtonText;
+  }
+
+  .modeButton[aria-pressed="true"] {
+    outline: 3px solid Highlight;
+    outline-offset: -4px;
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   bootstrapBrowserShoppingAppController,
@@ -437,5 +437,46 @@ describe("shopping composition root", () => {
 
     expect(controller.getSnapshot().lifecycle).toBe("active");
     expect(controller.getSnapshot().activeTrip).toEqual(trip);
+  });
+});
+
+describe("keeping stored trips from eviction", () => {
+  it("asks the browser to persist storage once, after the first finished trip", async () => {
+    const { keepHistoryFromEviction } = await import("../src/app/composition-root");
+    const persist = vi.fn(async () => true);
+    const persisted = vi.fn(async () => false);
+    vi.stubGlobal("navigator", { ...navigator, storage: { persist, persisted } });
+
+    try {
+      const values = new Map<string, string>();
+      const storage: StorageLike = {
+        getItem: (key) => values.get(key) ?? null,
+        setItem: (key, value) => {
+          values.set(key, value);
+        },
+        removeItem: (key) => {
+          values.delete(key);
+        },
+      };
+      const controller = bootstrapBrowserShoppingAppController({ storage });
+      const stop = keepHistoryFromEviction(controller);
+
+      controller.startTrip({ budgetMinor: money(5_000) });
+      expect(persisted).not.toHaveBeenCalled();
+
+      controller.completeTrip();
+      controller.dismissCompletedSummary();
+      controller.startTrip({ budgetMinor: money(5_000) });
+      controller.completeTrip();
+      await Promise.resolve();
+
+      expect(persisted).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => {
+        expect(persist).toHaveBeenCalledTimes(1);
+      });
+      stop();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

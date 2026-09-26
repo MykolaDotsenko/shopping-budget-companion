@@ -1,0 +1,58 @@
+.offer {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--shopping-border);
+  border-radius: 16px;
+  background: var(--shopping-panel);
+  color: var(--shopping-text);
+}
+
+.title {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.copy {
+  margin: 0;
+  color: var(--shopping-muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.primary,
+.secondary {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primary {
+  border: 1px solid var(--shopping-accent);
+  background: var(--shopping-accent);
+  color: var(--shopping-accent-contrast);
+}
+
+.secondary {
+  border: 1px solid var(--shopping-field-border);
+  background: var(--shopping-panel);
+  color: var(--shopping-text);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 3px solid var(--shopping-focus);
+  outline-offset: 2px;
+}

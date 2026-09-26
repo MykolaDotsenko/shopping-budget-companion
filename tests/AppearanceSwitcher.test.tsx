@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -18,9 +18,13 @@ const withMotion = (reduced: boolean): void => {
   });
 };
 
-const withViewTransitions = () => {
+const withViewTransitions = (pending?: { update?: () => void }) => {
   const startViewTransition = vi.fn((update: () => void) => {
-    update();
+    if (pending === undefined) {
+      update();
+    } else {
+      pending.update = update;
+    }
 
     return {
       ready: Promise.resolve(),
@@ -84,6 +88,36 @@ describe("AppearanceSwitcher", () => {
     expect(window.localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe("aurora");
   });
 
+  it("saves Aurora at once and switches without the effect when it is slow to load", async () => {
+    withMotion(false);
+    const startViewTransition = withViewTransitions();
+    vi.useFakeTimers();
+
+    render(<AppearanceSwitcher />);
+    fireEvent.click(screen.getByRole("button", { name: "Aurora" }));
+
+    expect(window.localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe("aurora");
+    expect(document.documentElement.dataset.appearance).toBe("system");
+
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(document.documentElement.dataset.appearance).toBe("aurora");
+    expect(screen.getByRole("button", { name: "Aurora" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+
+    vi.useRealTimers();
+    await import("../src/app/neon-ignition");
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
+
+    expect(startViewTransition).not.toHaveBeenCalled();
+    expect(document.querySelector("canvas.neon-burst")).toBeNull();
+  });
+
   it("lights Aurora up with a short neon ignition where the browser can animate it", async () => {
     withMotion(false);
     const startViewTransition = withViewTransitions();
@@ -124,9 +158,10 @@ describe("AppearanceSwitcher", () => {
     expect(document.querySelector("canvas.neon-burst")).toBeNull();
   });
 
-  it("leaves Aurora instantly and keeps a choice made while the ignition was loading", async () => {
+  it("keeps a choice made before the ignition could switch the look", () => {
     withMotion(false);
-    const startViewTransition = withViewTransitions();
+    const pending: { update?: () => void } = {};
+    withViewTransitions(pending);
 
     render(<AppearanceSwitcher />);
     fireEvent.click(screen.getByRole("button", { name: "Aurora" }));
@@ -134,17 +169,14 @@ describe("AppearanceSwitcher", () => {
 
     expect(document.documentElement.dataset.appearance).toBe("light");
 
-    await import("../src/app/neon-ignition");
-    await new Promise((resolve) => {
-      setTimeout(resolve, 20);
+    act(() => {
+      pending.update?.();
     });
 
-    expect(startViewTransition).not.toHaveBeenCalled();
-    expect(document.querySelector("canvas.neon-burst")).toBeNull();
     expect(document.documentElement.dataset.appearance).toBe("light");
+    expect(window.localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe("light");
     expect(screen.getByRole("button", { name: "Light" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
   });
 });
-

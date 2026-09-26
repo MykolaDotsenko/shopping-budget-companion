@@ -240,6 +240,18 @@ test("lights Aurora up with a short neon ignition that never blocks shopping", a
   );
   const burst = page.locator("canvas.neon-burst");
 
+  if (animated) {
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          performance
+            .getEntriesByType("resource")
+            .some((entry) => entry.name.includes("neon-ignition")),
+        ),
+      )
+      .toBe(true);
+  }
+
   await page.getByRole("button", { name: "Aurora", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "aurora");
 

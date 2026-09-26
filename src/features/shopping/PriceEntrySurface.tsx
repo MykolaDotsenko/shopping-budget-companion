@@ -112,6 +112,7 @@ export function PriceEntrySurface({
   const [label, setLabel] = useState(initialLabel ?? "");
   const [keypadPresses, setKeypadPresses] = useState(0);
   const [labelNotice, setLabelNotice] = useState("");
+  const [modeNotice, setModeNotice] = useState(false);
 
   useEffect(() => {
     if (prefersCustomKeypad()) {
@@ -246,13 +247,26 @@ export function PriceEntrySurface({
     submitValidatedItem(activeConfirmation.intent);
   };
 
-  const updateMode = (mode: MoneyDraftMode): void => {
+  const modeLocked = draft.raw !== "";
+  const modeHint = !modeLocked
+    ? "Cents mode needs no decimal point."
+    : draft.mode === "decimal"
+      ? "Clear the price to switch to cents."
+      : "Clear the price to switch to euros.";
+
+  const chooseMode = (mode: MoneyDraftMode): void => {
+    if (modeLocked) {
+      setModeNotice(mode !== draft.mode);
+      return;
+    }
+
     setDraft((current) => setPriceEntryMode(current, mode));
     onModeChange?.(mode);
     focusInputUnlessCoarse();
   };
 
   const pressKey = (key: string): void => {
+    setModeNotice(false);
     setKeypadPresses((count) => count + 1);
     setDraft((current) => {
       if (key === "backspace") {
@@ -331,9 +345,10 @@ export function PriceEntrySurface({
                 type="button"
                 className={styles.modeButton}
                 aria-pressed={draft.mode === "decimal"}
-                disabled={draft.raw !== "" || activeConfirmation !== null}
+                aria-disabled={modeLocked || undefined}
+                disabled={activeConfirmation !== null}
                 onClick={() => {
-                  updateMode("decimal");
+                  chooseMode("decimal");
                 }}
               >
                 Euros
@@ -342,20 +357,21 @@ export function PriceEntrySurface({
                 type="button"
                 className={styles.modeButton}
                 aria-pressed={draft.mode === "auto-cents"}
-                disabled={draft.raw !== "" || activeConfirmation !== null}
+                aria-disabled={modeLocked || undefined}
+                disabled={activeConfirmation !== null}
                 onClick={() => {
-                  updateMode("auto-cents");
+                  chooseMode("auto-cents");
                 }}
               >
                 Cents mode
               </button>
             </div>
-            <p id={modeHintId} className={styles.modeHint}>
-              {draft.raw === ""
-                ? "Cents mode needs no decimal point."
-                : draft.mode === "decimal"
-                  ? "Clear the price to switch to cents."
-                  : "Clear the price to switch to euros."}
+            <p
+              id={modeHintId}
+              className={styles.modeHint}
+              data-shown={modeNotice || undefined}
+            >
+              {modeHint}
             </p>
           </div>
 
@@ -405,6 +421,7 @@ export function PriceEntrySurface({
                 onChange={(event) => {
                   const nextRaw = event.currentTarget.value;
 
+                  setModeNotice(false);
                   setDraft((current) =>
                     replacePriceEntryRaw(current, nextRaw),
                   );
@@ -432,7 +449,9 @@ export function PriceEntrySurface({
                 <span className={styles.error}>{submissionError}</span>
               ) : state.kind === "valid" ? (
                 <span className={styles.validPreview}>
-                  {formatEur(state.value, locale)}
+                  {formatEur(state.value, locale) === `€${draft.raw}`
+                    ? null
+                    : formatEur(state.value, locale)}
                   {priceFromTag ? (
                     <span className={styles.tagSource}>
                       {" "}
@@ -566,11 +585,13 @@ export function PriceEntrySurface({
           <>
           <PriceKeypad mode={draft.mode} onPress={pressKey} />
           <p className={styles.keypadEcho} aria-live="polite">
-            {keypadPresses === 0
-              ? ""
-              : draft.raw === ""
-                ? "Price cleared"
-                : `Price ${draft.raw}`}
+            {modeNotice
+              ? modeHint
+              : keypadPresses === 0
+                ? ""
+                : draft.raw === ""
+                  ? "Price cleared"
+                  : `Price ${draft.raw}`}
           </p>
 
           <div className={styles.footer}>
@@ -579,6 +600,7 @@ export function PriceEntrySurface({
               className={styles.clearButton}
               disabled={draft.raw === ""}
               onClick={() => {
+                setModeNotice(false);
                 setDraft((current) => clearPriceEntry(current));
                 focusInputUnlessCoarse();
               }}

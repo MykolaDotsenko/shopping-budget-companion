@@ -153,7 +153,8 @@
   color: var(--accent-contrast);
 }
 
-.modeButton:disabled {
+.modeButton:disabled,
+.modeButton[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.56;
 }
@@ -164,6 +165,11 @@
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.4;
+}
+
+.modeHint[data-shown] {
+  color: var(--text);
+  font-weight: 750;
 }
 
 .amountBlock {
@@ -646,7 +652,7 @@
     gap: 2px;
   }
 
-  .modeHint {
+  .modeHint:not([data-shown]) {
     display: none;
   }
 

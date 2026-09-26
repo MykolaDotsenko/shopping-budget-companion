@@ -647,7 +647,6 @@ describe("PriceEntrySurface", () => {
     await user.click(screen.getByRole("button", { name: "Digit 9" }));
 
     expect((screen.getByLabelText("Price") as HTMLInputElement).value).toBe("4.79");
-    expect(screen.getByText("€4.79")).not.toBeNull();
 
     await user.click(
       screen.getByRole("button", { name: "Add · €4.79" }),
@@ -895,8 +894,8 @@ describe("PriceEntrySurface", () => {
     await user.click(screen.getByRole("button", { name: "Digit 9" }));
 
     expect(screen.getByText("€4.79")).not.toBeNull();
-    expect((screen.getByRole("button", { name: "Euros" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((centsMode as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Euros" }).getAttribute("aria-disabled")).toBe("true");
+    expect(centsMode.getAttribute("aria-disabled")).toBe("true");
 
     await user.click(
       screen.getByRole("button", { name: "Add · €4.79" }),
@@ -906,6 +905,78 @@ describe("PriceEntrySurface", () => {
       unitPriceMinor: 479,
       quantity: 1,
     });
+  });
+
+  it("explains how to switch mode once a price is typed, and switches after Clear", async () => {
+    const user = userEvent.setup();
+    const onModeChange = vi.fn();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onModeChange={onModeChange}
+        onCancel={vi.fn()}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Digit 2" }));
+    await user.click(screen.getByRole("button", { name: "Digit 4" }));
+    await user.click(screen.getByRole("button", { name: "Digit 9" }));
+    await user.click(screen.getByRole("button", { name: "Cents mode" }));
+
+    const hint = (): HTMLElement | null =>
+      document.getElementById(
+        screen.getByRole("group", { name: "Price entry mode" }).getAttribute("aria-describedby") ??
+          "",
+      );
+    expect(hint()?.textContent).toBe("Clear the price to switch to cents.");
+    expect(hint()?.hasAttribute("data-shown")).toBe(true);
+    expect(screen.getByLabelText("Price keypad").nextElementSibling?.textContent).toBe(
+      "Clear the price to switch to cents.",
+    );
+    expect(onModeChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Euros" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(hint()?.textContent).toBe("Cents mode needs no decimal point.");
+    expect(hint()?.hasAttribute("data-shown")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Cents mode" }));
+
+    expect(onModeChange).toHaveBeenCalledWith("auto-cents");
+    expect(
+      screen.getByRole("button", { name: "Cents mode" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("does not repeat a typed amount that already reads as money", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PriceEntrySurface
+        trip={createTrip()}
+        locale="en-IE"
+        onCancel={vi.fn()}
+        onValidatedItem={vi.fn()}
+      />,
+    );
+
+    const status = (): string =>
+      document.getElementById(
+        screen.getByRole("textbox", { name: "Price" }).getAttribute("aria-describedby") ?? "",
+      )?.textContent ?? "";
+
+    await user.type(screen.getByRole("textbox", { name: "Price" }), "4.99");
+    expect(status()).toBe("");
+
+    await user.clear(screen.getByRole("textbox", { name: "Price" }));
+    await user.type(screen.getByRole("textbox", { name: "Price" }), "4,9");
+    expect(status()).toBe("€4.90");
   });
 
   it("reads back what the keypad has entered for screen reader users", async () => {

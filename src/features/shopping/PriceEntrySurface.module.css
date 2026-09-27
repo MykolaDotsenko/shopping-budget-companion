@@ -517,92 +517,68 @@
   box-shadow: none;
 }
 
-.labelDetails {
-  margin-top: -6px;
-}
-
-.labelDetails summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  list-style: none;
-  color: var(--muted);
-  font-size: 0.84rem;
-  font-weight: 780;
-  cursor: pointer;
-}
-
-.labelDetails summary::-webkit-details-marker {
-  display: none;
-}
-
-.labelDetails summary::before {
-  content: "+" / "";
-  margin-right: -4px;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.labelDetails[open] summary::before {
-  content: "−" / "";
-}
-
-.labelDetails summary span {
-  margin-left: auto;
-  color: var(--text);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.labelDetails summary:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
-  border-radius: 10px;
+.labelBlock {
+  display: grid;
+  gap: 5px;
+  margin-top: -2px;
 }
 
 .labelField {
+  min-height: 50px;
   display: grid;
-  gap: 7px;
-  padding-top: 8px;
-}
-
-.labelField > span {
-  color: var(--text);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.labelField input {
-  min-height: 48px;
-  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
   border: 1px solid var(--shopping-field-border);
   border-radius: 14px;
-  padding: 0 13px;
   background: var(--shopping-raised);
-  color: var(--text);
-  font: inherit;
 }
 
-.labelField input:focus-visible {
-  outline: 3px solid var(--focus);
+.labelField:focus-within {
+  border-color: var(--focus);
+  outline: 3px solid color-mix(in srgb, var(--focus) 20%, transparent);
   outline-offset: 2px;
 }
 
-.labelHint,
-.labelError {
-  margin: 7px 0 0;
-  font-size: 0.78rem;
-  line-height: 1.4;
-}
-
-.labelHint {
+.labelField label {
   color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.labelField input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+}
+
+.labelField input::placeholder {
+  color: var(--shopping-muted);
+  opacity: 1;
+  font-weight: 600;
+}
+
+.labelOptional {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .labelError {
+  margin: 0;
   color: var(--danger);
+  font-size: 0.76rem;
   font-weight: 750;
+  line-height: 1.35;
 }
 
 .cancelButton:focus-visible,
@@ -688,17 +664,22 @@
     min-height: 52px;
   }
 
-  .labelDetails {
-    margin-top: -4px;
+  .labelBlock {
+    margin-top: 0;
   }
 
-  .labelDetails summary {
-    min-height: 44px;
-    font-size: 0.76rem;
+  .labelField {
+    min-height: 46px;
+    gap: 8px;
+    padding-inline: 10px;
   }
 
-  .labelDetails summary span {
-    font-size: 0.7rem;
+  .labelField label {
+    font-size: 0.74rem;
+  }
+
+  .labelOptional {
+    font-size: 0.66rem;
   }
 }
 
@@ -766,6 +747,7 @@
   .confirmationCancel,
   .addAnywayButton,
   .currentPriceContext,
+  .labelField,
   .labelField input {
     forced-color-adjust: auto;
   }
@@ -782,7 +764,8 @@
   .quantityButton,
   .overBudgetConfirmation,
   .confirmationCancel,
-  .addAnywayButton {
+  .addAnywayButton,
+  .labelField {
     border: 1px solid ButtonText;
   }
 

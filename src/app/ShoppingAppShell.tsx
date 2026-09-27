@@ -378,6 +378,8 @@ function ShoppingAppScreens({
             setOverlay(NO_OVERLAY);
           }}
           locale={locale}
+          t={t}
+          tp={tp}
         />
       </Suspense>
       {qaPanel}
@@ -399,7 +401,7 @@ function ShoppingAppScreens({
     return (
       <>
         <Suspense fallback={openingScreen}>
-          <RecoveryScreen controller={controller} />
+          <RecoveryScreen controller={controller} t={t} />
         </Suspense>
         {qaPanel}
       </>
@@ -615,6 +617,8 @@ function ShoppingAppScreens({
             onModeChange={writeScanModePreference}
             context={overlay.context}
             locale={locale}
+            t={t}
+            tp={tp}
             onCancel={() => {
               if (entry !== undefined) {
                 openTripOverlay(

@@ -1184,7 +1184,6 @@ test("keeps trip-history deletion independent from remembered prices", async ({
 
   await page.getByRole("button", { name: "Add price" }).click();
   await page.getByRole("textbox", { name: "Price" }).fill("1.39");
-  await page.getByText("Name for next time", { exact: false }).click();
   await page.getByRole("textbox", { name: "Item name" }).fill("Milk 1L");
   await page.getByRole("button", { name: "Add · €1.39" }).click();
 

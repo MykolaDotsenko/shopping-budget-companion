@@ -6,6 +6,7 @@ import {
   createBrowserCameraPort,
   createBrowserPriceTagReader,
   createBrowserProductLookup,
+  createBrowserVisualProductRecognizer,
   followStorageChangesFromOtherTabs,
   keepHistoryFromEviction,
   listenForAppInstallPrompt,
@@ -18,6 +19,7 @@ const camera = createBrowserCameraPort();
 const barcodeReader = createBrowserBarcodeReaderPort();
 const priceReader = createBrowserPriceTagReader();
 const productLookup = createBrowserProductLookup();
+const visualRecognizer = createBrowserVisualProductRecognizer();
 const installPrompt = listenForAppInstallPrompt();
 
 export function App() {
@@ -29,6 +31,7 @@ export function App() {
         barcodeReader={barcodeReader}
         priceReader={priceReader}
         productLookup={productLookup}
+        visualRecognizer={visualRecognizer}
         installPrompt={installPrompt}
       />
       <PwaUpdateNotice controller={shoppingController} />

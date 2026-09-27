@@ -3,9 +3,12 @@ import type {
   VisualRecognitionResult,
 } from "../../application/visual-recognition-ports";
 
+const IDLE_RELEASE_MS = 120_000;
+
 export const createLazyVisualProductRecognizer =
   (): VisualProductRecognizerPort => {
     let implementationPromise: Promise<VisualProductRecognizerPort> | null = null;
+    let releaseTimer: number | null = null;
 
     const implementation = (): Promise<VisualProductRecognizerPort> => {
       implementationPromise ??= import("./transformers-visual-recognizer").then(
@@ -16,12 +19,38 @@ export const createLazyVisualProductRecognizer =
       return implementationPromise;
     };
 
+    const cancelIdleRelease = (): void => {
+      if (releaseTimer !== null) {
+        window.clearTimeout(releaseTimer);
+        releaseTimer = null;
+      }
+    };
+
+    const scheduleIdleRelease = (
+      loaded: VisualProductRecognizerPort,
+    ): void => {
+      cancelIdleRelease();
+      releaseTimer = window.setTimeout(() => {
+        loaded.release();
+        releaseTimer = null;
+      }, IDLE_RELEASE_MS);
+    };
+
     return Object.freeze({
       id: "lazy-transformers-clip",
       dataBoundary: "local-only" as const,
       async prepare(): Promise<boolean> {
+        cancelIdleRelease();
+
         try {
-          return await (await implementation()).prepare();
+          const loaded = await implementation();
+          const ready = await loaded.prepare();
+
+          if (ready) {
+            scheduleIdleRelease(loaded);
+          }
+
+          return ready;
         } catch {
           implementationPromise = null;
           return false;
@@ -32,17 +61,28 @@ export const createLazyVisualProductRecognizer =
         candidateLabels: readonly string[],
         signal: AbortSignal,
       ): Promise<VisualRecognitionResult> {
+        cancelIdleRelease();
+
         try {
-          return await (await implementation()).recognize(
+          const loaded = await implementation();
+          const result = await loaded.recognize(
             image,
             candidateLabels,
             signal,
           );
-        } catch {
+          scheduleIdleRelease(loaded);
+          return result;
+        } catch (error) {
+          if (signal.aborted) {
+            throw error;
+          }
+
           return { status: "failed", reason: "engine-failed" };
         }
       },
       release(): void {
+        cancelIdleRelease();
+
         if (implementationPromise === null) {
           return;
         }

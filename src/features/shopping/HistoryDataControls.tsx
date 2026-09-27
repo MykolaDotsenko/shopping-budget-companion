@@ -1,6 +1,12 @@
 import type { RefObject } from "react";
 
 import styles from "./HistoryScreen.module.css";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export type HistoryDataConfirmation =
   | "none"
@@ -21,6 +27,8 @@ export interface HistoryDataControlsProps {
   readonly onRequestClearPriceMemory: () => void;
   readonly onConfirmClearPriceMemory: () => void;
   readonly onCancel: () => void;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 export function HistoryDataControls({
@@ -37,6 +45,8 @@ export function HistoryDataControls({
   onRequestClearPriceMemory,
   onConfirmClearPriceMemory,
   onCancel,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: HistoryDataControlsProps) {
   return (
     <section
@@ -44,28 +54,27 @@ export function HistoryDataControls({
       aria-labelledby="data-controls-title"
     >
       <div>
-        <p className={styles.sectionKicker}>Local data</p>
-        <h2 id="data-controls-title">Data controls</h2>
+        <p className={styles.sectionKicker}>{t("Local data")}</p>
+        <h2 id="data-controls-title">{t("Data controls")}</h2>
         <p>
-          Clear either one on its own. Both are stored only on this device.
+          {t("Clear either one on its own. Both are stored only on this device.")}
         </p>
       </div>
 
       {sessionOnly && (tripCount > 0 || priceMemoryCount > 0) ? (
         <p className={styles.controlNote}>
-          This session is not saving, so stored trips and remembered prices
-          stay as they are.
+          {t("This session is not saving, so stored trips and remembered prices stay as they are.")}
         </p>
       ) : !canChangeHistory && tripCount > 0 ? (
         <p className={styles.controlNote}>
-          Fix the local-save warning before changing trip history.
+          {t("Fix the local-save warning before changing trip history.")}
         </p>
       ) : null}
 
       {confirmation === "clear-history" ? (
         <section
           className={styles.confirmation}
-          aria-label="Confirm clearing trip history"
+          aria-label={t("Confirm clearing trip history")}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -74,11 +83,15 @@ export function HistoryDataControls({
           }}
         >
           <div>
-            <strong>Clear all trip history?</strong>
+            <strong>{t("Clear all trip history?")}</strong>
             <p>
-              This removes {tripCount} completed{" "}
-              {tripCount === 1 ? "trip" : "trips"}.
-              Remembered item prices will stay available.
+              {t("This removes {trips}. Remembered item prices will stay available.", {
+                trips: tp(
+                  "{count} completed trip",
+                  "{count} completed trips",
+                  tripCount,
+                ),
+              })}
             </p>
           </div>
           <div className={styles.confirmationActions}>
@@ -88,14 +101,14 @@ export function HistoryDataControls({
               className={styles.secondaryButton}
               onClick={onCancel}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="button"
               className={styles.dangerButton}
               onClick={onConfirmClearHistory}
             >
-              Clear trip history
+              {t("Clear trip history")}
             </button>
           </div>
         </section>
@@ -108,11 +121,15 @@ export function HistoryDataControls({
           onClick={onRequestClearHistory}
         >
           <span>
-            <strong>Clear trip history</strong>
+            <strong>{t("Clear trip history")}</strong>
             <small>
               {tripCount === 0
-                ? "No completed trips stored"
-                : `${tripCount} completed ${tripCount === 1 ? "trip" : "trips"}`}
+                ? t("No completed trips stored")
+                : tp(
+                    "{count} completed trip",
+                    "{count} completed trips",
+                    tripCount,
+                  )}
             </small>
           </span>
           <span aria-hidden="true">→</span>
@@ -122,7 +139,7 @@ export function HistoryDataControls({
       {confirmation === "clear-price-memory" ? (
         <section
           className={styles.confirmation}
-          aria-label="Confirm clearing remembered prices"
+          aria-label={t("Confirm clearing remembered prices")}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -131,11 +148,9 @@ export function HistoryDataControls({
           }}
         >
           <div>
-            <strong>Clear remembered prices?</strong>
+            <strong>{t("Clear remembered prices?")}</strong>
             <p>
-              This removes remembered item names, prices and barcode names
-              used for faster repeat shopping. Completed trip history will
-              stay.
+              {t("This removes remembered item names, prices and barcode names used for faster repeat shopping. Completed trip history will stay.")}
             </p>
           </div>
           <div className={styles.confirmationActions}>
@@ -152,7 +167,7 @@ export function HistoryDataControls({
               className={styles.dangerButton}
               onClick={onConfirmClearPriceMemory}
             >
-              Clear remembered prices
+              {t("Clear remembered prices")}
             </button>
           </div>
         </section>
@@ -170,15 +185,23 @@ export function HistoryDataControls({
           onClick={onRequestClearPriceMemory}
         >
           <span>
-            <strong>Clear remembered prices</strong>
+            <strong>{t("Clear remembered prices")}</strong>
             <small>
               {priceMemoryCount > 0
-                ? `${priceMemoryCount} remembered ${priceMemoryCount === 1 ? "item" : "items"}`
+                ? tp(
+                    "{count} remembered item",
+                    "{count} remembered items",
+                    priceMemoryCount,
+                  )
                 : barcodeNameCount > 0
-                  ? `${barcodeNameCount} remembered barcode ${barcodeNameCount === 1 ? "name" : "names"}`
+                  ? tp(
+                      "{count} remembered barcode name",
+                      "{count} remembered barcode names",
+                      barcodeNameCount,
+                    )
                   : priceMemoryDegraded
-                    ? "Reset the damaged remembered-price record"
-                    : "No remembered prices stored"}
+                    ? t("Reset the damaged remembered-price record")
+                    : t("No remembered prices stored")}
             </small>
           </span>
           <span aria-hidden="true">→</span>

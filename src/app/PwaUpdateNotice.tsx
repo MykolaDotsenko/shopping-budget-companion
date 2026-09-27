@@ -2,6 +2,7 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 
 import { useShoppingAppState } from "../application/react/use-shopping-app-state";
 import type { ShoppingAppController } from "../application/shopping-app-controller";
+import { useI18n } from "./i18n";
 import styles from "./PwaUpdateNotice.module.css";
 
 export interface PwaUpdateNoticeProps {
@@ -11,6 +12,7 @@ export interface PwaUpdateNoticeProps {
 export function PwaUpdateNotice({
   controller,
 }: PwaUpdateNoticeProps) {
+  const { t } = useI18n();
   const state = useShoppingAppState(controller);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
@@ -24,13 +26,12 @@ export function PwaUpdateNotice({
   return (
     <aside
       className={styles.notice}
-      aria-label="App update available"
+      aria-label={t("App update available")}
     >
       <div>
-        <p className={styles.title}>A newer version is ready.</p>
+        <p className={styles.title}>{t("A newer version is ready.")}</p>
         <p className={styles.copy} aria-live="polite">
-          Update when convenient. Your saved shopping data stays on this
-          device.
+          {t("Update when convenient. Your saved shopping data stays on this device.")}
         </p>
       </div>
       <div className={styles.actions}>

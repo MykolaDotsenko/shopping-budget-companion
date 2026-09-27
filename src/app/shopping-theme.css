@@ -150,7 +150,7 @@
   animation: aurora-canvas-drift 18s ease-in-out infinite alternate;
 }
 
-:root[data-theme="aurora"] :is(button, [role="button"]) {
+:root[data-theme="aurora"] :is(button:not(:disabled), [role="button"]:not([aria-disabled="true"])) {
   filter:
     drop-shadow(0 0 4px #8ff3ff47)
     drop-shadow(0 0 10px #9d8cff24);
@@ -163,7 +163,7 @@
     transform 120ms ease;
 }
 
-:root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):hover {
+:root[data-theme="aurora"] :is(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):hover {
   filter:
     drop-shadow(0 0 7px #8ff3ff8f)
     drop-shadow(0 0 18px #9d8cff66)
@@ -171,14 +171,14 @@
   transform: translateY(-1px);
 }
 
-:root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):active {
+:root[data-theme="aurora"] :is(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):active {
   filter:
     drop-shadow(0 0 5px #8ff3ff75)
     drop-shadow(0 0 12px #9d8cff52);
   transform: translateY(0) scale(0.985);
 }
 
-:root[data-theme="aurora"] :is(button, [role="button"]):focus-visible,
+:root[data-theme="aurora"] :is(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):focus-visible,
 :root[data-theme="aurora"] :is(input, textarea, select):focus-visible {
   outline-color: #d8ddff;
   filter:
@@ -219,13 +219,19 @@
     animation: none;
   }
 
-  :root[data-theme="aurora"] :is(button, [role="button"]) {
+  :root[data-theme="aurora"] :is(button:not(:disabled), [role="button"]:not([aria-disabled="true"])) {
     transition: none;
   }
 
-  :root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):hover,
-  :root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):active {
+  :root[data-theme="aurora"] :is(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):hover,
+  :root[data-theme="aurora"] :is(button:not(:disabled), [role="button"]:not([aria-disabled="true"])):active {
     transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :root[data-theme="aurora"] :is(button, [role="button"], input, textarea, select) {
+    filter: none;
   }
 }
 

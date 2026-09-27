@@ -1,8 +1,8 @@
+import { useI18n } from "./i18n-context";
 import {
   APP_LANGUAGES,
   languageName,
-  useI18n,
-} from "./i18n";
+} from "./i18n-core";
 import styles from "./LanguageSwitcher.module.css";
 
 export function LanguageSwitcher() {

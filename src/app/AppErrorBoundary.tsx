@@ -3,7 +3,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { useI18n } from "./i18n";
+import { useI18n } from "./i18n-context";
 import styles from "./AppErrorBoundary.module.css";
 
 export interface AppErrorBoundaryProps {

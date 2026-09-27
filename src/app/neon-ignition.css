@@ -18,7 +18,7 @@
 }
 
 :root[data-neon-ignition] :is(button, input) {
-  animation: neon-tube 1.1s linear 0.3s;
+  animation: neon-tube 1.35s linear 0.22s;
 }
 
 :root[data-neon-ignition] :is(button, input):nth-of-type(3n + 2) {
@@ -30,7 +30,7 @@
 }
 
 :root[data-neon-ignition] h1 {
-  animation: neon-title 1.2s linear 0.28s;
+  animation: neon-title 1.45s linear 0.2s;
 }
 
 :root[data-neon-ignition] [data-mode="aurora"] [aria-hidden="true"] {
@@ -38,55 +38,94 @@
 }
 
 @keyframes neon-tube {
-  6%,
-  14%,
-  30% {
+  4%,
+  12%,
+  26% {
     box-shadow:
-      0 0 0 1px #8de8ff,
-      0 0 14px #8de8ffb3,
-      0 0 34px #9d8cff66;
+      inset 0 0 12px #ffffff24,
+      0 0 0 1px #dffcff,
+      0 0 12px #8ff3ffcc,
+      0 0 30px #8ff3ff8f,
+      0 0 52px #9d8cff70;
   }
 
-  10%,
-  22% {
-    box-shadow: 0 0 0 1px #8de8ff33;
+  8%,
+  18% {
+    box-shadow:
+      0 0 0 1px #8ff3ff40,
+      0 0 8px #9d8cff30;
   }
 
-  48% {
+  42% {
     box-shadow:
-      0 0 0 1px #8de8ffcc,
-      0 0 22px #8de8ff80,
-      0 0 48px #9d8cff4d;
+      inset 0 0 18px #8ff3ff24,
+      0 0 0 1px #ffffff,
+      0 0 20px #8ff3ffd6,
+      0 0 46px #9d8cff99,
+      0 0 72px #ff8ad84f;
+  }
+
+  72% {
+    box-shadow:
+      0 0 0 1px #8ff3ff8f,
+      0 0 14px #8ff3ff66,
+      0 0 32px #9d8cff52;
   }
 }
 
 @keyframes neon-title {
-  8%,
-  18%,
-  34% {
+  6%,
+  16%,
+  30% {
     text-shadow:
-      0 0 10px #8de8ffcc,
-      0 0 28px #9d8cff99;
+      0 0 7px #ffffff,
+      0 0 16px #8ff3ffeb,
+      0 0 36px #9d8cffb8,
+      0 0 60px #ff8ad866;
   }
 
-  13%,
-  25% {
-    text-shadow: none;
+  11%,
+  22% {
+    text-shadow: 0 0 6px #8ff3ff59;
   }
 
-  52% {
+  48% {
     text-shadow:
-      0 0 14px #8de8ff99,
-      0 0 36px #9d8cff66;
+      0 0 10px #ffffffd9,
+      0 0 24px #8ff3ffc2,
+      0 0 50px #9d8cff8f;
+  }
+
+  76% {
+    text-shadow:
+      0 0 12px #8ff3ff99,
+      0 0 32px #9d8cff70;
   }
 }
 
 @keyframes neon-swatch {
-  35% {
-    transform: scale(1.45);
+  28% {
+    transform: scale(1.55) rotate(8deg);
     box-shadow:
       0 0 0 2px #fff,
-      0 0 18px #8de8ff,
-      0 0 42px #ff8ad8;
+      0 0 18px #8ff3ff,
+      0 0 40px #9d8cff,
+      0 0 68px #ff8ad88f;
+  }
+
+  58% {
+    transform: scale(1.28) rotate(-5deg);
+    box-shadow:
+      0 0 0 2px #dffcff,
+      0 0 22px #8ff3ffd6,
+      0 0 48px #9d8cff99;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-neon-ignition] :is(button, input),
+  :root[data-neon-ignition] h1,
+  :root[data-neon-ignition] [data-mode="aurora"] [aria-hidden="true"] {
+    animation: none;
   }
 }

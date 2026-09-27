@@ -77,8 +77,8 @@ export function ScanVisualResult({
       {outcome.kind === "candidates" ? (
         <>
           <p>
-            Pick what you are holding. These are ranked suggestions, not
-            certainty estimates.
+            Choose what you are holding. Suggestions are ranked, not
+            certainties.
           </p>
           <ul className={styles.candidates}>
             {candidates.map((candidate, index) => (
@@ -104,8 +104,7 @@ export function ScanVisualResult({
       )}
 
       <p className={styles.note}>
-        Recognition runs on this device. The photo is not uploaded; the model
-        files may be downloaded on first use.
+        Recognition is on-device. The photo is not uploaded.
       </p>
 
       <div className={styles.row}>

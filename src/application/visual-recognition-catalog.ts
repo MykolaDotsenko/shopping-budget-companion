@@ -64,16 +64,4 @@ export const visualRecognitionLabels = (
   }
 
   return Object.freeze(labels);
-    }
-  }
-
-  for (const record of newestFirst) {
-    add(record.label);
-
-    if (labels.length >= VISUAL_RECOGNITION_MAX_LABELS) {
-      break;
-    }
-  }
-
-  return Object.freeze(labels);
 };

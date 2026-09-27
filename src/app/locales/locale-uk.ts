@@ -214,7 +214,12 @@ export const messages = {
     "other": "{count} збереженої назви штрихкоду"
   },
   "Some trip history could not be restored": "Частину історії покупок не вдалося відновити",
-  "{trips} still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.": "{trips} усе ще доступні. Пошкоджену частину збережено без припущень і перезапису, тому завершені походи не можна додавати до історії, доки її не буде відкладено.",
+  "{count} completed trip is still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.": {
+    "one": "Ще доступний {count} завершений похід. Пошкоджену частину збережено без припущень і перезапису, тому завершені походи не можна додавати до історії, доки її не буде відкладено.",
+    "few": "Ще доступні {count} завершені походи. Пошкоджену частину збережено без припущень і перезапису, тому завершені походи не можна додавати до історії, доки її не буде відкладено.",
+    "many": "Ще доступні {count} завершених походів. Пошкоджену частину збережено без припущень і перезапису, тому завершені походи не можна додавати до історії, доки її не буде відкладено.",
+    "other": "Ще доступно {count} завершеного походу. Пошкоджену частину збережено без припущень і перезапису, тому завершені походи не можна додавати до історії, доки її не буде відкладено."
+  },
   "Trip history was saved by a newer version": "Історію збережено новішою версією",
   "This version can't read it, so it was preserved unchanged. Update the app to use it, or set it aside to keep finishing trips here.": "Ця версія не може її прочитати, тому дані збережено без змін. Оновіть застосунок, щоб використати їх, або відкладіть їх, щоб і далі завершувати походи тут.",
   "Trip history can't be read right now": "Історію покупок зараз не вдається прочитати",
@@ -234,12 +239,6 @@ export const messages = {
   "Keep as is": "Залишити як є",
   "Set aside…": "Відкладаємо…",
   "Retry": "Спробувати ще раз",
-  "{count} completed trip is": {
-    "one": "{count} завершений похід доступний",
-    "few": "{count} завершені походи доступні",
-    "many": "{count} завершених походів доступні",
-    "other": "{count} завершеного походу доступно"
-  },
   "{count} readable trip will be kept": {
     "one": "Буде збережено {count} читабельний похід",
     "few": "Буде збережено {count} читабельні походи",

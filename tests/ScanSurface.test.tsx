@@ -701,7 +701,7 @@ describe("ScanSurface product recognition mode", () => {
     await user.click(shutter);
 
     expect(
-      screen.getByRole("heading", { name: "Download recognition model?" }),
+      screen.getByRole("heading", { name: "Download model?" }),
     ).not.toBeNull();
     expect(camera.captureStill).not.toHaveBeenCalled();
     expect(recognizer.prepare).not.toHaveBeenCalled();

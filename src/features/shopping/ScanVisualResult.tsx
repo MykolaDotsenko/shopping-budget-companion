@@ -77,8 +77,8 @@ export function ScanVisualResult({
       {outcome.kind === "candidates" ? (
         <>
           <p>
-            Pick the product that matches what you are holding. The score ranks
-            this closed set; it is not a certainty estimate.
+            Pick the product that matches what you are holding. These are
+            ranked suggestions from a closed set, not certainty estimates.
           </p>
           <ul className={styles.candidates}>
             {candidates.map((candidate, index) => (
@@ -92,7 +92,7 @@ export function ScanVisualResult({
                 >
                   <span>{candidate.label}</span>
                   <span className={styles.tag}>
-                    Match {Math.round(candidate.confidence * 100)}%
+                    {index === 0 ? "Best match" : "Alternative"}
                   </span>
                 </button>
               </li>
@@ -113,7 +113,7 @@ export function ScanVisualResult({
           Try again
         </button>
         <button type="button" className={styles.secondary} onClick={onTypePrice}>
-          Enter manually
+          {outcome.kind === "candidates" ? "None of these" : "Enter manually"}
         </button>
       </div>
     </section>

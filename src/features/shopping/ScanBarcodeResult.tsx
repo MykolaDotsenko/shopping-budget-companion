@@ -13,6 +13,7 @@ import {
   type ScanContext,
 } from "./scan-targets";
 import styles from "./ScanSurface.module.css";
+import { englishTranslate, type Translate } from "./translation";
 
 export type Identified = Extract<BarcodeIdentification, { readonly ok: true }>;
 
@@ -29,6 +30,7 @@ export interface ScanBarcodeResultProps {
     barcode: Gtin,
   ) => boolean;
   readonly onScanAnother: () => void;
+  readonly t?: Translate;
 }
 
 export function ScanBarcodeResult({
@@ -41,6 +43,7 @@ export function ScanBarcodeResult({
   onReadPriceTag,
   onUseRemembered,
   onScanAnother,
+  t = englishTranslate,
 }: ScanBarcodeResultProps) {
   const nameId = useId();
   const lookupAbortRef = useRef<AbortController | null>(null);
@@ -67,7 +70,7 @@ export function ScanBarcodeResult({
             onReadPriceTag(context);
           }}
         >
-          Read price tag
+          {t("Read price tag")}
         </button>
       ) : null}
       <button
@@ -86,17 +89,15 @@ export function ScanBarcodeResult({
     return (
       <section className={styles.result} aria-labelledby="scan-result-title">
         <h2 id="scan-result-title" ref={headingRef} tabIndex={-1}>
-          Store label code
+          {t("Store label code")}
         </h2>
         <p>
-          The store printed this barcode, for example for a weighed item. It
-          changes from pack to pack, so it can&apos;t be remembered. Use the
-          price on the label.
+          {t("The store printed this barcode, for example for a weighed item. It changes from pack to pack, so it can’t be remembered. Use the price on the label.")}
         </p>
         <div className={styles.row}>
-          {priceActions({}, "Enter price")}
+          {priceActions({}, t("Enter price"))}
           <button type="button" className={styles.secondary} onClick={onScanAnother}>
-            Scan another
+            {t("Scan another")}
           </button>
         </div>
       </section>
@@ -107,12 +108,12 @@ export function ScanBarcodeResult({
     return (
       <section className={styles.result} aria-labelledby="scan-result-title">
         <h2 id="scan-result-title" ref={headingRef} tabIndex={-1}>
-          Not a product barcode
+          {t("Not a product barcode")}
         </h2>
-        <p>This looks like a coupon or receipt code.</p>
+        <p>{t("This looks like a coupon or receipt code.")}</p>
         <div className={styles.row}>
           <button type="button" className={styles.primary} onClick={onScanAnother}>
-            Scan another
+            {t("Scan another")}
           </button>
           <button
             type="button"
@@ -121,7 +122,7 @@ export function ScanBarcodeResult({
               onEnterPrice({});
             }}
           >
-            Enter price without scanning
+            {t("Enter price without scanning")}
           </button>
         </div>
       </section>
@@ -140,16 +141,18 @@ export function ScanBarcodeResult({
         <h2 id="scan-result-title" ref={headingRef} tabIndex={-1}>
           {knownLabel}
         </h2>
-        <p className={styles.code}>Barcode {displayCode}</p>
+        <p className={styles.code}>{t("Barcode {code}", { code: displayCode })}</p>
         <p>
           {remembered === null
-            ? "No remembered price yet. Use the price on the shelf."
-            : `Last time ${formatEur(remembered.unitPriceMinor, locale)}. Prices change, so check the shelf.`}
+            ? t("No remembered price yet. Use the price on the shelf.")
+            : t("Last time {amount}. Prices change, so check the shelf.", {
+                amount: formatEur(remembered.unitPriceMinor, locale),
+              })}
         </p>
         <div className={styles.actions}>
           {priceActions(
             contextTarget(knownLabel, gtin),
-            canReadPriceTag ? "Type current price" : "Enter current price",
+            canReadPriceTag ? t("Type current price") : t("Enter current price"),
           )}
           {remembered !== null ? (
             <button
@@ -159,15 +162,17 @@ export function ScanBarcodeResult({
                 setActionError("");
 
                 if (!onUseRemembered(remembered, gtin)) {
-                  setActionError("Couldn't add it. Enter the price instead.");
+                  setActionError(t("Couldn't add it. Enter the price instead."));
                 }
               }}
             >
-              {`Use ${formatEur(remembered.unitPriceMinor, locale)} again`}
+              {t("Use {amount} again", {
+                amount: formatEur(remembered.unitPriceMinor, locale),
+              })}
             </button>
           ) : null}
           <button type="button" className={styles.secondary} onClick={onScanAnother}>
-            Scan another
+            {t("Scan another")}
           </button>
         </div>
         {actionError ? (
@@ -222,13 +227,13 @@ export function ScanBarcodeResult({
       </h2>
       <p className={styles.code}>Barcode {displayCode}</p>
       <label className={styles.field} htmlFor={nameId}>
-        Name for next time (optional)
+        {t("Name for next time (optional)")}
         <input
           id={nameId}
           value={name}
           autoComplete="off"
           spellCheck={false}
-          placeholder="Milk 1L"
+          placeholder={t("Milk 1L")}
           maxLength={120}
           onChange={(event) => {
             setName(event.currentTarget.value);
@@ -243,13 +248,15 @@ export function ScanBarcodeResult({
             disabled={lookup.kind === "loading"}
             onClick={findNameOnline}
           >
-            {lookup.kind === "loading" ? "Looking up…" : "Find name online"}
+            {lookup.kind === "loading" ? t("Looking up…") : t("Find name online")}
           </button>
           <p className={styles.note}>
-            {`Sends this barcode number to ${productLookup.providerName}. Nothing else from your trip leaves your device.`}
+            {t("Sends this barcode number to {provider}. Nothing else from your trip leaves your device.", {
+              provider: productLookup.providerName,
+            })}
           </p>
           <p className={styles.note} role="status" aria-live="polite">
-            {lookupCopy(lookup, productLookup.providerName)}
+            {lookupCopy(lookup, productLookup.providerName, t)}
           </p>
         </>
       ) : null}
@@ -262,7 +269,7 @@ export function ScanBarcodeResult({
               onReadPriceTag(namedContext());
             }}
           >
-            Read price tag
+            {t("Read price tag")}
           </button>
         ) : null}
         <button
@@ -272,10 +279,10 @@ export function ScanBarcodeResult({
             onEnterPrice(namedContext());
           }}
         >
-          {canReadPriceTag ? "Type price" : "Continue to price"}
+          {canReadPriceTag ? t("Type price") : t("Continue to price")}
         </button>
         <button type="button" className={styles.secondary} onClick={onScanAnother}>
-          Scan another
+          {t("Scan another")}
         </button>
       </div>
     </section>

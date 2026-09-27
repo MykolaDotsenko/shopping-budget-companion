@@ -16,6 +16,12 @@ import {
 } from "../../domain/shopping-trip";
 import styles from "./RecentItemsSection.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface RecentItemsSectionProps {
   readonly trip: ActiveTrip;
@@ -32,6 +38,8 @@ export interface RecentItemsSectionProps {
   readonly limit?: number;
   readonly persistenceDegraded?: boolean;
   readonly activeTripSaving?: boolean;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 const localDay = (timestamp: string): number => {
@@ -44,18 +52,20 @@ const localDay = (timestamp: string): number => {
 const ageLabel = (
   record: PriceMemoryRecord,
   now: IsoTimestamp,
+  t: Translate,
+  tp: TranslatePlural,
 ): string => {
   const days = Math.max(0, localDay(now) - localDay(record.observedAt));
 
   if (days === 0) {
-    return "Seen today";
+    return t("Seen today");
   }
 
   if (days === 1) {
-    return "Seen 1 day ago";
+    return t("Seen 1 day ago");
   }
 
-  return `Seen ${days} days ago`;
+  return tp("Seen {count} day ago", "Seen {count} days ago", days);
 };
 
 const absoluteMoney = (
@@ -96,6 +106,8 @@ export function RecentItemsSection({
   limit = 4,
   persistenceDegraded = false,
   activeTripSaving = true,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: RecentItemsSectionProps) {
   const effectiveNow = now ?? currentTimestamp();
   const lastBoughtAt = useMemo(
@@ -143,7 +155,9 @@ export function RecentItemsSection({
 
     if (accepted === false) {
       setErrorMessage(
-        `Could not add ${record.label}. Try again or enter the current price.`,
+        t("Could not add {item}. Try again or enter the current price.", {
+          item: record.label,
+        }),
       );
       return false;
     }
@@ -186,21 +200,20 @@ export function RecentItemsSection({
     <section className={styles.section} aria-labelledby="recent-items-title">
       <div className={styles.heading}>
         <div>
-          <p className={styles.kicker}>Faster repeat shopping</p>
-          <h2 id="recent-items-title">Recent Items</h2>
+          <p className={styles.kicker}>{t("Faster repeat shopping")}</p>
+          <h2 id="recent-items-title">{t("Recent Items")}</h2>
         </div>
-        <span>{remembered.length} remembered</span>
+        <span>{t("{count} remembered", { count: remembered.length })}</span>
       </div>
 
       <p className={styles.intro}>
-        Prices from past trips. Check the shelf, or enter today’s price.
+        {t("Prices from past trips. Check the shelf, or enter today’s price.")}
       </p>
 
       {persistenceDegraded ? (
         <p className={styles.memoryWarning} role="status">
-          Recent Items are available now, but price-memory changes are not
-          safely saving.
-          {activeTripSaving ? " Your active cart is still saved independently." : ""}
+          {t("Recent Items are available now, but price-memory changes are not safely saving.")}
+          {activeTripSaving ? t(" Your active cart is still saved independently.") : ""}
         </p>
       ) : null}
 
@@ -228,9 +241,9 @@ export function RecentItemsSection({
                   {formatEur(record.unitPriceMinor, locale)}
                 </span>
                 <small>
-                  Remembered · {ageLabel(record, effectiveNow)}
-                  {record.storeId === undefined ? "" : " · Store-specific"}
-                  {inCart.has(record.productId) ? " · In this cart" : ""}
+                  {t("Remembered")} · {ageLabel(record, effectiveNow, t, tp)}
+                  {record.storeId === undefined ? "" : t(" · Store-specific")}
+                  {inCart.has(record.productId) ? t(" · In this cart") : ""}
                 </small>
               </div>
 
@@ -238,7 +251,7 @@ export function RecentItemsSection({
                 <div
                   className={styles.confirmation}
                   role="group"
-                  aria-label={`Confirm remembered price for ${record.label}`}
+                  aria-label={t("Confirm remembered price for {item}", { item: record.label })}
                   onKeyDown={(event) => {
                     if (event.key === "Escape") {
                       event.preventDefault();
@@ -247,14 +260,12 @@ export function RecentItemsSection({
                   }}
                 >
                   <p>
-                    This remembered price would put you{" "}
-                    <strong>
-                      {absoluteMoney(
+                    {t("This remembered price would put you {amount} over your limit.", {
+                      amount: absoluteMoney(
                         projection.value.nominalOverageMinor,
                         locale,
-                      )}
-                    </strong>{" "}
-                    over your limit.
+                      ),
+                    })}
                   </p>
                   <div className={styles.confirmationActions}>
                     <button
@@ -265,7 +276,7 @@ export function RecentItemsSection({
                         cancelPending(record.id);
                       }}
                     >
-                      Cancel
+                      {t("Cancel")}
                     </button>
                     <button
                       type="button"
@@ -279,7 +290,7 @@ export function RecentItemsSection({
                         restoreRememberedTrigger(record.id);
                       }}
                     >
-                      Add anyway
+                      {t("Add anyway")}
                     </button>
                   </div>
                 </div>
@@ -288,7 +299,7 @@ export function RecentItemsSection({
                   <button
                     type="button"
                     className={styles.rememberedButton}
-                    aria-label={`Use remembered price for ${record.label}`}
+                    aria-label={t("Use remembered price for {item}", { item: record.label })}
                     data-use-remembered-memory-id={record.id}
                     onClick={(event) => {
                       if (crossesNominalBudget) {
@@ -300,12 +311,12 @@ export function RecentItemsSection({
                       addRemembered(record, event.timeStamp);
                     }}
                   >
-                    Use remembered price
+                    {t("Use remembered price")}
                   </button>
                   <button
                     type="button"
                     className={styles.secondaryButton}
-                    aria-label={`Enter current price for ${record.label}`}
+                    aria-label={t("Enter current price for {item}", { item: record.label })}
                     data-current-price-memory-id={record.id}
                     onClick={() => {
                       setPendingId(null);
@@ -313,7 +324,7 @@ export function RecentItemsSection({
                       onEnterCurrentPrice(record);
                     }}
                   >
-                    Enter current price
+                    {t("Enter current price")}
                   </button>
                 </div>
               )}
@@ -331,7 +342,9 @@ export function RecentItemsSection({
             setShowAll((current) => !current);
           }}
         >
-          {showAll ? "Show fewer" : `Show all ${remembered.length}`}
+          {showAll
+            ? t("Show fewer")
+            : t("Show all {count}", { count: remembered.length })}
         </button>
       ) : null}
     </section>

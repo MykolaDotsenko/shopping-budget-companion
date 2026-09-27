@@ -45,6 +45,12 @@ import {
 } from "./scan-targets";
 import styles from "./ScanSurface.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface ScanSurfaceProps {
   readonly controller: ShoppingAppController;
@@ -65,6 +71,8 @@ export interface ScanSurfaceProps {
     barcode: Gtin,
   ) => boolean;
   readonly locale?: string;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 type Phase =
@@ -139,6 +147,8 @@ export default function ScanSurface({
   onEnterPrice,
   onUseRemembered,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: ScanSurfaceProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -485,7 +495,7 @@ export default function ScanSurface({
     const result = controller.identifyBarcode(manualCode, null);
 
     if (!result.ok) {
-      setManualError(codeErrorCopy(result.error));
+      setManualError(codeErrorCopy(result.error, t));
       return;
     }
 
@@ -674,7 +684,7 @@ export default function ScanSurface({
 
   const liveStatus = (): string => {
     if (phase.kind === "starting") {
-      return "Starting the camera…";
+      return t("Starting the camera…");
     }
 
     if (phase.kind !== "live") {
@@ -683,46 +693,58 @@ export default function ScanSurface({
 
     if (mode === "barcode") {
       return phase.hint
-        ? "Hold the barcode flat and steady, about 10–20 cm from the camera."
-        : "Point the camera at the barcode.";
+        ? t("Hold the barcode flat and steady, about 10–20 cm from the camera.")
+        : t("Point the camera at the barcode.");
     }
 
     if (mode === "product") {
       return phase.hint
-        ? "Fill the frame with one product and avoid glare, then tap Recognize product."
-        : "Fit one product inside the frame, then tap Recognize product.";
+        ? t("Fill the frame with one product and avoid glare, then tap Recognize product.")
+        : t("Fit one product inside the frame, then tap Recognize product.");
     }
 
     if (priceWarmup.kind === "preparing" || priceWarmup.kind === "idle") {
-      return `Getting the price reader ready (first time only)…${percent(
-        priceWarmup.kind === "preparing" ? priceWarmup.fraction : null,
-      )}`;
+      return t("Getting the price reader ready (first time only)…{percent}", {
+        percent: percent(
+          priceWarmup.kind === "preparing" ? priceWarmup.fraction : null,
+        ),
+      });
     }
 
     if (priceWarmup.kind === "failed") {
-      return "The price reader couldn't start. You can still type the price.";
+      return t("The price reader couldn't start. You can still type the price.");
     }
 
     return phase.hint
-      ? "Move closer so the price fills the frame, then tap Read price."
-      : "Fit the price tag inside the frame, then tap Read price.";
+      ? t("Move closer so the price fills the frame, then tap Read price.")
+      : t("Fit the price tag inside the frame, then tap Read price.");
   };
 
   const statusText =
     phase.kind === "paused"
-      ? "Camera paused while the app was in the background."
+      ? t("Camera paused while the app was in the background.")
       : phase.kind === "reading"
         ? phase.preparing === null
-          ? "Reading the price…"
-          : `Getting the price reader ready (first time only)…${percent(phase.preparing)}`
+          ? t("Reading the price…")
+          : t("Getting the price reader ready (first time only)…{percent}", {
+              percent: percent(phase.preparing),
+            })
         : phase.kind === "recognizing"
-          ? "Recognizing the product…"
+          ? t("Recognizing the product…")
           : phase.kind === "found"
-            ? "Barcode read."
+            ? t("Barcode read.")
             : phase.kind === "prices"
-              ? `${phase.candidates.length === 1 ? "One price" : `${phase.candidates.length} prices`} found.`
+              ? tp(
+                  "One price found.",
+                  "{count} prices found.",
+                  phase.candidates.length,
+                )
               : phase.kind === "visual-candidates"
-                ? `${phase.candidates.length === 1 ? "One product match" : `${phase.candidates.length} product matches`} found.`
+                ? tp(
+                    "One product match found.",
+                    "{count} product matches found.",
+                    phase.candidates.length,
+                  )
                 : liveStatus();
 
   return (
@@ -730,28 +752,28 @@ export default function ScanSurface({
       <div className={styles.sheet}>
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>Scan</p>
+            <p className={styles.eyebrow}>{t("Scan")}</p>
             <h1 id="scan-title" ref={titleRef} tabIndex={-1}>
               {mode === "price"
-                ? "Read the price tag"
+                ? t("Read the price tag")
                 : mode === "product"
-                  ? "Recognize the product"
-                  : "Find the product"}
+                  ? t("Recognize the product")
+                  : t("Find the product")}
             </h1>
           </div>
           <button type="button" className={styles.secondary} onClick={onCancel}>
-            Cancel
+            {t("Cancel")}
           </button>
         </header>
 
         {mode === "price" && scanContext.label !== undefined ? (
           <p className={styles.context}>
-            Price for <strong>{scanContext.label}</strong>
+            {t("Price for")} <strong>{scanContext.label}</strong>
           </p>
         ) : null}
 
         <div className={styles.viewport} hidden={!cameraWanted}>
-          <video ref={videoRef} muted playsInline aria-label="Camera preview" />
+          <video ref={videoRef} muted playsInline aria-label={t("Camera preview")} />
           <div
             className={styles.frame}
             data-mode={mode}
@@ -761,7 +783,7 @@ export default function ScanSurface({
         </div>
 
         {multipleModes && (cameraWanted || phase.kind === "paused" || phase.kind === "failed") ? (
-          <div className={styles.modes} role="group" aria-label="What to scan">
+          <div className={styles.modes} role="group" aria-label={t("What to scan")}>
             {barcodeReader !== null ? (
               <button
                 type="button"
@@ -770,7 +792,7 @@ export default function ScanSurface({
                   switchMode("barcode");
                 }}
               >
-                Barcode
+                {t("Barcode")}
               </button>
             ) : null}
             {visualRecognizer !== null ? (
@@ -781,7 +803,7 @@ export default function ScanSurface({
                   switchMode("product");
                 }}
               >
-                Product
+                {t("Product")}
               </button>
             ) : null}
             {priceReader !== null ? (
@@ -792,7 +814,7 @@ export default function ScanSurface({
                   switchMode("price");
                 }}
               >
-                Price tag
+                {t("Price tag")}
               </button>
             ) : null}
           </div>
@@ -808,10 +830,9 @@ export default function ScanSurface({
             aria-labelledby="visual-download-title"
           >
             <div>
-              <h2 id="visual-download-title">Download model?</h2>
+              <h2 id="visual-download-title">{t("Download model?")}</h2>
               <p>
-                First use downloads a model and may use mobile data.
-                Your photo stays on this device.
+                {t("First use downloads a model and may use mobile data. Your photo stays on this device.")}
               </p>
             </div>
             <div className={styles.row}>
@@ -823,7 +844,7 @@ export default function ScanSurface({
                   setVisualDownloadPrompt(false);
                 }}
               >
-                Not now
+                {t("Not now")}
               </button>
               <button
                 type="button"
@@ -834,7 +855,7 @@ export default function ScanSurface({
                   void recognizeProduct(true);
                 }}
               >
-                Continue
+                {t("Continue")}
               </button>
             </div>
           </section>
@@ -845,7 +866,7 @@ export default function ScanSurface({
             className={styles.progress}
             role="progressbar"
             aria-label={
-              phase.kind === "recognizing" ? "Recognizing the product" : "Reading the price"
+              phase.kind === "recognizing" ? t("Recognizing the product") : t("Reading the price")
             }
             {...(phase.kind === "reading" && phase.preparing !== null
               ? {
@@ -880,7 +901,7 @@ export default function ScanSurface({
                   void readPriceTag();
                 }}
               >
-                Read price
+                {t("Read price")}
               </button>
             ) : null}
             {mode === "product" && visualRecognizer !== null ? (
@@ -892,7 +913,7 @@ export default function ScanSurface({
                   void recognizeProduct();
                 }}
               >
-                Recognize product
+                {t("Recognize product")}
               </button>
             ) : null}
             <div className={styles.row}>
@@ -903,16 +924,16 @@ export default function ScanSurface({
                   aria-pressed={phase.torchOn}
                   onClick={toggleTorch}
                 >
-                  Light
+                  {t("Light")}
                 </button>
               ) : null}
               {mode === "barcode" ? (
                 <button type="button" className={styles.secondary} onClick={typeInstead}>
-                  Type barcode
+                  {t("Type barcode")}
                 </button>
               ) : (
                 <button type="button" className={styles.secondary} onClick={typePrice}>
-                  {mode === "product" ? "Enter manually" : "Type price"}
+                  {mode === "product" ? t("Enter manually") : t("Type price")}
                 </button>
               )}
             </div>
@@ -921,25 +942,25 @@ export default function ScanSurface({
 
         {phase.kind === "paused" ? (
           <button type="button" className={styles.primary} onClick={restartCamera}>
-            Resume camera
+            {t("Resume camera")}
           </button>
         ) : null}
 
         {phase.kind === "failed" ? (
           <section className={styles.result} aria-labelledby="scan-result-title">
             <h2 id="scan-result-title" ref={resultRef} tabIndex={-1}>
-              Camera unavailable
+              {t("Camera unavailable")}
             </h2>
-            <p>{failureCopy(phase.failure, mode)}</p>
+            <p>{failureCopy(phase.failure, mode, t)}</p>
             <div className={styles.actions}>
               {canRetry(phase.failure) ? (
                 <button type="button" className={styles.primary} onClick={restartCamera}>
-                  Try again
+                  {t("Try again")}
                 </button>
               ) : null}
               {mode === "barcode" ? (
                 <button type="button" className={styles.secondary} onClick={typeInstead}>
-                  Type barcode
+                  {t("Type barcode")}
                 </button>
               ) : null}
               <button
@@ -952,10 +973,10 @@ export default function ScanSurface({
                 }}
               >
                 {mode === "price"
-                  ? "Type price"
+                  ? t("Type price")
                   : mode === "product"
-                    ? "Enter manually"
-                    : "Enter price without scanning"}
+                    ? t("Enter manually")
+                    : t("Enter price without scanning")}
               </button>
             </div>
           </section>
@@ -970,7 +991,7 @@ export default function ScanSurface({
             }}
           >
             <label className={styles.field} htmlFor={manualId}>
-              Barcode digits
+              {t("Barcode digits")}
               <input
                 ref={manualInputRef}
                 id={manualId}
@@ -993,11 +1014,11 @@ export default function ScanSurface({
             ) : null}
             <div className={styles.row}>
               <button type="submit" className={styles.primary}>
-                Use barcode
+                {t("Use barcode")}
               </button>
               {camera.isAvailable() ? (
                 <button type="button" className={styles.secondary} onClick={restartCamera}>
-                  Use camera
+                  {t("Use camera")}
                 </button>
               ) : null}
             </div>
@@ -1011,6 +1032,7 @@ export default function ScanSurface({
             productLookup={productLookup}
             canReadPriceTag={priceReader !== null}
             locale={locale}
+            t={t}
             headingRef={resultRef}
             onEnterPrice={onEnterPrice}
             onReadPriceTag={readPriceFor}
@@ -1035,6 +1057,7 @@ export default function ScanSurface({
             onChoose={chooseVisualProduct}
             onRetake={restartCamera}
             onTypePrice={typePrice}
+            t={t}
           />
         ) : null}
 
@@ -1048,6 +1071,7 @@ export default function ScanSurface({
             productLabel={scanContext.label ?? null}
             capturedUrl={capturedUrl}
             locale={locale}
+            t={t}
             headingRef={resultRef}
             onChoose={choosePrice}
             onRetake={restartCamera}

@@ -27,6 +27,12 @@ import { RecentItemsSection } from "./RecentItemsSection";
 import { trustLabel } from "./item-trust";
 import styles from "./ActiveTripScreen.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface ActiveTripScreenProps {
   readonly controller: ShoppingAppController;
@@ -49,6 +55,8 @@ export interface ActiveTripScreenProps {
   readonly onEnterCurrentPrice?: (record: PriceMemoryRecord) => void;
   readonly utilityControl?: ReactNode;
   readonly locale?: string;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 const clampPercentage = (value: number): number =>
@@ -100,6 +108,8 @@ export function ActiveTripScreen({
   onEnterCurrentPrice,
   utilityControl,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: ActiveTripScreenProps) {
   const lastRemovalAt = useRef(Number.NEGATIVE_INFINITY);
   const state = useShoppingAppState(controller);
@@ -141,12 +151,12 @@ export function ActiveTripScreen({
         : nominalRemaining;
 
   const heroLabel = nominalOverBudget
-    ? "over your limit"
+    ? t("over your limit")
     : reserveInUse
-      ? "safe to spend"
+      ? t("safe to spend")
       : hasBuffer
-        ? "safe to spend"
-        : "left";
+        ? t("safe to spend")
+        : t("left");
 
   const spentPercent = clampPercentage(
     (total / trip.budgetMinor) * 100,
@@ -176,14 +186,18 @@ export function ActiveTripScreen({
     !hasBuffer || nominalOverBudget
       ? null
       : reserveInUse
-        ? `${formatSignedAmount(nominalRemaining, locale)} of your ${formatEur(
-            trip.safetyBufferMinor,
-            locale,
-          )} safety buffer left`
-        : `plus a ${formatEur(trip.safetyBufferMinor, locale)} safety buffer`;
-  const statusSentence = `${formatSignedAmount(heroAmount, locale)} ${heroLabel}${
-    heroContext === null ? "" : `, ${heroContext}`
-  }`;
+        ? t("{amount} of your {buffer} safety buffer left", {
+            amount: formatSignedAmount(nominalRemaining, locale),
+            buffer: formatEur(trip.safetyBufferMinor, locale),
+          })
+        : t("plus a {buffer} safety buffer", {
+            buffer: formatEur(trip.safetyBufferMinor, locale),
+          });
+  const statusSentence = t("{amount} {status}{context}", {
+    amount: formatSignedAmount(heroAmount, locale),
+    status: heroLabel,
+    context: heroContext === null ? "" : `, ${heroContext}`,
+  });
 
   return (
     <main className={styles.screen}>
@@ -195,22 +209,22 @@ export function ActiveTripScreen({
       <section className={styles.shell} aria-labelledby="active-trip-title">
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>Shopping trip</p>
+            <p className={styles.eyebrow}>{t("Shopping trip")}</p>
             <h1 id="active-trip-title" className={styles.title} tabIndex={-1}>
-              Know what’s left
+              {t("Know what’s left")}
             </h1>
           </div>
           <p className={styles.itemCount}>
             {totalQuantity === 0
-              ? "No items yet"
-              : `${totalQuantity} ${totalQuantity === 1 ? "item" : "items"}`}
+              ? t("No items yet")
+              : tp("{count} item", "{count} items", totalQuantity)}
           </p>
         </header>
 
         <section
           ref={observeHero}
           className={styles.hero}
-          aria-label="Current spending status"
+          aria-label={t("Current spending status")}
           data-status={status}
         >
           <p
@@ -229,28 +243,34 @@ export function ActiveTripScreen({
         <PersistenceHealthNotice
           controller={controller}
           health={state.persistence}
+          t={t}
+          tp={tp}
         />
-        <HistoryIntegrityNotice controller={controller} />
+        <HistoryIntegrityNotice controller={controller} t={t} tp={tp} />
 
-        <section className={styles.summary} aria-label="Budget summary">
+        <section className={styles.summary} aria-label={t("Budget summary")}>
           <div className={styles.summaryRow}>
-            <span>Cart</span>
+            <span>{t("Cart")}</span>
             <strong>
-              {formatEur(total, locale)} of {formatEur(trip.budgetMinor, locale)}
+              {t("{spent} of {budget}", {
+                spent: formatEur(total, locale),
+                budget: formatEur(trip.budgetMinor, locale),
+              })}
             </strong>
           </div>
 
           <div
             className={styles.capacity}
             role="progressbar"
-            aria-label="Shopping budget used"
+            aria-label={t("Shopping budget used")}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(spentPercent)}
-            aria-valuetext={`${formatEur(total, locale)} in cart of ${formatEur(
-              trip.budgetMinor,
-              locale,
-            )}. ${statusSentence}.`}
+            aria-valuetext={t("{spent} in cart of {budget}. {status}.", {
+              spent: formatEur(total, locale),
+              budget: formatEur(trip.budgetMinor, locale),
+              status: statusSentence,
+            })}
             data-status={status}
             style={capacityStyle}
           >
@@ -266,9 +286,9 @@ export function ActiveTripScreen({
 
           {hasBuffer ? (
             <div className={styles.capacityLabels} aria-hidden="true">
-              <span>Safe limit {formatEur(protectedLimit, locale)}</span>
+              <span>{t("Safe limit {amount}", { amount: formatEur(protectedLimit, locale) })}</span>
               <span>
-                Safety buffer {formatEur(trip.safetyBufferMinor, locale)}
+                {t("Safety buffer {amount}", { amount: formatEur(trip.safetyBufferMinor, locale) })}
               </span>
             </div>
           ) : null}
@@ -283,7 +303,9 @@ export function ActiveTripScreen({
                 className={styles.undoButton}
                 onClick={onUndo}
               >
-                {feedbackMessage ? "Undo" : UNDO_LABELS[state.undo.description]}
+                {feedbackMessage
+                  ? t("Undo")
+                  : t(UNDO_LABELS[state.undo.description])}
               </button>
             ) : null}
           </div>
@@ -297,7 +319,7 @@ export function ActiveTripScreen({
             onClick={onAddPrice}
           >
             <span aria-hidden="true">+</span>
-            <span>Add price</span>
+            <span>{t("Add price")}</span>
           </button>
           {onScan ? (
             <button
@@ -318,7 +340,7 @@ export function ActiveTripScreen({
                   className={styles.finishButton}
                   onClick={onAdjustBudget}
                 >
-                  Adjust budget
+                  {t("Adjust budget")}
                 </button>
               ) : null}
               {onFinishTrip ? (
@@ -328,7 +350,7 @@ export function ActiveTripScreen({
                   className={styles.finishButton}
                   onClick={onFinishTrip}
                 >
-                  Finish trip
+                  {t("Finish trip")}
                 </button>
               ) : null}
             </div>
@@ -349,30 +371,33 @@ export function ActiveTripScreen({
             onUseRemembered={onUseRemembered}
             onEnterCurrentPrice={onEnterCurrentPrice}
             locale={locale}
+            t={t}
+            tp={tp}
           />
         ) : null}
 
         <section className={styles.cart} aria-labelledby="cart-title">
           <div className={styles.cartHeading}>
             <div>
-              <p className={styles.sectionKicker}>Current cart</p>
-              <h2 id="cart-title">What you have added</h2>
+              <p className={styles.sectionKicker}>{t("Current cart")}</p>
+              <h2 id="cart-title">{t("What you have added")}</h2>
             </div>
             <strong>{formatEur(total, locale)}</strong>
           </div>
 
           {trip.items.length === 0 ? (
             <div className={styles.emptyState}>
-              <p>Nothing in your cart yet.</p>
+              <p>{t("Nothing in your cart yet.")}</p>
               <span>
-                Add each price as you shop. A name is optional.
+                {t("Add each price as you shop. A name is optional.")}
               </span>
             </div>
           ) : (
             <ul className={styles.itemList}>
               {trip.items.map((item, index) => {
                 const itemTotal = lineTotal(item);
-                const itemName = item.label ?? `Item ${index + 1}`;
+                const itemName =
+                  item.label ?? t("Item {number}", { number: index + 1 });
 
                 return (
                   <li key={item.id} className={styles.item}>
@@ -389,7 +414,7 @@ export function ActiveTripScreen({
                           className={styles.itemTrust}
                           data-confidence={item.priceConfidence.kind}
                         >
-                          {trustLabel(item)}
+                          {trustLabel(item, t)}
                         </small>
                       ) : null}
                     </div>
@@ -404,7 +429,7 @@ export function ActiveTripScreen({
                             <button
                               type="button"
                               className={styles.itemActionButton}
-                              aria-label={`Edit ${itemName}`}
+                              aria-label={t("Edit {item}", { item: itemName })}
                               data-edit-item-id={item.id}
                               onClick={(event) => {
                                 if (event.timeStamp - lastRemovalAt.current < GHOST_TAP_MS) {
@@ -414,14 +439,14 @@ export function ActiveTripScreen({
                                 onEditItem(item);
                               }}
                             >
-                              Edit
+                              {t("Edit")}
                             </button>
                           ) : null}
                           {onRemoveItem ? (
                             <button
                               type="button"
                               className={styles.removeButton}
-                              aria-label={`Remove ${itemName}`}
+                              aria-label={t("Remove {item}", { item: itemName })}
                               onClick={(event) => {
                                 if (event.timeStamp - lastRemovalAt.current < GHOST_TAP_MS) {
                                   return;
@@ -431,7 +456,7 @@ export function ActiveTripScreen({
                                 onRemoveItem(item);
                               }}
                             >
-                              Remove
+                              {t("Remove")}
                             </button>
                           ) : null}
                         </div>

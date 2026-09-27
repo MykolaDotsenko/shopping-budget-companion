@@ -14,6 +14,7 @@ import {
 import styles from "./BudgetSettingsSurface.module.css";
 import { formatAbsoluteEur, moneyInputErrorMessage } from "./shopping-feedback";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import { englishTranslate, type Translate } from "./translation";
 
 export interface SpendingPlanIntent {
   readonly budgetMinor: MinorUnits;
@@ -25,6 +26,7 @@ export interface BudgetSettingsSurfaceProps {
   readonly onCancel: () => void;
   readonly onSave: (intent: SpendingPlanIntent) => boolean | void;
   readonly locale?: string;
+  readonly t?: Translate;
 }
 
 export function BudgetSettingsSurface({
@@ -32,6 +34,7 @@ export function BudgetSettingsSurface({
   onCancel,
   onSave,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
 }: BudgetSettingsSurfaceProps) {
   const budgetId = useId();
   const bufferId = useId();
@@ -59,7 +62,7 @@ export function BudgetSettingsSurface({
       return {
         ok: false as const,
         field: "budget" as const,
-        message: moneyInputErrorMessage(budget.error.code),
+        message: moneyInputErrorMessage(budget.error.code, t),
       };
     }
 
@@ -67,7 +70,7 @@ export function BudgetSettingsSurface({
       return {
         ok: false as const,
         field: "budget" as const,
-        message: "Budget must be above €0.",
+        message: t("Budget must be above €0."),
       };
     }
 
@@ -82,7 +85,7 @@ export function BudgetSettingsSurface({
       return {
         ok: false as const,
         field: "buffer" as const,
-        message: moneyInputErrorMessage(buffer.error.code),
+        message: moneyInputErrorMessage(buffer.error.code, t),
       };
     }
 
@@ -90,7 +93,7 @@ export function BudgetSettingsSurface({
       return {
         ok: false as const,
         field: "buffer" as const,
-        message: "Safety buffer cannot be larger than the budget.",
+        message: t("Safety buffer cannot be larger than the budget."),
       };
     }
 
@@ -99,7 +102,7 @@ export function BudgetSettingsSurface({
       budgetMinor: budget.value,
       safetyBufferMinor: buffer.value,
     };
-  }, [budgetRaw, bufferRaw]);
+  }, [budgetRaw, bufferRaw, t]);
 
   const preview = useMemo(() => {
     if (!parsedPlan.ok) {
@@ -119,26 +122,31 @@ export function BudgetSettingsSurface({
     if (projection.value.crossesNominalBudget) {
       return {
         status: "over" as const,
-        primary: `Current cart will be ${formatAbsoluteEur(
-          projection.value.remainingMinor,
-          locale,
-        )} over this budget.`,
+        primary: t("Current cart will be {amount} over this budget.", {
+          amount: formatAbsoluteEur(
+            projection.value.remainingMinor,
+            locale,
+          ),
+        }),
         secondary:
-          "You can still save it; the trip will show how far over you are.",
+          t("You can still save it; the trip will show how far over you are."),
       };
     }
 
     if (projection.value.crossesSafeLimit) {
       return {
         status: "reserve" as const,
-        primary: "The current cart already uses part of this safety buffer.",
-        secondary: `${formatAbsoluteEur(
-          projection.value.remainingMinor,
-          locale,
-        )} of this ${formatEur(
-          parsedPlan.safetyBufferMinor,
-          locale,
-        )} safety buffer would be left.`,
+        primary: t("The current cart already uses part of this safety buffer."),
+        secondary: t("{amount} of this {buffer} safety buffer would be left.", {
+          amount: formatAbsoluteEur(
+            projection.value.remainingMinor,
+            locale,
+          ),
+          buffer: formatEur(
+            parsedPlan.safetyBufferMinor,
+            locale,
+          ),
+        }),
       };
     }
 
@@ -146,23 +154,29 @@ export function BudgetSettingsSurface({
       status: "within" as const,
       primary:
         parsedPlan.safetyBufferMinor > 0
-          ? `${formatAbsoluteEur(
-              projection.value.safeRemainingMinor,
-              locale,
-            )} safe to spend after saving`
-          : `${formatAbsoluteEur(
-              projection.value.remainingMinor,
-              locale,
-            )} left after saving`,
+          ? t("{amount} safe to spend after saving", {
+              amount: formatAbsoluteEur(
+                projection.value.safeRemainingMinor,
+                locale,
+              ),
+            })
+          : t("{amount} left after saving", {
+              amount: formatAbsoluteEur(
+                projection.value.remainingMinor,
+                locale,
+              ),
+            }),
       secondary:
         parsedPlan.safetyBufferMinor > 0
-          ? `${formatEur(
-              parsedPlan.safetyBufferMinor,
-              locale,
-            )} is kept as your safety buffer.`
-          : "No safety buffer will be held back.",
+          ? t("{amount} is kept as your safety buffer.", {
+              amount: formatEur(
+                parsedPlan.safetyBufferMinor,
+                locale,
+              ),
+            })
+          : t("No safety buffer will be held back."),
     };
-  }, [locale, parsedPlan, trip]);
+  }, [locale, parsedPlan, t, trip]);
 
   const submit = (): void => {
     if (submitting) {
@@ -173,7 +187,10 @@ export function BudgetSettingsSurface({
 
     if (!parsedPlan.ok) {
       setErrorMessage(
-        `${parsedPlan.field === "budget" ? "Budget" : "Safety buffer"}: ${parsedPlan.message}`,
+        t("{field}: {message}", {
+          field: parsedPlan.field === "budget" ? t("Budget") : t("Safety buffer"),
+          message: parsedPlan.message,
+        }),
       );
       if (parsedPlan.field === "budget") {
         budgetRef.current?.focus();
@@ -192,7 +209,7 @@ export function BudgetSettingsSurface({
     if (accepted === false) {
       setSubmitting(false);
       setErrorMessage(
-        "Could not update the spending plan. Check the values and try again.",
+        t("Could not update the spending plan. Check the values and try again."),
       );
     }
   };
@@ -211,21 +228,22 @@ export function BudgetSettingsSurface({
       <section className={styles.panel}>
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>Trip settings</p>
-            <h1 id="budget-settings-title">Adjust budget</h1>
+            <p className={styles.eyebrow}>{t("Trip settings")}</p>
+            <h1 id="budget-settings-title">{t("Adjust budget")}</h1>
           </div>
           <button
             type="button"
             className={styles.cancelButton}
             onClick={onCancel}
           >
-            Cancel
+            {t("Cancel")}
           </button>
         </header>
 
         <p className={styles.context}>
-          Your cart stays as it is. Cart total:{" "}
-          <strong>{formatEur(cartTotal(trip), locale)}</strong>.
+          {t("Your cart stays as it is. Cart total: {amount}.", {
+            amount: formatEur(cartTotal(trip), locale),
+          })}
         </p>
 
         <form
@@ -236,7 +254,7 @@ export function BudgetSettingsSurface({
           }}
         >
           <label className={styles.field} htmlFor={budgetId}>
-            <span>Budget</span>
+            <span>{t("Budget")}</span>
             <div className={styles.inputShell}>
               <span aria-hidden="true">€</span>
               <input
@@ -256,7 +274,7 @@ export function BudgetSettingsSurface({
 
           <label className={styles.field} htmlFor={bufferId}>
             <span>
-              Safety buffer <small>Optional</small>
+              {t("Safety buffer")} <small>{t("Optional")}</small>
             </span>
             <div className={styles.inputShell}>
               <span aria-hidden="true">€</span>
@@ -287,7 +305,7 @@ export function BudgetSettingsSurface({
                 <span>{preview.secondary}</span>
               </div>
             ) : (
-              <p>Budget and buffer are saved together as one change.</p>
+              <p>{t("Budget and buffer are saved together as one change.")}</p>
             )}
           </div>
 
@@ -296,7 +314,7 @@ export function BudgetSettingsSurface({
             className={styles.saveButton}
             disabled={submitting}
           >
-            {submitting ? "Saving…" : "Save budget"}
+            {submitting ? t("Saving…") : t("Save budget")}
           </button>
         </form>
       </section>

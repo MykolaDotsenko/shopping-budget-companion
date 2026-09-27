@@ -1,5 +1,6 @@
 import type { MoneyDraftMode } from "../../domain/money";
 import styles from "./PriceEntrySurface.module.css";
+import { englishTranslate, type Translate } from "./translation";
 
 const KEYPAD_ROWS: readonly (readonly string[])[] = [
   ["1", "2", "3"],
@@ -11,14 +12,16 @@ const KEYPAD_ROWS: readonly (readonly string[])[] = [
 export interface PriceKeypadProps {
   readonly mode: MoneyDraftMode;
   readonly onPress: (key: string) => void;
+  readonly t?: Translate;
 }
 
 export function PriceKeypad({
   mode,
   onPress,
+  t = englishTranslate,
 }: PriceKeypadProps) {
   return (
-    <div className={styles.keypad} aria-label="Price keypad">
+    <div className={styles.keypad} aria-label={t("Price keypad")}>
       {KEYPAD_ROWS.flat().map((key) => {
         const isSeparator = key === ".";
         const isBackspace = key === "backspace";
@@ -30,7 +33,7 @@ export function PriceKeypad({
               type="button"
               className={styles.key}
               disabled
-              aria-label="Decimal separator unavailable in cents mode"
+              aria-label={t("Decimal separator unavailable in cents mode")}
             >
               .
             </button>
@@ -44,10 +47,10 @@ export function PriceKeypad({
             className={styles.key}
             aria-label={
               isBackspace
-                ? "Backspace"
+                ? t("Backspace")
                 : isSeparator
-                  ? "Decimal separator"
-                  : `Digit ${key}`
+                  ? t("Decimal separator")
+                  : t("Digit {digit}", { digit: key })
             }
             onClick={() => {
               onPress(key);

@@ -38,6 +38,7 @@ import {
 } from "./price-entry-presentation";
 import styles from "./PriceEntrySurface.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import { englishTranslate, type Translate } from "./translation";
 
 export interface ValidatedItemIntent {
   readonly unitPriceMinor: MinorUnits;
@@ -63,6 +64,7 @@ export interface PriceEntrySurfaceProps {
   readonly initialMode?: MoneyDraftMode;
   readonly onModeChange?: (mode: MoneyDraftMode) => void;
   readonly locale?: string;
+  readonly t?: Translate;
 }
 
 const prefersCustomKeypad = (): boolean =>
@@ -87,6 +89,7 @@ export function PriceEntrySurface({
   initialMode = "decimal",
   onModeChange,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
 }: PriceEntrySurfaceProps) {
   const amountInputId = useId();
   const labelInputId = useId();
@@ -172,7 +175,7 @@ export function PriceEntrySurface({
   const consequence =
     projection === null
       ? null
-      : projectionCopy(trip, projection, locale);
+      : projectionCopy(trip, projection, locale, t);
 
   const activeConfirmation =
     overBudgetConfirmation?.sourceTrip === trip
@@ -198,7 +201,7 @@ export function PriceEntrySurface({
     if (accepted === false) {
       submittingRef.current = false;
       setSubmitted(false);
-      setSubmissionError("Could not add this item. Check the trip and try again.");
+      setSubmissionError(t("Could not add this item. Check the trip and try again."));
       return;
     }
 
@@ -250,10 +253,10 @@ export function PriceEntrySurface({
 
   const modeLocked = draft.raw !== "";
   const modeHint = !modeLocked
-    ? "Cents mode needs no decimal point."
+    ? t("Cents mode needs no decimal point.")
     : draft.mode === "decimal"
-      ? "Clear the price to switch to cents."
-      : "Clear the price to switch to euros.";
+      ? t("Clear the price to switch to cents.")
+      : t("Clear the price to switch to euros.");
 
   const chooseMode = (mode: MoneyDraftMode): void => {
     if (modeLocked) {
@@ -286,7 +289,7 @@ export function PriceEntrySurface({
 
   const invalidCopy =
     state.kind === "invalid"
-      ? errorMessage(state.reason, draft.mode)
+      ? errorMessage(state.reason, draft.mode, t)
       : "";
 
   return (
@@ -311,13 +314,13 @@ export function PriceEntrySurface({
         <div className={styles.sheetBody}>
           <header className={styles.header}>
             <div>
-              <p className={styles.eyebrow}>Add price</p>
+              <p className={styles.eyebrow}>{t("Add price")}</p>
               <h1
                 ref={titleRef}
                 id="price-entry-title"
                 tabIndex={-1}
               >
-                What does this item cost?
+                {t("What does this item cost?")}
               </h1>
             </div>
             <button
@@ -325,13 +328,13 @@ export function PriceEntrySurface({
               className={styles.cancelButton}
               onClick={onCancel}
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </header>
 
           {initialLabel !== undefined ? (
             <p className={styles.currentPriceContext}>
-              Current price for <strong>{initialLabel}</strong>
+              {t("Current price for")} <strong>{initialLabel}</strong>
             </p>
           ) : null}
 
@@ -339,7 +342,7 @@ export function PriceEntrySurface({
             <div
               className={styles.segmented}
               role="group"
-              aria-label="Price entry mode"
+              aria-label={t("Price entry mode")}
               aria-describedby={modeHintId}
             >
               <button
@@ -352,7 +355,7 @@ export function PriceEntrySurface({
                   chooseMode("decimal");
                 }}
               >
-                Euros
+                {t("Euros")}
               </button>
               <button
                 type="button"
@@ -364,7 +367,7 @@ export function PriceEntrySurface({
                   chooseMode("auto-cents");
                 }}
               >
-                Cents mode
+                {t("Cents mode")}
               </button>
             </div>
             <p
@@ -379,7 +382,7 @@ export function PriceEntrySurface({
           <div className={styles.amountBlock}>
             <div className={styles.amountLabelRow}>
               <label htmlFor={amountInputId} className={styles.amountLabel}>
-                Price
+                {t("Price")}
               </label>
               {onReadPriceTag !== undefined && activeConfirmation === null ? (
                 <button
@@ -394,7 +397,7 @@ export function PriceEntrySurface({
                     );
                   }}
                 >
-                  Read price tag
+                  {t("Read price tag")}
                 </button>
               ) : null}
             </div>
@@ -456,18 +459,18 @@ export function PriceEntrySurface({
                   {priceFromTag ? (
                     <span className={styles.tagSource}>
                       {" "}
-                      Read from the price tag. Check it matches the shelf.
+                      {t("Read from the price tag. Check it matches the shelf.")}
                     </span>
                   ) : null}
                 </span>
               ) : invalidCopy ? (
                 <span className={styles.error}>{invalidCopy}</span>
               ) : state.kind === "incomplete" ? (
-                <span>Finish the amount.</span>
+                <span>{t("Finish the amount.")}</span>
               ) : draft.mode === "auto-cents" ? (
-                <span>Cents mode: type 249 for €2.49.</span>
+                <span>{t("Cents mode: type 249 for €2.49.")}</span>
               ) : (
-                <span>Type the price, like 2.49. A name is optional.</span>
+                <span>{t("Type the price, like 2.49. A name is optional.")}</span>
               )}
             </div>
           </div>
@@ -477,7 +480,7 @@ export function PriceEntrySurface({
               id={projectionId}
               className={styles.projection}
               data-status={consequence.status}
-              aria-label="Projected cart result"
+              aria-label={t("Projected cart result")}
             >
               <strong>{consequence.primary}</strong>
               {consequence.secondary ? (
@@ -489,14 +492,14 @@ export function PriceEntrySurface({
           {activeConfirmation === null ? (
             <div className={styles.labelBlock}>
               <div className={styles.labelField}>
-                <label htmlFor={labelInputId}>Item name</label>
+                <label htmlFor={labelInputId}>{t("Item name")}</label>
                 <input
                   id={labelInputId}
                   value={label}
                   autoComplete="off"
                   spellCheck={false}
                   enterKeyHint="done"
-                  placeholder="e.g. Milk 1L"
+                  placeholder={t("e.g. Milk 1L")}
                   onChange={(event) => {
                     const characters = [...event.currentTarget.value];
                     const tooLong = characters.length > MAX_ITEM_LABEL_CODE_POINTS;
@@ -504,7 +507,9 @@ export function PriceEntrySurface({
                     setLabel(characters.slice(0, MAX_ITEM_LABEL_CODE_POINTS).join(""));
                     setLabelNotice(
                       tooLong
-                        ? `Names stop at ${MAX_ITEM_LABEL_CODE_POINTS} characters; the rest was left out.`
+                        ? t("Names stop at {max} characters; the rest was left out.", {
+                            max: MAX_ITEM_LABEL_CODE_POINTS,
+                          })
                         : "",
                     );
                   }}
@@ -515,7 +520,7 @@ export function PriceEntrySurface({
                     }
                   }}
                 />
-                <span className={styles.labelOptional}>Optional</span>
+                <span className={styles.labelOptional}>{t("Optional")}</span>
               </div>
               {labelNotice ? (
                 <p className={styles.labelError} role="status">
@@ -530,14 +535,14 @@ export function PriceEntrySurface({
             aria-labelledby="quantity-title"
           >
             <div className={styles.quantityCopy}>
-              <span id="quantity-title">Quantity</span>
+              <span id="quantity-title">{t("Quantity")}</span>
             </div>
 
             <div className={styles.quantityStepper}>
               <button
                 type="button"
                 className={styles.quantityButton}
-                aria-label="Decrease quantity"
+                aria-label={t("Decrease quantity")}
                 disabled={
                   activeConfirmation !== null ||
                   !canDecreaseQuantity(quantity)
@@ -550,7 +555,7 @@ export function PriceEntrySurface({
               </button>
               <output
                 className={styles.quantityValue}
-                aria-label="Current quantity"
+                aria-label={t("Current quantity")}
                 aria-live="polite"
               >
                 {quantity}
@@ -558,7 +563,7 @@ export function PriceEntrySurface({
               <button
                 type="button"
                 className={styles.quantityButton}
-                aria-label="Increase quantity"
+                aria-label={t("Increase quantity")}
                 disabled={
                   activeConfirmation !== null ||
                   !canIncreaseQuantity(quantity)
@@ -582,15 +587,15 @@ export function PriceEntrySurface({
 
         {activeConfirmation === null ? (
           <>
-          <PriceKeypad mode={draft.mode} onPress={pressKey} />
+          <PriceKeypad mode={draft.mode} onPress={pressKey} t={t} />
           <p className={styles.keypadEcho} aria-live="polite">
             {modeNotice
               ? modeHint
               : keypadPresses === 0
                 ? ""
                 : draft.raw === ""
-                  ? "Price cleared"
-                  : `Price ${draft.raw}`}
+                  ? t("Price cleared")
+                  : t("Price {price}", { price: draft.raw })}
           </p>
 
           <div className={styles.footer}>
@@ -604,7 +609,7 @@ export function PriceEntrySurface({
                 focusInputUnlessCoarse();
               }}
             >
-              Clear
+              {t("Clear")}
             </button>
             <button
               type="button"
@@ -614,8 +619,15 @@ export function PriceEntrySurface({
               onClick={commit}
             >
               {submitted
-                ? "Adding…"
-                : `Add${projection === null ? "" : ` · ${formatAbsoluteSigned(projection.lineTotalMinor, locale)}`}`}
+                ? t("Adding…")
+                : projection === null
+                  ? t("Add")
+                  : t("Add · {amount}", {
+                      amount: formatAbsoluteSigned(
+                        projection.lineTotalMinor,
+                        locale,
+                      ),
+                    })}
             </button>
           </div>
 
@@ -627,25 +639,25 @@ export function PriceEntrySurface({
             aria-describedby="over-budget-detail"
           >
             <div className={styles.confirmationCopy}>
-              <p className={styles.confirmationEyebrow}>Over budget</p>
+              <p className={styles.confirmationEyebrow}>{t("Over budget")}</p>
               <h2 id="over-budget-title">
-                Add this price anyway?
+                {t("Add this price anyway?")}
               </h2>
               <p id="over-budget-detail">
-                This puts you{" "}
-                <strong>
-                  {formatAbsoluteSigned(
-                    activeConfirmation.projection.nominalOverageMinor,
-                    locale,
-                  )}
-                </strong>{" "}
-                over your limit. The cart would be{" "}
-                {formatAbsoluteSigned(
-                  activeConfirmation.projection.cartTotalMinor,
-                  locale,
-                )}{" "}
-                of {formatEur(trip.budgetMinor, locale)}. Nothing has been
-                added yet.
+                {t(
+                  "This puts you {overage} over your limit. The cart would be {cart} of {budget}. Nothing has been added yet.",
+                  {
+                    overage: formatAbsoluteSigned(
+                      activeConfirmation.projection.nominalOverageMinor,
+                      locale,
+                    ),
+                    cart: formatAbsoluteSigned(
+                      activeConfirmation.projection.cartTotalMinor,
+                      locale,
+                    ),
+                    budget: formatEur(trip.budgetMinor, locale),
+                  },
+                )}
               </p>
             </div>
 
@@ -657,7 +669,7 @@ export function PriceEntrySurface({
                 aria-describedby="over-budget-detail"
                 onClick={cancelOverBudgetConfirmation}
               >
-                Change price
+                {t("Change price")}
               </button>
               <button
                 type="button"
@@ -667,11 +679,13 @@ export function PriceEntrySurface({
                 onClick={confirmOverBudget}
               >
                 {submitted
-                  ? "Adding…"
-                  : `Add ${formatAbsoluteSigned(
-                      activeConfirmation.projection.lineTotalMinor,
-                      locale,
-                    )} anyway`}
+                  ? t("Adding…")
+                  : t("Add {amount} anyway", {
+                      amount: formatAbsoluteSigned(
+                        activeConfirmation.projection.lineTotalMinor,
+                        locale,
+                      ),
+                    })}
               </button>
             </div>
           </section>

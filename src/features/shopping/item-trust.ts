@@ -1,13 +1,14 @@
 import type { CartItem } from "../../domain/shopping-trip";
+import { englishTranslate, type Translate } from "./translation";
 
-const confidenceLabel = (item: CartItem): string => {
+const confidenceLabel = (item: CartItem, t: Translate): string => {
   switch (item.priceConfidence.kind) {
     case "confirmed":
-      return "Confirmed";
+      return t("Confirmed");
     case "remembered":
-      return "Remembered";
+      return t("Remembered");
     case "estimated":
-      return "Estimated";
+      return t("Estimated");
     default: {
       const exhaustive: never = item.priceConfidence;
       return exhaustive;
@@ -15,18 +16,18 @@ const confidenceLabel = (item: CartItem): string => {
   }
 };
 
-const sourceLabel = (item: CartItem): string => {
+const sourceLabel = (item: CartItem, t: Translate): string => {
   switch (item.priceSource.kind) {
     case "manual":
-      return "Manual";
+      return t("Manual");
     case "price-memory":
-      return "Price memory";
+      return t("Price memory");
     case "shelf-scan":
-      return "Shelf scan";
+      return t("Shelf scan");
     case "encoded-barcode":
-      return "Barcode";
+      return t("Barcode");
     case "retailer-feed":
-      return "Retailer feed";
+      return t("Retailer feed");
     default: {
       const exhaustive: never = item.priceSource;
       return exhaustive;
@@ -34,8 +35,11 @@ const sourceLabel = (item: CartItem): string => {
   }
 };
 
-export const trustLabel = (item: CartItem): string =>
+export const trustLabel = (
+  item: CartItem,
+  t: Translate = englishTranslate,
+): string =>
   item.priceSource.kind === "price-memory" &&
   item.priceConfidence.kind === "remembered"
-    ? "Remembered price"
-    : `${confidenceLabel(item)} · ${sourceLabel(item)}`;
+    ? t("Remembered price")
+    : `${confidenceLabel(item, t)} · ${sourceLabel(item, t)}`;

@@ -7,11 +7,19 @@ import type {
   ShoppingAppController,
 } from "../../application/shopping-app-controller";
 import styles from "./PersistenceHealthNotice.module.css";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface PersistenceHealthNoticeProps {
   readonly controller: ShoppingAppController;
   readonly health: PersistenceHealth;
   readonly context?: "active" | "completed" | "idle";
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 const retryIsMeaningful = (issue: PersistenceProblem): boolean =>
@@ -33,21 +41,30 @@ const tripsToRemove = (removable: number): number =>
 const removalCopy = (
   removing: number,
   removable: number,
+  t: Translate,
+  tp: TranslatePlural,
 ): { readonly action: string; readonly detail: string } => {
   if (removing === removable) {
     return removing === 1
-      ? { action: "Remove the only trip", detail: "Your only trip in history" }
-      : { action: `Remove all ${removing} trips`, detail: `All ${removing} trips in history` };
+      ? { action: t("Remove the only trip"), detail: t("Your only trip in history") }
+      : {
+          action: t("Remove all {count} trips", { count: removing }),
+          detail: t("All {count} trips in history", { count: removing }),
+        };
   }
 
   return removing === 1
-    ? { action: "Remove the oldest trip", detail: "Your oldest trip" }
-    : { action: `Remove ${removing} oldest trips`, detail: `Your ${removing} oldest trips` };
+    ? { action: t("Remove the oldest trip"), detail: t("Your oldest trip") }
+    : {
+        action: tp("Remove {count} oldest trip", "Remove {count} oldest trips", removing),
+        detail: tp("Your {count} oldest trip", "Your {count} oldest trips", removing),
+      };
 };
 
 const noticeCopy = (
   issue: PersistenceProblem,
   context: "active" | "completed" | "idle",
+  t: Translate,
 ): {
   readonly title: string;
   readonly body: string;
@@ -55,13 +72,13 @@ const noticeCopy = (
 } => {
   if (issue.code === "storage-full") {
     return {
-      title: "Storage for this app is full",
+      title: t("Storage for this app is full"),
       body:
         context === "active"
-          ? "This trip can’t be saved until there is room. Your totals still work in this tab."
+          ? t("This trip can’t be saved until there is room. Your totals still work in this tab.")
           : context === "completed"
-            ? "The latest change to this trip can’t be saved until there is room. Done keeps the trip as it was last saved."
-            : "Changes can’t be saved until there is room.",
+            ? t("The latest change to this trip can’t be saved until there is room. Done keeps the trip as it was last saved.")
+            : t("Changes can’t be saved until there is room."),
       risk: "trip",
     };
   }
@@ -72,18 +89,18 @@ const noticeCopy = (
       issue.storageKey === "budget-cart:active-trip"
     ) {
       return {
-        title: "Trip saved — cleanup is incomplete",
+        title: t("Trip saved — cleanup is incomplete"),
         body:
-          "Your completed trip is already in history, but an old active-trip copy could not be removed. Retry cleanup before leaving this summary.",
+          t("Your completed trip is already in history, but an old active-trip copy could not be removed. Retry cleanup before leaving this summary."),
         risk: "cleanup",
       };
     }
 
     if (issue.storageKey === "budget-cart:history") {
       return {
-        title: "Trip history is not fully saved",
+        title: t("Trip history is not fully saved"),
         body:
-          "The latest change to this trip could not be stored safely. Retry, or choose Done to keep the trip as it was last saved.",
+          t("The latest change to this trip could not be stored safely. Retry, or choose Done to keep the trip as it was last saved."),
         risk: "trip",
       };
     }
@@ -95,18 +112,18 @@ const noticeCopy = (
     issue.storageKey === "budget-cart:active-trip"
   ) {
     return {
-      title: "A finished trip left an old copy behind",
+      title: t("A finished trip left an old copy behind"),
       body:
-        "The finished trip is safe in history, but an old active copy of it could not be removed. Retry cleanup.",
+        t("The finished trip is safe in history, but an old active copy of it could not be removed. Retry cleanup."),
       risk: "cleanup",
     };
   }
 
   if (context === "active" && issue.storageKey === "budget-cart:history") {
     return {
-      title: "This trip could not be added to history",
+      title: t("This trip could not be added to history"),
       body:
-        "Finishing did not save it to history, so the trip is still open here. Keep this page open and try finishing again.",
+        t("Finishing did not save it to history, so the trip is still open here. Keep this page open and try finishing again."),
       risk: "trip",
     };
   }
@@ -114,44 +131,44 @@ const noticeCopy = (
   switch (issue.code) {
     case "session-only":
       return {
-        title: "Not saving on this device",
+        title: t("Not saving on this device"),
         body:
           context === "active"
-            ? "You chose to continue without saving, so saved data here stays untouched. Your totals work in this tab, but closing or reloading it loses this trip."
-            : "You chose to continue without saving, so saved data here stays untouched. Reload the app to return to recovery.",
+            ? t("You chose to continue without saving, so saved data here stays untouched. Your totals work in this tab, but closing or reloading it loses this trip.")
+            : t("You chose to continue without saving, so saved data here stays untouched. Reload the app to return to recovery."),
         risk: "trip",
       };
     case "legacy-retirement-failed":
       return {
-        title: "Old app data could not be cleaned up",
+        title: t("Old app data could not be cleaned up"),
         body:
           context === "active"
-            ? "Your current shopping trip is still available. Older unrelated local data was left untouched and was not converted into shopping money."
-            : "Older unrelated local data was left untouched and was not converted into shopping money.",
+            ? t("Your current shopping trip is still available. Older unrelated local data was left untouched and was not converted into shopping money.")
+            : t("Older unrelated local data was left untouched and was not converted into shopping money."),
         risk: "cleanup",
       };
     case "storage-unavailable":
       return {
         title:
           context === "active"
-            ? "This trip cannot be saved on this device"
-            : "Shopping data cannot be saved on this device",
+            ? t("This trip cannot be saved on this device")
+            : t("Shopping data cannot be saved on this device"),
         body:
           context === "active"
-            ? "Browser storage is unavailable. Your totals still work in this tab, but reloading or closing it can lose this trip."
-            : "Browser storage is unavailable. Changes made in this tab may be lost after reload or close.",
+            ? t("Browser storage is unavailable. Your totals still work in this tab, but reloading or closing it can lose this trip.")
+            : t("Browser storage is unavailable. Changes made in this tab may be lost after reload or close."),
         risk: "trip",
       };
     default:
       return {
         title:
           context === "active"
-            ? "This trip is not being saved right now"
-            : "Shopping data is not being saved right now",
+            ? t("This trip is not being saved right now")
+            : t("Shopping data is not being saved right now"),
         body:
           context === "active"
-            ? "Keep this page open until checkout. Your totals still work in this tab, and you can retry saving without changing the cart."
-            : "Keep this page open while you retry saving. We’ll confirm as soon as it’s saved.",
+            ? t("Keep this page open until checkout. Your totals still work in this tab, and you can retry saving without changing the cart.")
+            : t("Keep this page open while you retry saving. We’ll confirm as soon as it’s saved."),
         risk: "trip",
       };
   }
@@ -161,6 +178,8 @@ export function PersistenceHealthNotice({
   controller,
   health,
   context = "active",
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: PersistenceHealthNoticeProps) {
   const state = useShoppingAppState(controller);
   const [retryMessage, setRetryMessage] = useState("");
@@ -197,16 +216,16 @@ export function PersistenceHealthNotice({
           ✓
         </span>
         <div className={styles.copy}>
-          <strong id="persistence-notice-title">Saved on this device</strong>
+          <strong id="persistence-notice-title">{t("Saved on this device")}</strong>
           <p ref={resolvedRef} tabIndex={-1} role="status">
-            Saving works again.
+            {t("Saving works again.")}
           </p>
         </div>
       </aside>
     ) : null;
   }
 
-  const copy = noticeCopy(health.issue, context);
+  const copy = noticeCopy(health.issue, context, t);
   const removable =
     health.issue.code === "storage-full"
       ? state.completedTrips.filter(
@@ -215,7 +234,7 @@ export function PersistenceHealthNotice({
       : 0;
   const removing = tripsToRemove(removable);
   const canMakeRoom = removing > 0;
-  const removal = removalCopy(removing, removable);
+  const removal = removalCopy(removing, removable, t, tp);
   const canRetry = !canMakeRoom && retryIsMeaningful(health.issue);
 
   const makeRoom = (): void => {
@@ -225,7 +244,7 @@ export function PersistenceHealthNotice({
     const result = controller.deleteOldestCompletedTrips(removing);
 
     if (!result.ok) {
-      setRetryMessage("Trips could not be removed, so nothing was changed.");
+      setRetryMessage(t("Trips could not be removed, so nothing was changed."));
       return;
     }
 
@@ -234,7 +253,7 @@ export function PersistenceHealthNotice({
       return;
     }
 
-    setRetryMessage("There still isn’t enough room. You can remove more trips.");
+    setRetryMessage(t("There still isn’t enough room. You can remove more trips."));
   };
 
   const retry = (): void => {
@@ -243,7 +262,7 @@ export function PersistenceHealthNotice({
     const result = controller.retryPersistence();
 
     if (!result.ok) {
-      setRetryMessage("Saving cannot be retried from the current app state.");
+      setRetryMessage(t("Saving cannot be retried from the current app state."));
       return;
     }
 
@@ -255,8 +274,8 @@ export function PersistenceHealthNotice({
     if (result.durability === "memory-only") {
       setRetryMessage(
         context === "active"
-          ? "Still not saved. Keep this page open and try again later."
-          : "Still not safely saved. Keep this page open and try again later.",
+          ? t("Still not saved. Keep this page open and try again later.")
+          : t("Still not safely saved. Keep this page open and try again later."),
       );
     }
   };
@@ -277,11 +296,13 @@ export function PersistenceHealthNotice({
           {health.issue.code !== "storage-full"
             ? ""
             : canMakeRoom
-              ? " Removing your oldest trips from history makes room."
-              : " Free up storage this browser keeps for this site, then retry."}
+              ? t(" Removing your oldest trips from history makes room.")
+              : t(" Free up storage this browser keeps for this site, then retry.")}
           <span aria-live="polite">
             {confirmingRoom && canMakeRoom
-              ? ` ${removal.detail} will be removed from this device; remembered prices stay.`
+              ? t(" {detail} will be removed from this device; remembered prices stay.", {
+                  detail: removal.detail,
+                })
               : ""}
           </span>
         </p>
@@ -305,12 +326,12 @@ export function PersistenceHealthNotice({
             setConfirmingRoom((current) => !current);
           }}
         >
-          {confirmingRoom ? "Keep all trips" : "Make room…"}
+          {confirmingRoom ? t("Keep all trips") : t("Make room…")}
         </button>
       ) : null}
       {canRetry ? (
         <button type="button" className={styles.retryButton} onClick={retry}>
-          Retry
+          {t("Retry")}
         </button>
       ) : null}
     </aside>

@@ -8,6 +8,7 @@ import {
   type PriceReadProblem,
 } from "./scan-copy";
 import styles from "./ScanSurface.module.css";
+import { englishTranslate, type Translate } from "./translation";
 
 const MAX_SHOWN_PRICE_CANDIDATES = 4;
 
@@ -27,6 +28,7 @@ export interface ScanPriceResultProps {
   readonly onChoose: (price: MinorUnits) => void;
   readonly onRetake: () => void;
   readonly onTypePrice: () => void;
+  readonly t?: Translate;
 }
 
 export function ScanPriceResult({
@@ -38,13 +40,14 @@ export function ScanPriceResult({
   onChoose,
   onRetake,
   onTypePrice,
+  t = englishTranslate,
 }: ScanPriceResultProps) {
   const snapshot =
     capturedUrl === null ? null : (
       <img
         className={styles.snapshot}
         src={capturedUrl}
-        alt="The price tag as captured"
+        alt={t("The price tag as captured")}
       />
     );
 
@@ -53,17 +56,17 @@ export function ScanPriceResult({
       <section className={styles.result} aria-labelledby="scan-result-title">
         <h2 id="scan-result-title" ref={headingRef} tabIndex={-1}>
           {outcome.problem === "engine-failed"
-            ? "Price reader unavailable"
-            : "No price found"}
+            ? t("Price reader unavailable")
+            : t("No price found")}
         </h2>
         {snapshot}
-        <p>{priceProblemCopy(outcome.problem)}</p>
+        <p>{priceProblemCopy(outcome.problem, t)}</p>
         <div className={styles.row}>
           <button type="button" className={styles.primary} onClick={onRetake}>
-            Try again
+            {t("Try again")}
           </button>
           <button type="button" className={styles.secondary} onClick={onTypePrice}>
-            Type price
+            {t("Type price")}
           </button>
         </div>
       </section>
@@ -75,16 +78,17 @@ export function ScanPriceResult({
   return (
     <section className={styles.result} aria-labelledby="scan-result-title">
       <h2 id="scan-result-title" ref={headingRef} tabIndex={-1}>
-        {productLabel === null ? "Choose the price" : `Price for ${productLabel}`}
+        {productLabel === null
+          ? t("Choose the price")
+          : t("Price for {item}", { item: productLabel })}
       </h2>
       {snapshot}
       <p>
-        Tap the amount that matches the shelf. You&apos;ll check it once more
-        before it&apos;s added.
+        {t("Tap the amount that matches the shelf. You’ll check it once more before it’s added.")}
       </p>
-      <ul className={styles.candidates} aria-label="Prices found on the tag">
+      <ul className={styles.candidates} aria-label={t("Prices found on the tag")}>
         {shown.map((candidate, index) => {
-          const tag = candidateContextLabel(candidate);
+          const tag = candidateContextLabel(candidate, t);
 
           return (
             <li key={Number(candidate.minorUnits)}>
@@ -108,10 +112,10 @@ export function ScanPriceResult({
       </ul>
       <div className={styles.row}>
         <button type="button" className={styles.secondary} onClick={onRetake}>
-          Retake
+          {t("Retake")}
         </button>
         <button type="button" className={styles.secondary} onClick={onTypePrice}>
-          Type price
+          {t("Type price")}
         </button>
       </div>
     </section>

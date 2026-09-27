@@ -8,9 +8,17 @@ import type {
 import { isSessionOnly } from "../../application/session-only-persistence";
 import { focusNextScreen } from "./focus-next-screen";
 import styles from "./PersistenceHealthNotice.module.css";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface HistoryIntegrityNoticeProps {
   readonly controller: ShoppingAppController;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 const SET_ASIDE_CODES = [
@@ -25,44 +33,54 @@ const SET_ASIDE_CODES = [
 const historyCopy = (
   issue: PersistenceProblem,
   keptTripCount: number,
+  t: Translate,
+  tp: TranslatePlural,
 ): { readonly title: string; readonly body: string } => {
   switch (issue.code) {
     case "invalid-history-entry":
       return {
-        title: "Some trip history could not be restored",
-        body: `${keptTripCount === 1 ? "1 completed trip is" : `${keptTripCount} completed trips are`} still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.`,
+        title: t("Some trip history could not be restored"),
+        body: t("{trips} still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.", {
+          trips: tp(
+            "{count} completed trip is",
+            "{count} completed trips are",
+            keptTripCount,
+          ),
+        }),
       };
     case "unsupported-version":
       return {
-        title: "Trip history was saved by a newer version",
+        title: t("Trip history was saved by a newer version"),
         body:
-          "This version can't read it, so it was preserved unchanged. Update the app to use it, or set it aside to keep finishing trips here.",
+          t("This version can't read it, so it was preserved unchanged. Update the app to use it, or set it aside to keep finishing trips here."),
       };
     case "read-failed":
     case "storage-unavailable":
       return {
-        title: "Trip history can't be read right now",
+        title: t("Trip history can't be read right now"),
         body:
-          "Browser storage did not return the saved history. Nothing was changed; try reading it again.",
+          t("Browser storage did not return the saved history. Nothing was changed; try reading it again."),
       };
     default:
       return {
-        title: "Trip history could not be read safely",
+        title: t("Trip history could not be read safely"),
         body:
-          "Saved history was preserved unchanged instead of being guessed. Finished trips can't be added to it until it is set aside.",
+          t("Saved history was preserved unchanged instead of being guessed. Finished trips can't be added to it until it is set aside."),
       };
   }
 };
 
 type Resolution = "set-aside" | "read";
 
-const RESOLVED_COPY: Record<Resolution, string> = {
-  "set-aside": "Any unreadable record was kept as a backup copy on this device.",
-  read: "Saved trip history was read successfully.",
-};
+const resolvedCopy = (resolution: Resolution, t: Translate): string =>
+  resolution === "set-aside"
+    ? t("Any unreadable record was kept as a backup copy on this device.")
+    : t("Saved trip history was read successfully.");
 
 export function HistoryIntegrityNotice({
   controller,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: HistoryIntegrityNoticeProps) {
   const state = useShoppingAppState(controller);
   const [confirming, setConfirming] = useState(false);
@@ -105,9 +123,9 @@ export function HistoryIntegrityNotice({
           ✓
         </span>
         <div className={styles.copy}>
-          <strong id="history-integrity-title">Trip history is readable again</strong>
+          <strong id="history-integrity-title">{t("Trip history is readable again")}</strong>
           <p ref={resolvedRef} tabIndex={-1} role="status">
-            {RESOLVED_COPY[resolved]}
+            {resolvedCopy(resolved, t)}
           </p>
         </div>
       </aside>
@@ -119,7 +137,7 @@ export function HistoryIntegrityNotice({
   }
 
   const issue = state.historyIntegrity.issue;
-  const copy = historyCopy(issue, state.completedTrips.length);
+  const copy = historyCopy(issue, state.completedTrips.length, t, tp);
   const settable = SET_ASIDE_CODES.includes(issue.code);
   const retryable =
     issue.code === "read-failed" || issue.code === "storage-unavailable";
@@ -127,15 +145,24 @@ export function HistoryIntegrityNotice({
   const confirmingSetAside = confirming && settable;
   const keptCount = state.completedTrips.length;
   const afterSetAside = inSummary
-    ? " The trip you just finished will then be saved to history again."
+    ? t(" The trip you just finished will then be saved to history again.")
     : state.activeTrip === null
       ? ""
-      : " Your current trip is not affected.";
-  const confirmation = `The unreadable record will be moved to a backup copy on this device and ${
-    keptCount === 0
-      ? "history will start empty"
-      : `${keptCount} readable ${keptCount === 1 ? "trip" : "trips"} will be kept`
-  }.${afterSetAside} Choose Set aside now to confirm, or Keep as is to leave it unchanged.`;
+      : t(" Your current trip is not affected.");
+  const confirmation = t(
+    "The unreadable record will be moved to a backup copy on this device and {history}.{after} Choose Set aside now to confirm, or Keep as is to leave it unchanged.",
+    {
+      history:
+        keptCount === 0
+          ? t("history will start empty")
+          : tp(
+              "{count} readable trip will be kept",
+              "{count} readable trips will be kept",
+              keptCount,
+            ),
+      after: afterSetAside,
+    },
+  );
 
   const retry = (): void => {
     setStatusMessage("");
@@ -143,7 +170,7 @@ export function HistoryIntegrityNotice({
     const result = controller.retryHistoryRead();
 
     if (result.state.historyIntegrity.status === "degraded") {
-      setStatusMessage("History still can't be read. Nothing was changed.");
+      setStatusMessage(t("History still can't be read. Nothing was changed."));
       return;
     }
 
@@ -166,7 +193,7 @@ export function HistoryIntegrityNotice({
 
     setConfirming(false);
     setStatusMessage(
-      "History could not be set aside safely, so it was left unchanged.",
+      t("History could not be set aside safely, so it was left unchanged."),
     );
     toggleRef.current?.focus();
   };
@@ -194,7 +221,7 @@ export function HistoryIntegrityNotice({
             className={styles.retryButton}
             onClick={setAside}
           >
-            Set aside now
+            {t("Set aside now")}
           </button>
         ) : null}
         {statusMessage ? (
@@ -213,12 +240,12 @@ export function HistoryIntegrityNotice({
             setConfirming((current) => !current);
           }}
         >
-          {confirming ? "Keep as is" : "Set aside…"}
+          {confirming ? t("Keep as is") : t("Set aside…")}
         </button>
       ) : null}
       {retryable ? (
         <button type="button" className={styles.retryButton} onClick={retry}>
-          Retry
+          {t("Retry")}
         </button>
       ) : null}
     </aside>

@@ -18,6 +18,12 @@ import {
   moneyInputErrorMessage,
 } from "./shopping-feedback";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface CompletedSummaryScreenProps {
   readonly controller: ShoppingAppController;
@@ -26,11 +32,14 @@ export interface CompletedSummaryScreenProps {
   readonly onShopAgain: () => void;
   readonly onViewHistory: () => void;
   readonly locale?: string;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 const reconciliationCopy = (
   trip: CompletedTrip,
   locale: string,
+  t: Translate,
 ): string | null => {
   const difference = checkoutDifference(trip);
 
@@ -39,20 +48,18 @@ const reconciliationCopy = (
   }
 
   if (difference === 0) {
-    return "Your receipt matches your cart total exactly.";
+    return t("Your receipt matches your cart total exactly.");
   }
 
   if (difference > 0) {
-    return `You paid ${formatAbsoluteEur(
-      difference,
-      locale,
-    )} more than your cart total.`;
+    return t("You paid {amount} more than your cart total.", {
+      amount: formatAbsoluteEur(difference, locale),
+    });
   }
 
-  return `You paid ${formatAbsoluteEur(
-    difference,
-    locale,
-  )} less than your cart total.`;
+  return t("You paid {amount} less than your cart total.", {
+    amount: formatAbsoluteEur(difference, locale),
+  });
 };
 
 export function CompletedSummaryScreen({
@@ -62,6 +69,8 @@ export function CompletedSummaryScreen({
   onShopAgain,
   onViewHistory,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: CompletedSummaryScreenProps) {
   const state = useShoppingAppState(controller);
   const [checkoutRaw, setCheckoutRaw] = useState(() =>
@@ -78,9 +87,9 @@ export function CompletedSummaryScreen({
       : trip;
   const total = cartTotal(currentTrip);
   const quantity = itemCount(currentTrip);
-  const reconciliation = reconciliationCopy(currentTrip, locale);
+  const reconciliation = reconciliationCopy(currentTrip, locale, t);
   const paidMore = (checkoutDifference(currentTrip) ?? 0) > 0;
-  const outcome = budgetOutcome(currentTrip, locale);
+  const outcome = budgetOutcome(currentTrip, locale, t);
 
   const parsedCheckout = useMemo(() => {
     if (checkoutRaw.trim() === "") {
@@ -98,12 +107,12 @@ export function CompletedSummaryScreen({
     setStatusMessage("");
 
     if (parsedCheckout === null) {
-      setInputError("Enter the receipt total first.");
+      setInputError(t("Enter the receipt total first."));
       return;
     }
 
     if (!parsedCheckout.ok) {
-      setInputError(moneyInputErrorMessage(parsedCheckout.error.code));
+      setInputError(moneyInputErrorMessage(parsedCheckout.error.code, t));
       return;
     }
 
@@ -113,21 +122,21 @@ export function CompletedSummaryScreen({
       setInputError(
         result.error.kind === "application" &&
           result.error.code === "completed-trip-not-found"
-          ? "This trip was deleted from history, so its receipt total can’t be saved."
-          : "Could not save that receipt total.",
+          ? t("This trip was deleted from history, so its receipt total can’t be saved.")
+          : t("Could not save that receipt total."),
       );
       return;
     }
 
     if (!result.changed) {
-      setStatusMessage("This receipt total is already saved.");
+      setStatusMessage(t("This receipt total is already saved."));
       return;
     }
 
     setStatusMessage(
       result.durability === "persisted"
-        ? "Receipt total saved."
-        : "Receipt total updated here, but it isn’t saved yet.",
+        ? t("Receipt total saved.")
+        : t("Receipt total updated here, but it isn’t saved yet."),
     );
   };
 
@@ -139,8 +148,8 @@ export function CompletedSummaryScreen({
       setStatusMessage(
         result.error.kind === "application" &&
         result.error.code === "repeat-source-unavailable"
-          ? "Retry saving before starting another trip from this budget."
-          : "Could not start another trip from this budget.",
+          ? t("Retry saving before starting another trip from this budget.")
+          : t("Could not start another trip from this budget."),
       );
       return;
     }
@@ -154,7 +163,7 @@ export function CompletedSummaryScreen({
 
     if (!result.ok) {
       setStatusMessage(
-        "Retry saving before leaving this completed-trip summary.",
+        t("Retry saving before leaving this completed-trip summary."),
       );
       return;
     }
@@ -166,13 +175,12 @@ export function CompletedSummaryScreen({
     <main className={styles.screen} aria-labelledby="completed-title">
       <section className={styles.shell}>
         <header className={styles.header}>
-          <p className={styles.eyebrow}>Trip finished</p>
+          <p className={styles.eyebrow}>{t("Trip finished")}</p>
           <h1 id="completed-title" tabIndex={-1}>
-            Your shopping trip is complete
+            {t("Your shopping trip is complete")}
           </h1>
           <p>
-            Saved to History. Add your receipt total to see how close you
-            were.
+            {t("Saved to History. Add your receipt total to see how close you were.")}
           </p>
         </header>
 
@@ -180,15 +188,19 @@ export function CompletedSummaryScreen({
           controller={controller}
           health={state.persistence}
           context="completed"
+          t={t}
+          tp={tp}
         />
-        <HistoryIntegrityNotice controller={controller} />
+        <HistoryIntegrityNotice controller={controller} t={t} tp={tp} />
 
-        <section className={styles.hero} aria-label="Completed trip summary">
-          <span>Cart total</span>
+        <section className={styles.hero} aria-label={t("Completed trip summary")}>
+          <span>{t("Cart total")}</span>
           <strong>{formatEur(total, locale)}</strong>
           <small>
-            {quantity} {quantity === 1 ? "item" : "items"} · budget{" "}
-            {formatEur(currentTrip.budgetMinor, locale)}
+            {t("{items} · budget {budget}", {
+              items: tp("{count} item", "{count} items", quantity),
+              budget: formatEur(currentTrip.budgetMinor, locale),
+            })}
           </small>
           <p className={styles.outcome} data-outcome={outcome.status}>
             {outcome.label}
@@ -201,8 +213,8 @@ export function CompletedSummaryScreen({
         >
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.sectionKicker}>Optional</p>
-              <h2 id="checkout-title">What did you pay?</h2>
+              <p className={styles.sectionKicker}>{t("Optional")}</p>
+              <h2 id="checkout-title">{t("What did you pay?")}</h2>
             </div>
             {currentTrip.actualCheckoutMinor !== undefined ? (
               <strong>
@@ -212,13 +224,12 @@ export function CompletedSummaryScreen({
           </div>
 
           <p className={styles.supporting}>
-            Enter the total from your receipt to compare it with your cart.
-            Your cart stays as it is.
+            {t("Enter the total from your receipt to compare it with your cart. Your cart stays as it is.")}
           </p>
 
           <div className={styles.checkoutRow}>
             <label className={styles.field}>
-              <span>Receipt total</span>
+              <span>{t("Receipt total")}</span>
               <div className={styles.inputShell}>
                 <span aria-hidden="true">€</span>
                 <input
@@ -246,7 +257,7 @@ export function CompletedSummaryScreen({
               className={styles.saveButton}
               onClick={saveCheckout}
             >
-              Save receipt total
+              {t("Save receipt total")}
             </button>
           </div>
 
@@ -279,21 +290,21 @@ export function CompletedSummaryScreen({
             className={styles.repeatButton}
             onClick={shopAgain}
           >
-            Shop again
+            {t("Shop again")}
           </button>
           <button
             type="button"
             className={styles.historyButton}
             onClick={onViewHistory}
           >
-            View trip history
+            {t("View trip history")}
           </button>
           <button
             type="button"
             className={styles.doneButton}
             onClick={done}
           >
-            Done
+            {t("Done")}
           </button>
         </div>
       </section>

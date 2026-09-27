@@ -8,6 +8,7 @@ import {
   readAppearancePreference,
   type AppearanceMode,
 } from "./appearance";
+import { useI18n } from "./i18n-context";
 import styles from "./AppearanceSwitcher.module.css";
 
 const LABELS: Readonly<Record<AppearanceMode, string>> = {
@@ -45,6 +46,7 @@ const canIgnite = (): boolean =>
   !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function AppearanceSwitcher() {
+  const { t } = useI18n();
   const [mode, setMode] = useState<AppearanceMode>(() =>
     readAppearancePreference(),
   );
@@ -156,13 +158,13 @@ export function AppearanceSwitcher() {
     <section className={styles.appearance} aria-labelledby="appearance-title">
       <div className={styles.heading}>
         <div>
-          <p className={styles.eyebrow}>Appearance</p>
-          <h2 id="appearance-title">Choose a look</h2>
+          <p className={styles.eyebrow}>{t("Appearance")}</p>
+          <h2 id="appearance-title">{t("Choose a look")}</h2>
         </div>
-        <span className={styles.current}>{LABELS[mode]}</span>
+        <span className={styles.current}>{t(LABELS[mode])}</span>
       </div>
 
-      <div className={styles.options} role="group" aria-label="Appearance theme">
+      <div className={styles.options} role="group" aria-label={t("Appearance theme")}>
         {APPEARANCE_MODES.map((candidate) => (
           <button
             key={candidate}
@@ -180,14 +182,14 @@ export function AppearanceSwitcher() {
             }}
           >
             <span className={styles.swatch} aria-hidden="true" />
-            <span>{LABELS[candidate]}</span>
+            <span>{t(LABELS[candidate])}</span>
           </button>
         ))}
       </div>
 
       {saveFailed ? (
         <p className={styles.saveWarning} role="status">
-          Appearance changed for this session but could not be saved.
+          {t("Appearance changed for this session but could not be saved.")}
         </p>
       ) : null}
     </section>

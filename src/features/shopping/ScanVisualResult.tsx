@@ -2,6 +2,7 @@ import type { Ref } from "react";
 
 import type { VisualProductCandidate } from "../../application/visual-recognition-ports";
 import styles from "./ScanSurface.module.css";
+import { englishTranslate, type Translate } from "./translation";
 
 export type VisualRecognitionProblem =
   | "no-frame"
@@ -23,18 +24,22 @@ export interface ScanVisualResultProps {
   readonly onChoose: (label: string) => void;
   readonly onRetake: () => void;
   readonly onTypePrice: () => void;
+  readonly t?: Translate;
 }
 
-const problemCopy = (problem: VisualRecognitionProblem): string => {
+const problemCopy = (
+  problem: VisualRecognitionProblem,
+  t: Translate,
+): string => {
   switch (problem) {
     case "no-frame":
-      return "The camera didn't give a picture. Try again.";
+      return t("The camera didn't give a picture. Try again.");
     case "no-match":
-      return "No useful match was found. Try a clearer view, or enter the product manually.";
+      return t("No useful match was found. Try a clearer view, or enter the product manually.");
     case "timeout":
-      return "Recognition took too long. Try again, or enter the product manually.";
+      return t("Recognition took too long. Try again, or enter the product manually.");
     case "engine-failed":
-      return "The product recognizer couldn't start. Check your connection and try again, or enter the product manually.";
+      return t("The product recognizer couldn't start. Check your connection and try again, or enter the product manually.");
     default: {
       const exhaustive: never = problem;
       return exhaustive;
@@ -49,16 +54,17 @@ export function ScanVisualResult({
   onChoose,
   onRetake,
   onTypePrice,
+  t = englishTranslate,
 }: ScanVisualResultProps) {
   const candidates = outcome.kind === "candidates" ? outcome.candidates : [];
   const heading =
     outcome.kind === "candidates"
       ? candidates.length === 1
-        ? "Check the product"
-        : "Choose the product"
+        ? t("Check the product")
+        : t("Choose the product")
       : outcome.problem === "no-match"
-        ? "No product match"
-        : "Recognition unavailable";
+        ? t("No product match")
+        : t("Recognition unavailable");
 
   return (
     <section className={styles.result} aria-labelledby="scan-result-title">
@@ -70,15 +76,14 @@ export function ScanVisualResult({
         <img
           className={styles.snapshot}
           src={capturedUrl}
-          alt="Captured product used for recognition"
+          alt={t("Captured product used for recognition")}
         />
       ) : null}
 
       {outcome.kind === "candidates" ? (
         <>
           <p>
-            Choose what you are holding. Suggestions are ranked, not
-            certainties.
+            {t("Choose what you are holding. Suggestions are ranked, not certainties.")}
           </p>
           <ul className={styles.candidates}>
             {candidates.map((candidate, index) => (
@@ -92,7 +97,7 @@ export function ScanVisualResult({
                 >
                   <span>{candidate.label}</span>
                   <span className={styles.tag}>
-                    {index === 0 ? "Best match" : "Alternative"}
+                    {index === 0 ? t("Best match") : t("Alternative")}
                   </span>
                 </button>
               </li>
@@ -100,19 +105,19 @@ export function ScanVisualResult({
           </ul>
         </>
       ) : (
-        <p>{problemCopy(outcome.problem)}</p>
+        <p>{problemCopy(outcome.problem, t)}</p>
       )}
 
       <p className={styles.note}>
-        Recognition is on-device. The photo is not uploaded.
+        {t("Recognition is on-device. The photo is not uploaded.")}
       </p>
 
       <div className={styles.row}>
         <button type="button" className={styles.secondary} onClick={onRetake}>
-          Try again
+          {t("Try again")}
         </button>
         <button type="button" className={styles.secondary} onClick={onTypePrice}>
-          {outcome.kind === "candidates" ? "None of these" : "Enter manually"}
+          {outcome.kind === "candidates" ? t("None of these") : t("Enter manually")}
         </button>
       </div>
     </section>

@@ -768,7 +768,7 @@ export default function ScanSurface({
 
         {mode === "price" && scanContext.label !== undefined ? (
           <p className={styles.context}>
-            {t("Price for {item}", { item: scanContext.label })}
+            {t("Price for")} <strong>{scanContext.label}</strong>
           </p>
         ) : null}
 

@@ -333,7 +333,7 @@ function ShoppingAppScreens({
         : t("Changes aren’t being saved right now.");
 
     setLastAddedMessage((current) => (current === "" ? warning : `${current} ${warning}`));
-  }, [saveProblem, setLastAddedMessage]);
+  }, [saveProblem, setLastAddedMessage, t]);
   const hasHistory = state.completedTrips.length > 0;
   useEffect(() => {
     if (!hasHistory) {

@@ -15,6 +15,10 @@ import type {
   PriceTagReadResult,
 } from "../src/application/price-tag-ports";
 import type { ShoppingAppController } from "../src/application/shopping-app-controller";
+import type {
+  VisualProductRecognizerPort,
+  VisualRecognitionResult,
+} from "../src/application/visual-recognition-ports";
 import { mvpMinorUnits, type MinorUnits } from "../src/domain/money";
 import type { Gtin } from "../src/domain/product-code";
 import { rankPriceTagCandidates } from "../src/domain/shelf-price";
@@ -171,12 +175,35 @@ const lookupReturning = (result: ProductLookupResult) => {
   return { port, lookup };
 };
 
+const fakeVisualRecognizer = (
+  result: VisualRecognitionResult = {
+    status: "recognized",
+    candidates: [
+      { label: "Milk 1L", confidence: 0.86 },
+      { label: "Oat drink 1L", confidence: 0.11 },
+    ],
+  },
+  { ready = true } = {},
+) => {
+  const recognize = vi.fn(async () => result);
+  const prepare = vi.fn(async () => ready);
+  const port: VisualProductRecognizerPort = {
+    id: "fixture-visual-recognizer",
+    dataBoundary: "local-only",
+    prepare,
+    recognize,
+    release: vi.fn(),
+  };
+  return { port, recognize, prepare };
+};
+
 const renderSurface = ({
   controller = boot(),
   camera = fakeCamera().port,
   barcodeReader = fakeBarcodeReader() as BarcodeReaderPort | null,
   priceReader = null as PriceTagReaderPort | null,
   productLookup = null as ProductLookupPort | null,
+  visualRecognizer = null as VisualProductRecognizerPort | null,
   initialMode = "barcode" as ScanMode,
   context = {},
 } = {}) => {
@@ -190,6 +217,7 @@ const renderSurface = ({
       barcodeReader={barcodeReader}
       priceReader={priceReader}
       productLookup={productLookup}
+      visualRecognizer={visualRecognizer}
       initialMode={initialMode}
       context={context}
       onCancel={onCancel}
@@ -599,5 +627,96 @@ describe("ScanSurface price tag mode", () => {
     unmount();
 
     expect((signal as AbortSignal | null)?.aborted).toBe(true);
+  });
+});
+
+
+describe("ScanSurface product recognition mode", () => {
+  it("recognizes a captured product locally and sends only the chosen label to price entry", async () => {
+    const user = userEvent.setup();
+    const camera = fakeCamera();
+    const recognizer = fakeVisualRecognizer();
+    const { onEnterPrice } = renderSurface({
+      camera: camera.port,
+      barcodeReader: null,
+      priceReader: null,
+      visualRecognizer: recognizer.port,
+      initialMode: "product",
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Recognize the product" }),
+    ).not.toBeNull();
+
+    const shutter = await screen.findByRole("button", {
+      name: "Recognize product",
+    });
+    await waitFor(() => {
+      expect((shutter as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    await user.click(shutter);
+
+    expect(camera.captureStill).toHaveBeenCalledWith(SCAN_FRAMES.product);
+    expect(
+      await screen.findByRole("heading", { name: "Choose the product" }),
+    ).not.toBeNull();
+    expect(recognizer.recognize).toHaveBeenCalledWith(
+      expect.any(Blob),
+      expect.arrayContaining(["Banana", "Apple", "Tomato"]),
+      expect.any(AbortSignal),
+    );
+    expect(screen.getByText(/photo is not uploaded/i)).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /Milk 1L.*Match 86%/ }));
+    expect(onEnterPrice).toHaveBeenCalledWith({ label: "Milk 1L" });
+  });
+
+  it("keeps manual entry complete when recognition finds no match", async () => {
+    const user = userEvent.setup();
+    const recognizer = fakeVisualRecognizer({ status: "no-match" });
+    const { onEnterPrice } = renderSurface({
+      barcodeReader: null,
+      priceReader: null,
+      visualRecognizer: recognizer.port,
+      initialMode: "product",
+    });
+
+    const shutter = await screen.findByRole("button", {
+      name: "Recognize product",
+    });
+    await waitFor(() => {
+      expect((shutter as HTMLButtonElement).disabled).toBe(false);
+    });
+    await user.click(shutter);
+
+    expect(
+      await screen.findByRole("heading", { name: "No product match" }),
+    ).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "Enter manually" }));
+    expect(onEnterPrice).toHaveBeenCalledWith({});
+  });
+
+  it("does not enable recognition when the model cannot prepare", async () => {
+    const recognizer = fakeVisualRecognizer(
+      { status: "no-match" },
+      { ready: false },
+    );
+    renderSurface({
+      barcodeReader: null,
+      priceReader: null,
+      visualRecognizer: recognizer.port,
+      initialMode: "product",
+    });
+
+    expect(
+      await screen.findByText(/Product recognition couldn't start/),
+    ).not.toBeNull();
+    expect(
+      (screen.getByRole("button", {
+        name: "Recognize product",
+      }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(screen.getByRole("button", { name: "Enter manually" })).not.toBeNull();
   });
 });

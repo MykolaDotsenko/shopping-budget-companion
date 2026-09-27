@@ -165,7 +165,7 @@ export function FinishTripSurface({
             </div>
             <div>
               <span>{t("Items")}</span>
-              <strong>{tp("{count} item", "{count} items", quantity)}</strong>
+              <strong>{quantity}</strong>
             </div>
           </section>
 

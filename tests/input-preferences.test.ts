@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
-  VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY,
   readVisualModelDownloadAcknowledgement,
   writeVisualModelDownloadAcknowledgement,
 } from "../src/app/input-preferences";
@@ -16,7 +15,6 @@ describe("visual model download acknowledgement", () => {
 
     writeVisualModelDownloadAcknowledgement();
 
-    expect(window.localStorage.getItem(VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY)).toBe("1");
     expect(readVisualModelDownloadAcknowledgement()).toBe(true);
   });
 

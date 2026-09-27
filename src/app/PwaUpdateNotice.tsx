@@ -2,7 +2,7 @@ import { useRegisterSW } from "virtual:pwa-register/react";
 
 import { useShoppingAppState } from "../application/react/use-shopping-app-state";
 import type { ShoppingAppController } from "../application/shopping-app-controller";
-import { useI18n } from "./i18n";
+import { useI18n } from "./i18n-context";
 import styles from "./PwaUpdateNotice.module.css";
 
 export interface PwaUpdateNoticeProps {

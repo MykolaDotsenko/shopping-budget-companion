@@ -85,6 +85,33 @@ const normalizeCandidates = (
 const abortError = (): DOMException =>
   new DOMException("Visual recognition aborted", "AbortError");
 
+const withAbort = async <T>(
+  work: Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> => {
+  if (signal === undefined) {
+    return work;
+  }
+
+  if (signal.aborted) {
+    throw abortError();
+  }
+
+  let onAbort: (() => void) | undefined;
+  const stopped = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(abortError());
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+
+  try {
+    return await Promise.race([work, stopped]);
+  } finally {
+    if (onAbort !== undefined) {
+      signal.removeEventListener("abort", onAbort);
+    }
+  }
+};
+
 const withAbortAndTimeout = async <T>(
   work: Promise<T>,
   signal: AbortSignal,
@@ -175,11 +202,24 @@ export const createTransformersVisualProductRecognizer =
         VISUAL_RECOGNITION_PROMPT_VERSION,
       ].join(":"),
       dataBoundary: "local-only" as const,
-      async prepare(): Promise<boolean> {
+      async prepare(signal?: AbortSignal): Promise<boolean> {
+        const pending = classifier();
+
         try {
-          await classifier();
+          await withAbort(pending, signal);
           return true;
-        } catch {
+        } catch (error) {
+          if (
+            signal?.aborted ||
+            (error instanceof DOMException && error.name === "AbortError")
+          ) {
+            void pending
+              .then((loaded) => loaded.dispose?.())
+              .catch(() => undefined);
+            classifierPromise = null;
+            return false;
+          }
+
           classifierPromise = null;
           return false;
         }

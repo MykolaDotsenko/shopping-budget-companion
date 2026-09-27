@@ -1,6 +1,7 @@
 import type { PriceMemoryRecord } from "../domain/price-memory";
 
 export const VISUAL_RECOGNITION_MAX_LABELS = 30;
+export const VISUAL_RECOGNITION_MAX_PERSONAL_LABELS = 18;
 
 const COMMON_UNBARCODED_PRODUCTS = Object.freeze([
   "Banana",
@@ -41,20 +42,21 @@ export const visualRecognitionLabels = (
   );
   const labels: string[] = [];
   const seen = new Set<string>();
-
-  for (const candidate of [
-    ...newestFirst.map((record) => record.label),
+  const personal = newestFirst.map((record) => record.label);
+  const candidates = [
+    ...personal.slice(0, VISUAL_RECOGNITION_MAX_PERSONAL_LABELS),
     ...COMMON_UNBARCODED_PRODUCTS,
-  ]) {
+    ...personal.slice(VISUAL_RECOGNITION_MAX_PERSONAL_LABELS),
+  ];
+
+  for (const candidate of candidates) {
     const label = normalize(candidate);
     const key = label.toLocaleLowerCase("en");
 
-    if (label === "" || seen.has(key)) {
-      continue;
+    if (label !== "" && !seen.has(key)) {
+      seen.add(key);
+      labels.push(label);
     }
-
-    seen.add(key);
-    labels.push(label);
 
     if (labels.length >= VISUAL_RECOGNITION_MAX_LABELS) {
       break;

@@ -367,7 +367,7 @@ Tests must prove:
 - `VITE_SHOPPING_BARCODE_SCANNER=0` removes barcode reading and the online lookup, `VITE_SHOPPING_PRODUCT_LOOKUP=0` removes only the lookup, `VITE_SHOPPING_PRICE_OCR=0` removes price reading, and `VITE_SHOPPING_VISUAL_RECOGNITION=0` removes Product mode; the shared camera disappears only when barcode, visual recognition and price reading are all off (`tests/camera-switches.test.ts`); CI builds and validates a build with all three camera capabilities at `0` (see [Public bundle budget](#public-bundle-budget));
 - in Chromium, a fake camera streaming a generated EAN-13 decodes through the self-hosted WASM engine with no request leaving the origin, and the result screen passes axe (`e2e/barcode-scanner.spec.js`). The fake-camera test runs in Chromium only; Firefox and WebKit cover the rest of the product flow. When a build switches the scanner off, the same spec instead checks in every browser that the trip offers no barcode scanning.
 
-Production barcode shipped ahead of its field evidence (D-053); issue #73 remains an open post-release gate that automation cannot close.
+Production barcode shipped ahead of its field evidence (D-053); the barcode portion of consolidated issue #88 remains a post-release gate that automation cannot close.
 
 ### Production price tag reading
 
@@ -379,7 +379,7 @@ Tests must prove:
 - price entry starts from a read price, says it came from the tag until the amount changes, and opens the reader with the name and quantity typed so far (`tests/PriceEntrySurface.test.tsx`);
 - in Chromium, a fake camera showing `e2e/fixtures/price-tag-1-29.mjpeg` is read by the self-hosted Tesseract files with no request leaving the origin, the candidate screen passes axe, and the chosen price is added only after confirmation (`e2e/price-tag-scanner.spec.js`). When a build switches price reading off, the same spec instead checks in every browser that price entry offers no "Read price tag" action. `e2e/support/render-price-tag-fixture.mjs` regenerates the fixture.
 
-Price tag reading shipped ahead of its field evidence (D-055); issue #90 remains an open post-release gate that automation cannot close.
+Price tag reading shipped ahead of its field evidence (D-055); the price-tag portion of consolidated issue #88 remains a post-release gate that automation cannot close.
 
 ## Performance
 

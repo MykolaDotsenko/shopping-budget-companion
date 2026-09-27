@@ -118,6 +118,28 @@ describe("Transformers visual product recognizer", () => {
     finish([{ label: "Banana", score: 1 }]);
   });
 
+  it("stops waiting for model preparation when the caller aborts", async () => {
+    let finish!: (value: unknown) => void;
+    const classifier = vi.fn();
+    mocks.pipeline.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+
+    const recognizer = createTransformersVisualProductRecognizer();
+    const controller = new AbortController();
+    const pending = recognizer.prepare(controller.signal);
+
+    controller.abort();
+
+    await expect(pending).resolves.toBe(false);
+
+    finish(classifier);
+    await Promise.resolve();
+  });
+
   it("returns no-match without invoking inference when the candidate set is too small", async () => {
     const classifier = vi.fn();
     mocks.pipeline.mockResolvedValue(classifier);

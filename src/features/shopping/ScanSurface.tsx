@@ -53,6 +53,8 @@ export interface ScanSurfaceProps {
   readonly priceReader: PriceTagReaderPort | null;
   readonly productLookup: ProductLookupPort | null;
   readonly visualRecognizer: VisualProductRecognizerPort | null;
+  readonly visualModelDownloadAcknowledged?: boolean;
+  readonly onAcknowledgeVisualModelDownload?: () => void;
   readonly initialMode: ScanMode;
   readonly onModeChange?: (mode: ScanMode) => void;
   readonly context?: ScanContext;
@@ -128,6 +130,8 @@ export default function ScanSurface({
   priceReader,
   productLookup,
   visualRecognizer,
+  visualModelDownloadAcknowledged = true,
+  onAcknowledgeVisualModelDownload,
   initialMode,
   onModeChange,
   context: initialContext = {},
@@ -141,6 +145,7 @@ export default function ScanSurface({
   const resultRef = useRef<HTMLHeadingElement>(null);
   const manualInputRef = useRef<HTMLInputElement>(null);
   const readAbortRef = useRef<AbortController | null>(null);
+  const visualDownloadCancelRef = useRef<HTMLButtonElement>(null);
   const sessionRef = useRef<CameraSession | null>(null);
   const frameReaderRef = useRef<{
     readonly session: CameraSession;
@@ -169,6 +174,7 @@ export default function ScanSurface({
   const [manualCode, setManualCode] = useState("");
   const [manualError, setManualError] = useState("");
   const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
+  const [visualDownloadPrompt, setVisualDownloadPrompt] = useState(false);
   const cameraWanted = phase.kind === "starting" || phase.kind === "live";
   const availableModeCount =
     Number(barcodeReader !== null) +
@@ -179,6 +185,12 @@ export default function ScanSurface({
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (visualDownloadPrompt) {
+      visualDownloadCancelRef.current?.focus();
+    }
+  }, [visualDownloadPrompt]);
 
   useEffect(() => {
     if (
@@ -407,9 +419,14 @@ export default function ScanSurface({
   useEffect(() => {
     const onVisibility = (): void => {
       if (document.visibilityState === "hidden") {
+        readAbortRef.current?.abort();
+        setVisualDownloadPrompt(false);
         setCameraRun(0);
         setPhase((current) =>
-          current.kind === "starting" || current.kind === "live"
+          current.kind === "starting" ||
+          current.kind === "live" ||
+          current.kind === "reading" ||
+          current.kind === "recognizing"
             ? { kind: "paused" }
             : current,
         );
@@ -437,6 +454,7 @@ export default function ScanSurface({
   const restartCamera = (): void => {
     readAbortRef.current?.abort();
     setManualError("");
+    setVisualDownloadPrompt(false);
     setCapturedUrl(null);
     setPhase({ kind: "starting" });
     setCameraRun((current) => current + 1);
@@ -491,7 +509,9 @@ export default function ScanSurface({
     });
   };
 
-  const recognizeProduct = async (): Promise<void> => {
+  const recognizeProduct = async (
+    downloadAcknowledged = visualModelDownloadAcknowledged,
+  ): Promise<void> => {
     const session = sessionRef.current;
 
     if (
@@ -502,6 +522,12 @@ export default function ScanSurface({
       return;
     }
 
+    if (!downloadAcknowledged) {
+      setVisualDownloadPrompt(true);
+      return;
+    }
+
+    setVisualDownloadPrompt(false);
     readAbortRef.current?.abort();
     const abort = new AbortController();
     readAbortRef.current = abort;
@@ -520,7 +546,7 @@ export default function ScanSurface({
     setCapturedUrl(snapshotUrl(frame));
     setPhase({ kind: "recognizing" });
 
-    const ready = await visualRecognizer.prepare();
+    const ready = await visualRecognizer.prepare(abort.signal);
 
     if (abort.signal.aborted) {
       return;
@@ -776,6 +802,44 @@ export default function ScanSurface({
           {statusText}
         </p>
 
+        {visualDownloadPrompt ? (
+          <section
+            className={styles.downloadPrompt}
+            aria-labelledby="visual-download-title"
+          >
+            <div>
+              <h2 id="visual-download-title">Download model?</h2>
+              <p>
+                First use downloads a model and may use mobile data.
+                Your photo stays on this device.
+              </p>
+            </div>
+            <div className={styles.row}>
+              <button
+                ref={visualDownloadCancelRef}
+                type="button"
+                className={styles.secondary}
+                onClick={() => {
+                  setVisualDownloadPrompt(false);
+                }}
+              >
+                Not now
+              </button>
+              <button
+                type="button"
+                className={styles.primary}
+                onClick={() => {
+                  setVisualDownloadPrompt(false);
+                  onAcknowledgeVisualModelDownload?.();
+                  void recognizeProduct(true);
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         {phase.kind === "reading" || phase.kind === "recognizing" ? (
           <div
             className={styles.progress}
@@ -823,7 +887,7 @@ export default function ScanSurface({
               <button
                 type="button"
                 className={styles.shutter}
-                disabled={phase.kind !== "live"}
+                disabled={phase.kind !== "live" || visualDownloadPrompt}
                 onClick={() => {
                   void recognizeProduct();
                 }}
@@ -831,11 +895,6 @@ export default function ScanSurface({
                 Recognize product
               </button>
             ) : null}
-            <p className={styles.note}>
-              {mode === "product"
-                ? "The photo stays on this device. First use downloads the pinned recognition model."
-                : "The camera image stays on this device."}
-            </p>
             <div className={styles.row}>
               {phase.kind === "live" && phase.torch !== null ? (
                 <button

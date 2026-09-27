@@ -49,14 +49,13 @@ Implemented:
 - installable offline PWA shell with prompt-based updates;
 - optional barcode identification (native detector, lazy self-hosted ZXing WASM fallback, local barcode names, tap-only online name lookup) behind build switches;
 - optional price tag reading (lazy self-hosted Tesseract.js, geometry-aware exact-money candidates, confirmation in price entry) in the same camera, behind a build switch;
+- optional local visual product recognition (pinned CLIP via Transformers.js, bounded closed-set candidates, explicit human choice and manual fallback), behind a build switch;
 - guarded evidence builds in `src/qa/` (timing QA, retention beta and cohort analysis);
 - Chromium / Firefox / WebKit browser and accessibility coverage.
 
 Gated / not implemented:
 
-- physical evidence for barcode scanning (issue #73, post-release);
-- physical evidence for price tag reading (issue #90, post-release);
-- production visual product recognition (issue #88);
+- consolidated real-store camera evidence for barcode, visual recognition and price-tag reading (issue #88, post-release);
 - an exact quantitative manual-entry timing baseline (physical-phone usability was accepted by owner attestation on 2026-09-24);
 - real-shopper second-/third-trip retention validation (issue #72).
 

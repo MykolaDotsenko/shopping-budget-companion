@@ -77,8 +77,8 @@ export function ScanVisualResult({
       {outcome.kind === "candidates" ? (
         <>
           <p>
-            Pick the product that matches what you are holding. The score ranks
-            this closed set; it is not a certainty estimate.
+            Choose what you are holding. Suggestions are ranked, not
+            certainties.
           </p>
           <ul className={styles.candidates}>
             {candidates.map((candidate, index) => (
@@ -92,7 +92,7 @@ export function ScanVisualResult({
                 >
                   <span>{candidate.label}</span>
                   <span className={styles.tag}>
-                    Match {Math.round(candidate.confidence * 100)}%
+                    {index === 0 ? "Best match" : "Alternative"}
                   </span>
                 </button>
               </li>
@@ -104,8 +104,7 @@ export function ScanVisualResult({
       )}
 
       <p className={styles.note}>
-        Recognition runs on this device. The photo is not uploaded; the model
-        files may be downloaded on first use.
+        Recognition is on-device. The photo is not uploaded.
       </p>
 
       <div className={styles.row}>
@@ -113,7 +112,7 @@ export function ScanVisualResult({
           Try again
         </button>
         <button type="button" className={styles.secondary} onClick={onTypePrice}>
-          Enter manually
+          {outcome.kind === "candidates" ? "None of these" : "Enter manually"}
         </button>
       </div>
     </section>

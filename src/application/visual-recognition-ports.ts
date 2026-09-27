@@ -17,7 +17,7 @@ export type VisualRecognitionResult =
 export interface VisualProductRecognizerPort {
   readonly id: string;
   readonly dataBoundary: "local-only";
-  prepare(): Promise<boolean>;
+  prepare(signal?: AbortSignal): Promise<boolean>;
   recognize(
     image: Blob,
     candidateLabels: readonly string[],

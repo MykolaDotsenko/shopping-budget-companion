@@ -54,7 +54,7 @@ test("scans a product from the camera, names it once and recognises it next time
   await page.reload();
 
   await page.getByRole("button", { name: "€50", exact: true }).click();
-  await page.getByRole("button", { name: "Scan barcode" }).click();
+  await page.getByRole("button", { name: /^(Scan barcode|Scan barcode or product|Scan barcode or price tag|Scan barcode, product or price tag)$/ }).click();
 
   await expect(page.getByRole("heading", { name: "New product" })).toBeVisible({
     timeout: 20_000,
@@ -67,10 +67,10 @@ test("scans a product from the camera, names it once and recognises it next time
   await page.getByRole("textbox", { name: "Price" }).fill("1.29");
   await page.getByRole("button", { name: "Add · €1.29" }).click();
 
-  await expect(page.getByRole("button", { name: "Scan barcode" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /^(Scan barcode|Scan barcode or product|Scan barcode or price tag|Scan barcode, product or price tag)$/ })).toBeFocused();
   await expect(page.getByText("Milk 1L").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Scan barcode" }).click();
+  await page.getByRole("button", { name: /^(Scan barcode|Scan barcode or product|Scan barcode or price tag|Scan barcode, product or price tag)$/ }).click();
   await expect(page.getByRole("heading", { name: "Milk 1L" })).toBeVisible({
     timeout: 20_000,
   });
@@ -82,7 +82,7 @@ test("scans a product from the camera, names it once and recognises it next time
   expect(requests.some((url) => url.endsWith(".wasm"))).toBe(true);
 
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Scan barcode" })).toBeFocused();
+  await expect(page.getByRole("button", { name: /^(Scan barcode|Scan barcode or product|Scan barcode or price tag|Scan barcode, product or price tag)$/ })).toBeFocused();
 });
 
 test("offers no barcode scanning when the build switches the scanner off", async ({ page }) => {
@@ -92,5 +92,5 @@ test("offers no barcode scanning when the build switches the scanner off", async
   await page.getByRole("button", { name: "€50", exact: true }).click();
 
   await expect(page.getByRole("button", { name: "Add price" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Scan barcode" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^(Scan barcode|Scan barcode or product|Scan barcode or price tag|Scan barcode, product or price tag)$/ })).toHaveCount(0);
 });

@@ -7,3 +7,6 @@ export const productLookupEnabled =
 
 export const priceOcrEnabled =
   import.meta.env.VITE_SHOPPING_PRICE_OCR !== "0";
+
+export const visualRecognitionEnabled =
+  import.meta.env.VITE_SHOPPING_VISUAL_RECOGNITION !== "0";

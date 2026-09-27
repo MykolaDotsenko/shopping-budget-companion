@@ -204,12 +204,14 @@ const renderSurface = ({
   priceReader = null as PriceTagReaderPort | null,
   productLookup = null as ProductLookupPort | null,
   visualRecognizer = null as VisualProductRecognizerPort | null,
+  visualModelDownloadAcknowledged = true,
   initialMode = "barcode" as ScanMode,
   context = {},
 } = {}) => {
   const onCancel = vi.fn();
   const onEnterPrice = vi.fn();
   const onUseRemembered = vi.fn(() => true);
+  const onAcknowledgeVisualModelDownload = vi.fn();
   const view = render(
     <ScanSurface
       controller={controller}
@@ -218,6 +220,8 @@ const renderSurface = ({
       priceReader={priceReader}
       productLookup={productLookup}
       visualRecognizer={visualRecognizer}
+      visualModelDownloadAcknowledged={visualModelDownloadAcknowledged}
+      onAcknowledgeVisualModelDownload={onAcknowledgeVisualModelDownload}
       initialMode={initialMode}
       context={context}
       onCancel={onCancel}
@@ -226,7 +230,13 @@ const renderSurface = ({
       locale="en-FI"
     />,
   );
-  return { ...view, onCancel, onEnterPrice, onUseRemembered };
+  return {
+    ...view,
+    onCancel,
+    onEnterPrice,
+    onUseRemembered,
+    onAcknowledgeVisualModelDownload,
+  };
 };
 
 describe("ScanSurface barcode mode", () => {
@@ -666,8 +676,105 @@ describe("ScanSurface product recognition mode", () => {
     );
     expect(screen.getByText(/photo is not uploaded/i)).not.toBeNull();
 
-    await user.click(screen.getByRole("button", { name: /Milk 1L.*Match 86%/ }));
+    expect(screen.queryByText(/Match 86%/)).toBeNull();
+    expect(screen.getByText("Best match")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: /Milk 1L.*Best match/ }));
     expect(onEnterPrice).toHaveBeenCalledWith({ label: "Milk 1L" });
+  });
+
+  it("requires one explicit acknowledgement before first model acquisition", async () => {
+    const user = userEvent.setup();
+    const camera = fakeCamera();
+    const recognizer = fakeVisualRecognizer();
+    const { onAcknowledgeVisualModelDownload } = renderSurface({
+      camera: camera.port,
+      barcodeReader: null,
+      priceReader: null,
+      visualRecognizer: recognizer.port,
+      visualModelDownloadAcknowledged: false,
+      initialMode: "product",
+    });
+
+    const shutter = await screen.findByRole("button", {
+      name: "Recognize product",
+    });
+    await user.click(shutter);
+
+    expect(
+      screen.getByRole("heading", { name: "Download recognition model?" }),
+    ).not.toBeNull();
+    expect(camera.captureStill).not.toHaveBeenCalled();
+    expect(recognizer.prepare).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(onAcknowledgeVisualModelDownload).toHaveBeenCalledTimes(1);
+    expect(camera.captureStill).toHaveBeenCalledWith(SCAN_FRAMES.product);
+    expect(
+      await screen.findByRole("heading", { name: "Choose the product" }),
+    ).not.toBeNull();
+  });
+
+  it("offers an explicit none-of-these path instead of implying the ranking is certain", async () => {
+    const user = userEvent.setup();
+    const recognizer = fakeVisualRecognizer();
+    const { onEnterPrice } = renderSurface({
+      barcodeReader: null,
+      priceReader: null,
+      visualRecognizer: recognizer.port,
+      initialMode: "product",
+    });
+
+    await user.click(
+      await screen.findByRole("button", { name: "Recognize product" }),
+    );
+    await screen.findByRole("heading", { name: "Choose the product" });
+
+    expect(screen.queryByText(/Match \d+%/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "None of these" }));
+    expect(onEnterPrice).toHaveBeenCalledWith({});
+  });
+
+  it("aborts visual work and pauses cleanly when the app goes to the background", async () => {
+    const user = userEvent.setup();
+    let preparationSignal: AbortSignal | undefined;
+    const recognizer = fakeVisualRecognizer();
+    recognizer.prepare.mockImplementation(
+      async (signal?: AbortSignal) => {
+        preparationSignal = signal;
+        return await new Promise<boolean>(() => undefined);
+      },
+    );
+
+    renderSurface({
+      barcodeReader: null,
+      priceReader: null,
+      visualRecognizer: recognizer.port,
+      initialMode: "product",
+    });
+
+    await user.click(
+      await screen.findByRole("button", { name: "Recognize product" }),
+    );
+    expect(await screen.findByText("Recognizing the product…")).not.toBeNull();
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(preparationSignal?.aborted).toBe(true);
+    expect(
+      await screen.findByRole("button", { name: "Resume camera" }),
+    ).not.toBeNull();
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
   });
 
   it("keeps manual entry complete when recognition finds no match", async () => {

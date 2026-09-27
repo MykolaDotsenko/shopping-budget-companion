@@ -19,10 +19,18 @@ import {
   formatAbsoluteEur,
   moneyInputErrorMessage,
 } from "./shopping-feedback";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface HistoryTripCardProps {
   readonly trip: CompletedTrip;
   readonly locale: string;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
   readonly canChangeHistory: boolean;
   readonly canRepeat: boolean;
   readonly deleting: boolean;
@@ -40,6 +48,7 @@ export interface HistoryTripCardProps {
 const differenceLabel = (
   trip: CompletedTrip,
   locale: string,
+  t: Translate,
 ): string | null => {
   const difference = checkoutDifference(trip);
 
@@ -48,12 +57,16 @@ const differenceLabel = (
   }
 
   if (difference === 0) {
-    return "Receipt matched";
+    return t("Receipt matched");
   }
 
   return difference > 0
-    ? `Paid ${formatAbsoluteEur(difference, locale)} more`
-    : `Paid ${formatAbsoluteEur(difference, locale)} less`;
+    ? t("Paid {amount} more", {
+        amount: formatAbsoluteEur(difference, locale),
+      })
+    : t("Paid {amount} less", {
+        amount: formatAbsoluteEur(difference, locale),
+      });
 };
 
 const completedLabel = (
@@ -75,6 +88,8 @@ const completedLabel = (
 export function HistoryTripCard({
   trip,
   locale,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
   canChangeHistory,
   canRepeat,
   deleting,
@@ -87,8 +102,8 @@ export function HistoryTripCard({
 }: HistoryTripCardProps) {
   const tracked = cartTotal(trip);
   const quantity = itemCount(trip);
-  const difference = differenceLabel(trip, locale);
-  const outcome = budgetOutcome(trip, locale);
+  const difference = differenceLabel(trip, locale, t);
+  const outcome = budgetOutcome(trip, locale, t);
   const checkoutErrorId = useId();
   const [checkoutRaw, setCheckoutRaw] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState("");
@@ -120,17 +135,17 @@ export function HistoryTripCard({
         : parseEurDraft({ raw: checkoutRaw, mode: "decimal" });
 
     if (parsed === null) {
-      setCheckoutError("Enter the receipt total first.");
+      setCheckoutError(t("Enter the receipt total first."));
       return;
     }
 
     if (!parsed.ok) {
-      setCheckoutError(moneyInputErrorMessage(parsed.error.code));
+      setCheckoutError(moneyInputErrorMessage(parsed.error.code, t));
       return;
     }
 
     if (!onSaveCheckout(trip, parsed.value)) {
-      setCheckoutError("The receipt total could not be saved. Nothing was changed.");
+      setCheckoutError(t("The receipt total could not be saved. Nothing was changed."));
       return;
     }
 
@@ -145,28 +160,28 @@ export function HistoryTripCard({
           <span className={styles.completedAt}>
             {completedLabel(trip, locale)}
           </span>
-          <strong>{formatEur(tracked, locale)} cart total</strong>
+          <strong>{t("{amount} cart total", { amount: formatEur(tracked, locale) })}</strong>
         </div>
         <span className={styles.itemCount}>
-          {quantity} {quantity === 1 ? "item" : "items"}
+          {tp("{count} item", "{count} items", quantity)}
         </span>
       </div>
 
       <dl className={styles.metrics}>
         <div>
-          <dt>Budget</dt>
+          <dt>{t("Budget")}</dt>
           <dd>{formatEur(trip.budgetMinor, locale)}</dd>
         </div>
         <div>
-          <dt>Receipt</dt>
+          <dt>{t("Receipt")}</dt>
           <dd>
             {trip.actualCheckoutMinor === undefined
-              ? "Not added"
+              ? t("Not added")
               : formatEur(trip.actualCheckoutMinor, locale)}
           </dd>
         </div>
         <div>
-          <dt>Budget outcome</dt>
+          <dt>{t("Budget outcome")}</dt>
           <dd data-outcome={outcome.status}>{outcome.label}</dd>
         </div>
       </dl>
@@ -196,7 +211,7 @@ export function HistoryTripCard({
           }}
         >
           <label className={styles.checkoutField}>
-            <span>Receipt total</span>
+            <span>{t("Receipt total")}</span>
             <span className={styles.checkoutInput}>
               <span aria-hidden="true">€</span>
               <input
@@ -247,27 +262,29 @@ export function HistoryTripCard({
           }}
         >
           {trip.actualCheckoutMinor === undefined
-            ? "Add receipt total"
-            : "Change receipt total"}
+            ? t("Add receipt total")
+            : t("Change receipt total")}
         </button>
       ) : null}
 
       {checkoutSaved ? (
         <p className={styles.status} role="status">
-          Receipt total saved.
+          {t("Receipt total saved.")}
         </p>
       ) : null}
 
       {trip.items.length > 0 ? (
         <details className={styles.tripDetails}>
           <summary>
-            View {quantity} {quantity === 1 ? "item" : "items"}
+            {t("View {items}", {
+              items: tp("{count} item", "{count} items", quantity),
+            })}
           </summary>
           <ul>
             {trip.items.map((item, index) => (
               <li key={item.id}>
                 <span>
-                  {item.label ?? `Item ${index + 1}`}
+                  {item.label ?? t("Item {number}", { number: index + 1 })}
                   {item.quantity > 1
                     ? ` · ${formatEur(item.unitPriceMinor, locale)} × ${item.quantity}`
                     : ""}
@@ -313,7 +330,7 @@ export function HistoryTripCard({
         {deleting ? (
           <section
             className={styles.confirmation}
-            aria-label="Confirm trip deletion"
+            aria-label={t("Confirm trip deletion")}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 event.preventDefault();
@@ -322,10 +339,9 @@ export function HistoryTripCard({
             }}
           >
             <div>
-              <strong>Delete this trip?</strong>
+              <strong>{t("Delete this trip?")}</strong>
               <p>
-                This removes the trip record from this device.
-                Remembered item prices are stored separately.
+                {t("This removes the trip record from this device. Remembered item prices are stored separately.")}
               </p>
             </div>
             <div className={styles.confirmationActions}>

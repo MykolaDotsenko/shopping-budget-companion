@@ -810,9 +810,8 @@ export default function ScanSurface({
             <div>
               <h2 id="visual-download-title">Download recognition model?</h2>
               <p>
-                First use may download a large on-device model. On mobile data,
-                this can take time and use significant data. Your photo stays on
-                this device.
+                First use downloads a large on-device model. It can take time
+                and use mobile data. Your photo stays on this device.
               </p>
             </div>
             <div className={styles.row}>

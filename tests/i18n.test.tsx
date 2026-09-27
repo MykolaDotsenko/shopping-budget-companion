@@ -87,7 +87,7 @@ describe("I18nProvider", () => {
     expect(screen.getByTestId("two")).toHaveTextContent("2 товари");
     expect(screen.getByTestId("five")).toHaveTextContent("5 товарів");
     expect(screen.getByTestId("twenty-one")).toHaveTextContent("21 товар");
-    expect(document.documentElement).toHaveAttribute("lang", "uk");
+    expect(document.documentElement.getAttribute("lang")).toBe("uk");
     expect(window.localStorage.getItem("shopping-budget:language")).toBe("uk");
   });
 
@@ -110,7 +110,7 @@ describe("I18nProvider", () => {
     expect(screen.getByTestId("start")).toHaveTextContent("Start shopping");
     expect(screen.getByTestId("one")).toHaveTextContent("1 item");
     expect(screen.getByTestId("two")).toHaveTextContent("2 items");
-    expect(document.documentElement).toHaveAttribute("lang", "en");
+    expect(document.documentElement.getAttribute("lang")).toBe("en");
   });
 
   it("keeps the selected language active for the session when preference persistence fails", async () => {
@@ -133,6 +133,6 @@ describe("I18nProvider", () => {
 
     expect(screen.getByTestId("start")).toHaveTextContent("Aloita ostokset");
     expect(screen.getByTestId("save-failed")).toHaveTextContent("true");
-    expect(document.documentElement).toHaveAttribute("lang", "fi");
+    expect(document.documentElement.getAttribute("lang")).toBe("fi");
   });
 });

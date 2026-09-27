@@ -15,10 +15,20 @@ export type PriceReadProblem =
 
 export const failureCopy = (
   failure: ScanFailure,
-  mode: "barcode" | "price",
+  mode: "barcode" | "product" | "price",
 ): string => {
-  const fallback = mode === "price" ? "type the price" : "type the barcode";
-  const Fallback = mode === "price" ? "Type the price" : "Type the barcode";
+  const fallback =
+    mode === "price"
+      ? "type the price"
+      : mode === "barcode"
+        ? "type the barcode"
+        : "enter the product and price manually";
+  const Fallback =
+    mode === "price"
+      ? "Type the price"
+      : mode === "barcode"
+        ? "Type the barcode"
+        : "Enter the product and price manually";
 
   switch (failure) {
     case "permission-denied":
@@ -32,7 +42,11 @@ export const failureCopy = (
     case "camera-busy":
       return "Another app is using the camera. Close it and try again.";
     case "engine-failed":
-      return "The barcode reader couldn't load. Check your connection and try again.";
+      return mode === "barcode"
+        ? "The barcode reader couldn't load. Check your connection and try again."
+        : mode === "product"
+          ? "The product recognizer couldn't load. Check your connection and try again."
+          : "The camera helper couldn't load. Check your connection and try again.";
     case "camera-error":
       return `The camera couldn't start. Try again or ${fallback}.`;
     default: {

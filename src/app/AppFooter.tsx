@@ -12,7 +12,7 @@ export function AppFooter() {
       <a href={`${import.meta.env.BASE_URL}privacy/`}>{t("Privacy")}</a>
       <span aria-hidden="true">·</span>
       <a href={FEEDBACK_URL} target="_blank" rel="noreferrer">
-        Feedback
+        {t("Feedback")}
       </a>
       <span aria-hidden="true">·</span>
       <span>v{__SHOPPING_APP_VERSION__}</span>

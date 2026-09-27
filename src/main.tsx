@@ -17,12 +17,17 @@ if (rootElement === null) {
   throw new Error("Shopping Budget Companion root element was not found.");
 }
 
-const language = readLanguagePreference();
-document.documentElement.lang = language;
+const preferredLanguage = readLanguagePreference();
+document.documentElement.lang = preferredLanguage;
 
-void loadLanguageCatalog(language)
-  .catch(() => ({}))
-  .then((catalog) => {
+void loadLanguageCatalog(preferredLanguage)
+  .then(
+    (catalog) => ({ language: preferredLanguage, catalog }),
+    () => ({ language: "en" as const, catalog: {} }),
+  )
+  .then(({ language, catalog }) => {
+    document.documentElement.lang = language;
+
     createRoot(rootElement).render(
       <StrictMode>
         <I18nProvider initialLanguage={language} initialCatalog={catalog}>

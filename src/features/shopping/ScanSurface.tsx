@@ -1037,7 +1037,6 @@ export default function ScanSurface({
             onEnterPrice={onEnterPrice}
             onReadPriceTag={readPriceFor}
             onUseRemembered={onUseRemembered}
-            t={t}
             onScanAnother={() => {
               setScanContext({});
               setMode("barcode");
@@ -1072,6 +1071,7 @@ export default function ScanSurface({
             productLabel={scanContext.label ?? null}
             capturedUrl={capturedUrl}
             locale={locale}
+            t={t}
             headingRef={resultRef}
             onChoose={choosePrice}
             onRetake={restartCamera}

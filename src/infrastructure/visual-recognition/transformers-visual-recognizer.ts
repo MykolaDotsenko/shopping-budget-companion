@@ -119,7 +119,7 @@ const withAbortAndTimeout = async <T>(
 
 const hasWebGpu = (): boolean =>
   typeof navigator !== "undefined" &&
-  "gpu" in (navigator as Navigator & { readonly gpu?: unknown });
+  (navigator as Navigator & { readonly gpu?: unknown }).gpu !== undefined;
 
 const loadClassifier = async (): Promise<DisposableClassifier> => {
   const load = async (device: "webgpu" | "wasm") => {

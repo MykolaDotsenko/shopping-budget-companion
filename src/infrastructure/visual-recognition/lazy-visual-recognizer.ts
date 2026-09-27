@@ -47,12 +47,25 @@ export const createLazyVisualProductRecognizer =
     return Object.freeze({
       id: "lazy-transformers-clip",
       dataBoundary: "local-only" as const,
-      async prepare(): Promise<boolean> {
+      async prepare(signal?: AbortSignal): Promise<boolean> {
         cancelIdleRelease();
 
         try {
           const loaded = await implementation();
-          const ready = await loaded.prepare();
+
+          if (signal?.aborted) {
+            loaded.release();
+            implementationPromise = null;
+            return false;
+          }
+
+          const ready = await loaded.prepare(signal);
+
+          if (signal?.aborted) {
+            loaded.release();
+            implementationPromise = null;
+            return false;
+          }
 
           if (ready) {
             scheduleIdleRelease(loaded);

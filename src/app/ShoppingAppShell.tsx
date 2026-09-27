@@ -67,7 +67,7 @@ import {
 } from "./input-preferences";
 import { AppearanceSwitcher } from "./AppearanceSwitcher";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { useI18n } from "./i18n";
+import { useI18n } from "./i18n-context";
 import { focusNextScreen } from "../features/shopping/focus-next-screen";
 import { useShoppingShellFocus } from "./use-shopping-shell-focus";
 import styles from "./ShoppingAppShell.module.css";

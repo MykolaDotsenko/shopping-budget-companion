@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { bootstrapBrowserShoppingAppController } from "../src/app/composition-root";
+import { interpolate, type MessageCatalog } from "../src/app/i18n-core";
+import { messages as fiMessages } from "../src/app/locales/locale-fi";
+import { messages as ukMessages } from "../src/app/locales/locale-uk";
 import { ShoppingAppShell } from "../src/app/ShoppingAppShell";
 import { useShoppingAppState } from "../src/application/react/use-shopping-app-state";
 import type { ShoppingAppController } from "../src/application/shopping-app-controller";
@@ -83,8 +86,11 @@ const completedTrip = (id: string): CompletedTrip => {
   return completed;
 };
 
-const partlyDamagedHistory = (): string => {
-  const encoded = encodeHistorySnapshot([completedTrip("trip-kept")], START);
+const partlyDamagedHistory = (keptTripCount = 1): string => {
+  const trips = Array.from({ length: keptTripCount }, (_, index) =>
+    completedTrip(`trip-kept-${index + 1}`),
+  );
+  const encoded = encodeHistorySnapshot(trips, START);
 
   if (!encoded.ok) {
     throw new Error("Expected history");
@@ -109,6 +115,45 @@ const memoryStorage = (entries: Record<string, string>) => {
     },
   };
   return { values, storage };
+};
+
+const translatorsFor = (catalog: MessageCatalog, locale: string) => {
+  const t = (
+    source: string,
+    values: Readonly<Record<string, string | number>> = {},
+  ): string => {
+    const translated = catalog[source];
+
+    return interpolate(
+      typeof translated === "string" ? translated : source,
+      values,
+    );
+  };
+
+  const tp = (
+    oneSource: string,
+    otherSource: string,
+    count: number,
+    values: Readonly<Record<string, string | number>> = {},
+  ): string => {
+    const translated = catalog[oneSource];
+    let template = count === 1 ? oneSource : otherSource;
+
+    if (typeof translated === "object" && translated !== null) {
+      const category = new Intl.PluralRules(locale).select(count);
+      template =
+        translated[category] ??
+        translated.other ??
+        translated.one ??
+        template;
+    } else if (typeof translated === "string") {
+      template = translated;
+    }
+
+    return interpolate(template, { count, ...values });
+  };
+
+  return { t, tp };
 };
 
 const boot = (storage: StorageLike | null): ShoppingAppController => {
@@ -189,6 +234,28 @@ describe("RecoveryScreen exits", () => {
 });
 
 describe("HistoryIntegrityNotice", () => {
+  it.each([
+    ["fi-FI", fiMessages, 1, "1 valmis ostosreissu on yhä käytettävissä."],
+    ["fi-FI", fiMessages, 2, "2 valmista ostosreissua on yhä käytettävissä."],
+    ["uk-UA", ukMessages, 1, "Ще доступний 1 завершений похід."],
+    ["uk-UA", ukMessages, 2, "Ще доступні 2 завершені походи."],
+    ["uk-UA", ukMessages, 5, "Ще доступні 5 завершених походів."],
+  ] as const)(
+    "renders the damaged-history warning grammatically for %s with %i kept trips",
+    (locale, catalog, keptTripCount, expected) => {
+      const { storage } = memoryStorage({
+        [HISTORY_STORAGE_KEY]: partlyDamagedHistory(keptTripCount),
+      });
+      const controller = boot(storage);
+      const { t, tp } = translatorsFor(catalog, locale);
+
+      render(<HistoryIntegrityNotice controller={controller} t={t} tp={tp} />);
+
+      expect(document.body.textContent).toContain(expected);
+      expect(document.body.textContent).not.toContain("on on");
+    },
+  );
+
   it("sets damaged history aside only after a second, explicit confirmation", async () => {
     const user = userEvent.setup();
     const damaged = partlyDamagedHistory();

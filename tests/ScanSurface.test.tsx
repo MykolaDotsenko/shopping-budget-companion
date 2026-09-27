@@ -651,9 +651,7 @@ describe("ScanSurface product recognition mode", () => {
     const shutter = await screen.findByRole("button", {
       name: "Recognize product",
     });
-    await waitFor(() => {
-      expect((shutter as HTMLButtonElement).disabled).toBe(false);
-    });
+    expect((shutter as HTMLButtonElement).disabled).toBe(false);
 
     await user.click(shutter);
 
@@ -685,9 +683,6 @@ describe("ScanSurface product recognition mode", () => {
     const shutter = await screen.findByRole("button", {
       name: "Recognize product",
     });
-    await waitFor(() => {
-      expect((shutter as HTMLButtonElement).disabled).toBe(false);
-    });
     await user.click(shutter);
 
     expect(
@@ -697,7 +692,8 @@ describe("ScanSurface product recognition mode", () => {
     expect(onEnterPrice).toHaveBeenCalledWith({});
   });
 
-  it("does not enable recognition when the model cannot prepare", async () => {
+  it("falls back cleanly when the model cannot prepare after the explicit tap", async () => {
+    const user = userEvent.setup();
     const recognizer = fakeVisualRecognizer(
       { status: "no-match" },
       { ready: false },
@@ -709,14 +705,14 @@ describe("ScanSurface product recognition mode", () => {
       initialMode: "product",
     });
 
+    expect(recognizer.prepare).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole("button", { name: "Recognize product" }),
+    );
+
     expect(
-      await screen.findByText(/Product recognition couldn't start/),
+      await screen.findByRole("heading", { name: "Recognition unavailable" }),
     ).not.toBeNull();
-    expect(
-      (screen.getByRole("button", {
-        name: "Recognize product",
-      }) as HTMLButtonElement).disabled,
-    ).toBe(true);
     expect(screen.getByRole("button", { name: "Enter manually" })).not.toBeNull();
   });
 });

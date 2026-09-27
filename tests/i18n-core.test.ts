@@ -69,7 +69,7 @@ describe("i18n core", () => {
   });
 
   it("formats decimal input examples using each locale separator", () => {
-    expect(decimalAmountPlaceholder("en-FI", 50)).toBe("50.00");
+    expect(decimalAmountPlaceholder("en-FI", 50)).toBe("50,00");
     expect(decimalAmountPlaceholder("fi-FI", 50)).toBe("50,00");
     expect(decimalAmountPlaceholder("uk-UA", 50)).toBe("50,00");
   });

@@ -60,8 +60,10 @@ import { InstallOffer } from "./InstallOffer";
 import {
   readPriceEntryModePreference,
   readScanModePreference,
+  readVisualModelDownloadAcknowledgement,
   writePriceEntryModePreference,
   writeScanModePreference,
+  writeVisualModelDownloadAcknowledgement,
 } from "./input-preferences";
 import { AppearanceSwitcher } from "./AppearanceSwitcher";
 import { SHOPPING_LOCALE } from "../features/shopping/shopping-locale";
@@ -211,6 +213,10 @@ function ShoppingAppScreens({
     returnFocusToEditItem,
   } = useShoppingShellFocus();
   const [openedOverlay, setOverlay] = useState<OverlayState>(NO_OVERLAY);
+  const [
+    visualModelDownloadAcknowledged,
+    setVisualModelDownloadAcknowledged,
+  ] = useState(() => readVisualModelDownloadAcknowledgement());
   const overlay: OverlayState =
     "tripId" in openedOverlay &&
     openedOverlay.tripId !== state.activeTrip?.id
@@ -597,6 +603,11 @@ function ShoppingAppScreens({
             priceReader={scanPrice}
             productLookup={productLookup}
             visualRecognizer={scanProduct}
+            visualModelDownloadAcknowledged={visualModelDownloadAcknowledged}
+            onAcknowledgeVisualModelDownload={() => {
+              writeVisualModelDownloadAcknowledgement();
+              setVisualModelDownloadAcknowledged(true);
+            }}
             initialMode={overlay.mode}
             onModeChange={writeScanModePreference}
             context={overlay.context}

@@ -91,23 +91,13 @@ The active roadmap is intentionally narrow and local-first.
    - interpret 7/14/30-day retention only when each window has at least 20 eligible participants;
    - use repeat use, abandonment, Price Memory/reuse and trust/friction evidence to decide whether the core flow needs remediation.
 
-3. **Barcode field evidence — issue #73 (post-release validation, D-053)**
-   - use the production app on representative phones (Android Chrome and iOS Safari at least) in real stores;
-   - log every scan attempt: product type, whether the code was read, seconds from opening the camera to a result, wrong products, and whether the shopper fell back to typing;
-   - cover small and curved codes, glossy packs, poor light, store-printed codes and a device without the native detector;
-   - decide from the log whether to keep scanning, remediate it or switch it off.
-
-4. **Visual product recognition — issue #88 (post-release validation, D-057)**
-   - use Product mode on representative Android and iOS phones in real stores;
-   - cover loose produce, familiar packaged products, same-brand variants, glare, angle, partial occlusion and visually similar packaging;
-   - log whether the correct product appears in the ranked candidates, time to a human choice, wrong choices, no-match/runtime failures and manual fallback;
-   - decide from the field evidence whether to keep the CLIP closed-set approach, remediate it (prefer bounded reference-image retrieval) or switch it off.
-
-5. **Price-tag field evidence — issue #90 (post-release validation, D-055)**
-   - use the production app on representative phones in real stores;
-   - log every read: tag type (comma or dot decimals, superscript cents, unit/member/regular prices, multi-buy, percentage discounts, offer dates, no valid price), whether the right price was first or only listed, seconds from "Read price" to choosing, wrong or missing candidates, and whether the shopper typed the price instead;
-   - collect at least 10 reads per tag type before drawing a conclusion;
-   - decide from the log whether to keep price reading, remediate it or switch it off, without weakening the parser's exact-money rules.
+3. **Real-store camera validation — issue #88 (post-release validation, D-053/D-055/D-057)**
+   - use the production app on representative Android Chrome and iPhone Safari devices in real stores;
+   - validate barcode reads across small/curved/glossy/store-printed codes and native-detector fallback;
+   - validate Product mode across loose produce, familiar packaged products, same-brand variants, glare, angle, partial occlusion and visually similar packaging;
+   - validate price-tag reading across decimal/superscript/member/regular/unit/multi-buy/offer-date cases;
+   - log time to human decision, wrong/missing results, manual fallback and notable confusion cases separately for each capability;
+   - record an explicit **KEEP / REMEDIATE / DISABLE** decision for barcode, visual recognition and OCR without weakening manual entry or exact-money rules.
 
 A field log is a plain table kept by the facilitator; it holds no photos, no shopping content and nothing from the app's storage. Every decision above stays a human decision, not an automated score.
 
@@ -115,7 +105,7 @@ These gates are not replaceable by automated fixtures or green CI.
 
 ### B. Production barcode
 
-**Production status: IMPLEMENTED (owner promotion, D-053). Physical evidence (issue #73): PLANNED / GATED as post-release validation.**
+**Production status: IMPLEMENTED (owner promotion, D-053). Physical evidence (issue #88): PLANNED / GATED as post-release validation.**
 
 Shipped in these layers:
 
@@ -129,7 +119,7 @@ Shipped in these layers:
 8. permission/error/manual-fallback UX;
 9. release switches `VITE_SHOPPING_BARCODE_SCANNER` and `VITE_SHOPPING_PRODUCT_LOOKUP`, which CI reads from repository variables of the same name.
 
-If issue #73 concludes that scanning must be remediated or withdrawn, switch it off rather than weakening manual entry: set the `VITE_SHOPPING_BARCODE_SCANNER` repository variable to `0`; the next push to `main`, such as the commit recording that outcome here, builds, tests and deploys the app without scanning.
+If the barcode part of issue #88 concludes that scanning must be remediated or withdrawn, switch it off rather than weakening manual entry: set the `VITE_SHOPPING_BARCODE_SCANNER` repository variable to `0`; the next push to `main`, such as the commit recording that outcome here, builds, tests and deploys the app without scanning.
 
 Barcode identifies **product identity only**. It never supplies authoritative current shelf price. Manual current-price entry remains complete and always available.
 
@@ -159,7 +149,7 @@ The current zero-shot approach is best suited to visually meaningful product cla
 
 ### D. Shelf-label OCR
 
-**Production price-tag reading: IMPLEMENTED (owner promotion, D-055). Field evidence (issue #90): PLANNED / GATED as post-release validation.**
+**Production price-tag reading: IMPLEMENTED (owner promotion, D-055). Field evidence (issue #88): PLANNED / GATED as post-release validation.**
 
 Shipped in these layers:
 
@@ -171,7 +161,7 @@ Shipped in these layers:
 6. candidate choice, then pre-filled price entry that the shopper confirms;
 7. release switch `VITE_SHOPPING_PRICE_OCR`, read by CI from a repository variable.
 
-If issue #90 concludes that price reading must be remediated or withdrawn, switch it off rather than weakening manual entry: set the `VITE_SHOPPING_PRICE_OCR` repository variable to `0`, and the next push to `main` builds, tests and deploys the app without it.
+If the price-tag part of issue #88 concludes that price reading must be remediated or withdrawn, switch it off rather than weakening manual entry: set the `VITE_SHOPPING_PRICE_OCR` repository variable to `0`, and the next push to `main` builds, tests and deploys the app without it.
 
 The parser reuses the `parseEurDraft` money contract. It does not invent decimals in bare OCR digits, does not treat percentages or dates as money, and keeps unit-price, member, regular and multi-buy context distinguishable for ranking and human review ([DOMAIN.md](./DOMAIN.md#shelf-price-reading)).
 

@@ -31,21 +31,21 @@ describe("LanguageSwitcher", () => {
       </I18nContext.Provider>,
     );
 
-    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading")).toBeNull();
 
     const group = screen.getByRole("group", { name: "App language" });
     const english = screen.getByRole("button", { name: "English" });
     const finnish = screen.getByRole("button", { name: "Suomi" });
     const ukrainian = screen.getByRole("button", { name: "Українська" });
 
-    expect(group).toContainElement(english);
-    expect(group).toContainElement(finnish);
-    expect(group).toContainElement(ukrainian);
-    expect(screen.getByText("EN")).toBeInTheDocument();
-    expect(screen.getByText("FI")).toBeInTheDocument();
-    expect(screen.getByText("UA")).toBeInTheDocument();
-    expect(english).toHaveAttribute("aria-pressed", "true");
-    expect(finnish).toHaveAttribute("aria-pressed", "false");
+    expect(group.contains(english)).toBe(true);
+    expect(group.contains(finnish)).toBe(true);
+    expect(group.contains(ukrainian)).toBe(true);
+    expect(screen.getByText("EN")).not.toBeNull();
+    expect(screen.getByText("FI")).not.toBeNull();
+    expect(screen.getByText("UA")).not.toBeNull();
+    expect(english.getAttribute("aria-pressed")).toBe("true");
+    expect(finnish.getAttribute("aria-pressed")).toBe("false");
 
     await user.click(finnish);
     expect(setLanguage).toHaveBeenCalledWith("fi");

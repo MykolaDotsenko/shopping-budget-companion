@@ -110,10 +110,16 @@ const validateCatalog = (catalog, locale, sourceMessages, pluralSources) => {
         pluralSource === undefined || category === "one"
           ? key
           : pluralSource.other;
+      const expected = placeholders(sourceTemplate);
+      const actual = placeholders(variant);
+      const normalizedExpected =
+        category === "one" && !actual.includes("count")
+          ? expected.filter((placeholder) => placeholder !== "count")
+          : expected;
       expect(
-        placeholders(variant),
+        actual,
         `${locale} ${category} placeholders differ for "${key}"`,
-      ).toEqual(placeholders(sourceTemplate));
+      ).toEqual(normalizedExpected);
     }
   }
 

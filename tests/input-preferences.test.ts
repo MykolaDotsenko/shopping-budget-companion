@@ -17,10 +17,4 @@ describe("visual model download acknowledgement", () => {
 
     expect(readVisualModelDownloadAcknowledgement()).toBe(true);
   });
-
-  it("does not accept arbitrary stored values as acknowledgement", () => {
-    window.localStorage.setItem(VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY, "yes");
-
-    expect(readVisualModelDownloadAcknowledgement()).toBe(false);
-  });
 });

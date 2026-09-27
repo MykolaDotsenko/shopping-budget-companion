@@ -23,6 +23,12 @@ import { HistoryIntegrityNotice } from "./HistoryIntegrityNotice";
 import { PersistenceHealthNotice } from "./PersistenceHealthNotice";
 import styles from "./StartTripScreen.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 interface QuickBudget {
   readonly label: string;
@@ -48,21 +54,24 @@ const QUICK_BUDGETS: readonly QuickBudget[] = Object.freeze([
   { label: "€100", amount: asMinorUnits(10_000) },
 ]);
 
-const inputErrorMessage = (code: MoneyInputErrorCode): string => {
+const inputErrorMessage = (
+  code: MoneyInputErrorCode,
+  t: Translate,
+): string => {
   switch (code) {
     case "empty":
-      return "Enter an amount.";
+      return t("Enter an amount.");
     case "incomplete":
-      return "Finish the amount.";
+      return t("Finish the amount.");
     case "invalid-format":
-      return "Use a valid euro amount, for example 37.50.";
+      return t("Use a valid euro amount, for example 37.50.");
     case "negative-not-allowed":
-      return "Use an amount above zero.";
+      return t("Use an amount above zero.");
     case "too-many-fraction-digits":
-      return "Use no more than two decimal places.";
+      return t("Use no more than two decimal places.");
     case "above-product-limit":
     case "unsafe-integer":
-      return "That amount is too large.";
+      return t("That amount is too large.");
     default: {
       const exhaustive: never = code;
       return exhaustive;
@@ -72,6 +81,7 @@ const inputErrorMessage = (code: MoneyInputErrorCode): string => {
 
 const applicationErrorMessage = (
   result: ReturnType<ShoppingAppController["startTrip"]>,
+  t: Translate,
 ): string => {
   if (result.ok) {
     return "";
@@ -80,29 +90,29 @@ const applicationErrorMessage = (
   if (result.error.kind === "domain") {
     switch (result.error.code) {
       case "invalid-budget":
-        return "Set a budget above €0.";
+        return t("Set a budget above €0.");
       case "invalid-buffer":
-        return "Keep the safety buffer within your budget.";
+        return t("Keep the safety buffer within your budget.");
       default:
-        return "Check the budget and try again.";
+        return t("Check the budget and try again.");
     }
   }
 
   switch (result.error.code) {
     case "not-ready":
-      return "The shopping session is still starting.";
+      return t("The shopping session is still starting.");
     case "active-trip-exists":
-      return "A shopping trip is already active.";
+      return t("A shopping trip is already active.");
     case "recovery-required":
-      return "Resolve the saved-trip issue before starting a new trip.";
+      return t("Resolve the saved-trip issue before starting a new trip.");
     case "no-active-trip":
-      return "No active shopping trip is available.";
+      return t("No active shopping trip is available.");
     case "completed-trip-not-found":
-      return "That previous trip is no longer available.";
+      return t("That previous trip is no longer available.");
     case "repeat-source-unavailable":
-      return "Your previous trip cannot be reused until saved data is healthy.";
+      return t("Your previous trip cannot be reused until saved data is healthy.");
     default:
-      return "Unable to start the shopping trip.";
+      return t("Unable to start the shopping trip.");
   }
 };
 
@@ -128,6 +138,8 @@ export interface StartTripScreenProps {
   readonly persistenceHealth?: PersistenceHealth;
   readonly onOpenHistory?: () => void;
   readonly locale?: string;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
   readonly utilityControl?: ReactNode;
   readonly notice?: ReactNode;
   readonly footer?: ReactNode;
@@ -143,6 +155,8 @@ export function StartTripScreen({
   persistenceHealth,
   onOpenHistory,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
   utilityControl,
   notice,
   footer,
@@ -184,7 +198,7 @@ export function StartTripScreen({
     if (!parsed.ok) {
       return {
         ok: false,
-        message: inputErrorMessage(parsed.error.code),
+        message: inputErrorMessage(parsed.error.code, t),
       };
     }
 
@@ -197,7 +211,7 @@ export function StartTripScreen({
   const bufferPreview = parseBuffer();
   const bufferSummary = bufferPreview.ok
     ? formatEur(bufferPreview.value, locale)
-    : "needs a valid amount";
+    : t("needs a valid amount");
 
   const start = (budgetMinor: MinorUnits): void => {
     setErrorMessage("");
@@ -225,7 +239,7 @@ export function StartTripScreen({
     const result = controller.startTrip(input);
 
     if (!result.ok) {
-      setErrorMessage(applicationErrorMessage(result));
+      setErrorMessage(applicationErrorMessage(result, t));
       return;
     }
 
@@ -241,7 +255,7 @@ export function StartTripScreen({
     });
 
     if (!parsedBudget.ok) {
-      setErrorMessage(inputErrorMessage(parsedBudget.error.code));
+      setErrorMessage(inputErrorMessage(parsedBudget.error.code, t));
       return;
     }
 
@@ -271,12 +285,12 @@ export function StartTripScreen({
         aria-labelledby="start-trip-title"
       >
         <div className={styles.intro}>
-          <p className={styles.eyebrow}>Shopping Budget Companion</p>
+          <p className={styles.eyebrow}>{t("Shopping Budget Companion")}</p>
           <h1 id="start-trip-title" className={styles.title} tabIndex={-1}>
-            How much can you spend today?
+            {t("How much can you spend today?")}
           </h1>
           <p className={styles.supporting}>
-            Set your limit. Add prices. Always know what&apos;s left.
+            {t("Set your limit. Add prices. Always know what’s left.")}
           </p>
         </div>
 
@@ -296,10 +310,12 @@ export function StartTripScreen({
             onClick={repeatRecentTrip}
           >
             <span className={styles.repeatCopy}>
-              <span className={styles.repeatEyebrow}>Last trip</span>
-              <strong>Shop again</strong>
+              <span className={styles.repeatEyebrow}>{t("Last trip")}</span>
+              <strong>{t("Shop again")}</strong>
               <small>
-                {formatEur(recentTrip.budgetMinor, locale)} budget
+                {t("{amount} budget", {
+                  amount: formatEur(recentTrip.budgetMinor, locale),
+                })}
                 {recentTrip.safetyBufferMinor > 0
                   ? ` · ${formatEur(
                       recentTrip.safetyBufferMinor,
@@ -316,7 +332,7 @@ export function StartTripScreen({
 
         <div
           className={styles.quickGrid}
-          aria-label="Quick budget choices"
+          aria-label={t("Quick budget choices")}
         >
           {QUICK_BUDGETS.map((budget) => (
             <button
@@ -343,7 +359,7 @@ export function StartTripScreen({
               setErrorMessage("");
             }}
           >
-            Custom amount
+            {t("Custom amount")}
           </button>
 
           {customOpen ? (
@@ -359,7 +375,7 @@ export function StartTripScreen({
                 htmlFor={customInputId}
                 className={styles.label}
               >
-                Custom budget
+                {t("Custom budget")}
               </label>
               <div className={styles.inputShell}>
                 <span aria-hidden="true" className={styles.currency}>
@@ -393,7 +409,7 @@ export function StartTripScreen({
                 type="submit"
                 className={styles.startButton}
               >
-                Start shopping
+                {t("Start shopping")}
               </button>
             </form>
           ) : null}
@@ -407,16 +423,16 @@ export function StartTripScreen({
           >
             <summary className={styles.reserveSummary}>
               {bufferOpen || reserveRaw.trim() === ""
-                ? "Add a safety buffer"
-                : `Safety buffer ${bufferSummary}`}
+                ? t("Add a safety buffer")
+                : t("Safety buffer {amount}", { amount: bufferSummary })}
             </summary>
             <div className={styles.reserveField}>
               <label
                 htmlFor={reserveInputId}
                 className={styles.label}
               >
-                Safety buffer
-                <span className={styles.optional}>Optional</span>
+                {t("Safety buffer")}
+                <span className={styles.optional}>{t("Optional")}</span>
               </label>
               <div className={styles.inputShell}>
                 <span aria-hidden="true" className={styles.currency}>
@@ -437,8 +453,7 @@ export function StartTripScreen({
                 />
               </div>
               <p className={styles.hint}>
-                Keep a little in reserve for weighed items, deposits,
-                and small price differences.
+                {t("Keep a little in reserve for weighed items, deposits, and small price differences.")}
               </p>
             </div>
           </details>
@@ -465,15 +480,23 @@ export function StartTripScreen({
             onClick={onOpenHistory}
           >
             {completedTripCount > 0
-              ? `View trip history · ${completedTripCount}`
+              ? tp(
+                  "View trip history · {count}",
+                  "View trip history · {count}",
+                  completedTripCount,
+                )
               : rememberedPriceCount > 0
-                ? `Manage remembered prices · ${rememberedPriceCount}`
-                : "Repair remembered prices"}
+                ? tp(
+                    "Manage remembered price · {count}",
+                    "Manage remembered prices · {count}",
+                    rememberedPriceCount,
+                  )
+                : t("Repair remembered prices")}
           </button>
         ) : null}
 
         <p className={styles.trustNote}>
-          No account. Your shopping data stays on this device.
+          {t("No account. Your shopping data stays on this device.")}
         </p>
 
         {notice ?? null}

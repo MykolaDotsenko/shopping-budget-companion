@@ -200,7 +200,7 @@ function ShoppingAppScreens({
   lastAddedMessage,
   setLastAddedMessage,
 }: ShoppingAppScreensProps) {
-  const { locale, t } = useI18n();
+  const { locale, t, tp } = useI18n();
   const state = useShoppingAppState(controller);
   const {
     addPriceButtonRef,
@@ -865,6 +865,9 @@ function ShoppingAppScreens({
     <>
       <ActiveTripScreen
         controller={controller}
+        t={t}
+        tp={tp}
+        locale={locale}
         utilityControl={
           <>
             <LanguageSwitcher />

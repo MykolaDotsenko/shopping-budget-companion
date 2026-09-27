@@ -11,7 +11,7 @@ describe("camera release switches", () => {
     vi.unstubAllGlobals();
   });
 
-  it("builds the camera, barcode reader, price reader and tap-only lookup by default", async () => {
+  it("builds all optional camera capabilities and tap-only lookup by default", async () => {
     vi.stubGlobal("isSecureContext", true);
     vi.stubGlobal("navigator", {
       ...navigator,
@@ -23,6 +23,7 @@ describe("camera release switches", () => {
     expect(root.createBrowserCameraPort()?.isAvailable()).toBe(true);
     expect(root.createBrowserBarcodeReaderPort()).not.toBeNull();
     expect(root.createBrowserPriceTagReader()).not.toBeNull();
+    expect(root.createBrowserVisualProductRecognizer()).not.toBeNull();
     expect(root.createBrowserProductLookup()?.providerName).toBe("Open Food Facts");
   });
 
@@ -44,7 +45,7 @@ describe("camera release switches", () => {
     expect(root.createBrowserProductLookup()).toBeNull();
   });
 
-  it("removes price tag reading when its switch is off, and the camera when both are off", async () => {
+  it("keeps the shared camera until barcode, product recognition and price reading are all off", async () => {
     vi.stubEnv("VITE_SHOPPING_PRICE_OCR", "0");
     const priceOff = await loadRoot();
 
@@ -52,10 +53,23 @@ describe("camera release switches", () => {
     expect(priceOff.createBrowserCameraPort()).not.toBeNull();
 
     vi.stubEnv("VITE_SHOPPING_BARCODE_SCANNER", "0");
-    const bothOff = await loadRoot();
+    const barcodeAndPriceOff = await loadRoot();
 
-    expect(bothOff.createBrowserCameraPort()).toBeNull();
-    expect(bothOff.createBrowserBarcodeReaderPort()).toBeNull();
-    expect(bothOff.createBrowserPriceTagReader()).toBeNull();
+    expect(barcodeAndPriceOff.createBrowserCameraPort()).not.toBeNull();
+    expect(barcodeAndPriceOff.createBrowserBarcodeReaderPort()).toBeNull();
+    expect(barcodeAndPriceOff.createBrowserPriceTagReader()).toBeNull();
+    expect(
+      barcodeAndPriceOff.createBrowserVisualProductRecognizer(),
+    ).not.toBeNull();
+
+    vi.stubEnv("VITE_SHOPPING_VISUAL_RECOGNITION", "0");
+    const allCameraFeaturesOff = await loadRoot();
+
+    expect(allCameraFeaturesOff.createBrowserCameraPort()).toBeNull();
+    expect(allCameraFeaturesOff.createBrowserBarcodeReaderPort()).toBeNull();
+    expect(allCameraFeaturesOff.createBrowserPriceTagReader()).toBeNull();
+    expect(
+      allCameraFeaturesOff.createBrowserVisualProductRecognizer(),
+    ).toBeNull();
   });
 });

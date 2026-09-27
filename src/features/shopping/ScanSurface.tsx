@@ -166,7 +166,6 @@ export default function ScanSurface({
   const [cameraRun, setCameraRun] = useState(1);
   const [sessionSerial, setSessionSerial] = useState(0);
   const [priceWarmup, setPriceWarmup] = useState<Warmup>({ kind: "idle" });
-  const [visualWarmup, setVisualWarmup] = useState<Warmup>({ kind: "idle" });
   const [manualCode, setManualCode] = useState("");
   const [manualError, setManualError] = useState("");
   const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
@@ -406,24 +405,6 @@ export default function ScanSurface({
   }, [mode, priceReader]);
 
   useEffect(() => {
-    if (mode !== "product" || visualRecognizer === null) {
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    void visualRecognizer.prepare().then((ready) => {
-      if (!cancelled) {
-        setVisualWarmup(ready ? { kind: "ready" } : { kind: "failed" });
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, visualRecognizer]);
-
-  useEffect(() => {
     const onVisibility = (): void => {
       if (document.visibilityState === "hidden") {
         setCameraRun(0);
@@ -469,11 +450,6 @@ export default function ScanSurface({
 
     setMode(next);
     setManualError("");
-
-    if (next === "product") {
-      setVisualWarmup({ kind: "idle" });
-    }
-
     onModeChange?.(next);
 
     if (!cameraWanted) {
@@ -686,14 +662,6 @@ export default function ScanSurface({
     }
 
     if (mode === "product") {
-      if (visualWarmup.kind === "preparing" || visualWarmup.kind === "idle") {
-        return "Getting product recognition ready (first time can take a while)…";
-      }
-
-      if (visualWarmup.kind === "failed") {
-        return "Product recognition couldn't start. You can still enter the product manually.";
-      }
-
       return phase.hint
         ? "Fill the frame with one product and avoid glare, then tap Recognize product."
         : "Fit one product inside the frame, then tap Recognize product.";
@@ -855,9 +823,7 @@ export default function ScanSurface({
               <button
                 type="button"
                 className={styles.shutter}
-                disabled={
-                  phase.kind !== "live" || visualWarmup.kind !== "ready"
-                }
+                disabled={phase.kind !== "live"}
                 onClick={() => {
                   void recognizeProduct();
                 }}

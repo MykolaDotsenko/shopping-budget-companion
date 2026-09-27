@@ -45,10 +45,10 @@ export const failureCopy = (
       return t("Another app is using the camera. Close it and try again.");
     case "engine-failed":
       return mode === "barcode"
-        ? "The barcode reader couldn't load. Check your connection and try again."
+        ? t("The barcode reader couldn't load. Check your connection and try again.")
         : mode === "product"
-          ? "The product recognizer couldn't load. Check your connection and try again."
-          : "The camera helper couldn't load. Check your connection and try again.";
+          ? t("The product recognizer couldn't load. Check your connection and try again.")
+          : t("The camera helper couldn't load. Check your connection and try again.");
     case "camera-error":
       return t("The camera couldn\'t start. Try again or {fallback}.", { fallback });
     default: {

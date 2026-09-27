@@ -12,6 +12,7 @@ export const messages = {
   "Appearance changed for this session but could not be saved.": "Вигляд змінено для цієї сесії, але вибір не вдалося зберегти.",
   "System": "Системна",
   "Light": "Світла",
+  "Camera light": "Підсвічування",
   "Dark": "Темна",
   "Aurora": "Аврора",
   "Shopping Budget Companion": "Shopping Budget Companion",

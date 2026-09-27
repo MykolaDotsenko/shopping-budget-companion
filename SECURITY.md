@@ -7,9 +7,9 @@ Security fixes target the current `main` branch.
 This is a local-first browser application with no production backend, account system or remote analytics dependency. Security work should preserve that small attack surface:
 
 - shopping data stays in the browser's `localStorage`;
-- camera frames for barcode and price-tag reading are processed on the device and never stored or uploaded;
-- the barcode and OCR engines are self-hosted with the app, not loaded from a third-party CDN;
-- the only request that leaves the site is the optional Open Food Facts name lookup, sent only when the shopper taps it, carrying the barcode number and the app's name and version.
+- camera frames for barcode, visual product recognition and price-tag reading are processed on the device and never stored or uploaded;
+- the barcode and OCR engines are self-hosted with the app;
+- optional outbound requests are limited to the tap-only Open Food Facts barcode-name lookup and first-use acquisition of the pinned visual-recognition model/runtime; model delivery receives no camera frame, candidate label, price or shopping state.
 
 ## Reporting a vulnerability
 

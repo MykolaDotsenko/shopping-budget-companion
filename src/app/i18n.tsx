@@ -1,144 +1,19 @@
 import {
-  createContext,
-  useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 
-export type AppLanguage = "en" | "fi" | "uk";
-type PluralCategory = Intl.LDMLPluralRule;
-
-export type MessageValue =
-  | string
-  | Readonly<Partial<Record<PluralCategory, string>>>;
-
-export type MessageCatalog = Readonly<Record<string, MessageValue>>;
-
-const LANGUAGE_STORAGE_KEY = "shopping-budget:language";
-export const APP_LANGUAGES = Object.freeze(["en", "fi", "uk"] as const);
-
-const LOCALES: Readonly<Record<AppLanguage, string>> = {
-  en: "en-FI",
-  fi: "fi-FI",
-  uk: "uk-UA",
-};
-
-const NATIVE_NAMES: Readonly<Record<AppLanguage, string>> = {
-  en: "English",
-  fi: "Suomi",
-  uk: "Українська",
-};
-
-const isLanguage = (value: string | null | undefined): value is AppLanguage =>
-  value === "en" || value === "fi" || value === "uk";
-
-const browserLanguage = (): AppLanguage => {
-  if (typeof navigator === "undefined") {
-    return "en";
-  }
-
-  for (const candidate of navigator.languages ?? [navigator.language]) {
-    const primary = candidate.toLowerCase().split("-")[0];
-
-    if (primary === "fi" || primary === "uk") {
-      return primary;
-    }
-  }
-
-  return "en";
-};
-
-export const readLanguagePreference = (): AppLanguage => {
-  try {
-    const stored = globalThis.localStorage?.getItem(LANGUAGE_STORAGE_KEY);
-
-    if (isLanguage(stored)) {
-      return stored;
-    }
-  } catch {
-    // Language persistence is convenience-only.
-  }
-
-  return browserLanguage();
-};
-
-const persistLanguage = (language: AppLanguage): boolean => {
-  try {
-    globalThis.localStorage?.setItem(LANGUAGE_STORAGE_KEY, language);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const localeForLanguage = (language: AppLanguage): string =>
-  LOCALES[language];
-
-export const languageName = (language: AppLanguage): string =>
-  NATIVE_NAMES[language];
-
-export const loadLanguageCatalog = async (
-  language: AppLanguage,
-): Promise<MessageCatalog> => {
-  switch (language) {
-    case "fi":
-      return (await import("./locales/locale-fi")).messages;
-    case "uk":
-      return (await import("./locales/locale-uk")).messages;
-    case "en":
-      return {};
-    default: {
-      const exhaustive: never = language;
-      return exhaustive;
-    }
-  }
-};
-
-const interpolate = (
-  template: string,
-  values: Readonly<Record<string, string | number>> = {},
-): string =>
-  template.replace(/\{([a-zA-Z0-9_]+)\}/gu, (match, key: string) =>
-    key in values ? String(values[key]) : match,
-  );
-
-interface I18nContextValue {
-  readonly language: AppLanguage;
-  readonly locale: string;
-  readonly changing: boolean;
-  readonly saveFailed: boolean;
-  readonly changeFailed: boolean;
-  readonly t: (
-    source: string,
-    values?: Readonly<Record<string, string | number>>,
-  ) => string;
-  readonly tp: (
-    oneSource: string,
-    otherSource: string,
-    count: number,
-    values?: Readonly<Record<string, string | number>>,
-  ) => string;
-  readonly setLanguage: (language: AppLanguage) => Promise<void>;
-}
-
-const englishContext: I18nContextValue = {
-  language: "en",
-  locale: LOCALES.en,
-  changing: false,
-  saveFailed: false,
-  changeFailed: false,
-  t: (source, values) => interpolate(source, values),
-  tp: (oneSource, otherSource, count, values) =>
-    interpolate(count === 1 ? oneSource : otherSource, {
-      count,
-      ...values,
-    }),
-  setLanguage: async () => undefined,
-};
-
-const I18nContext = createContext<I18nContextValue>(englishContext);
+import { I18nContext, type I18nContextValue } from "./i18n-context";
+import {
+  interpolate,
+  loadLanguageCatalog,
+  localeForLanguage,
+  persistLanguage,
+  type AppLanguage,
+  type MessageCatalog,
+} from "./i18n-core";
 
 export interface I18nProviderProps {
   readonly initialLanguage: AppLanguage;
@@ -160,16 +35,18 @@ export function I18nProvider({
   const [changeFailed, setChangeFailed] = useState(false);
 
   useEffect(() => {
-    const title = state.language === "en"
-      ? "Shopping Budget Companion — know what’s left before checkout"
-      : state.language === "fi"
-        ? "Shopping Budget Companion — tiedä paljonko on jäljellä ennen kassaa"
-        : "Shopping Budget Companion — знайте, скільки залишилось до каси";
-    const description = state.language === "en"
-      ? "Set a shopping limit, add prices as you go and always see what’s left before checkout."
-      : state.language === "fi"
-        ? "Aseta ostosraja, lisää hinnat ostosten aikana ja näe aina, paljonko on jäljellä ennen kassaa."
-        : "Встановіть ліміт покупок, додавайте ціни під час покупок і завжди бачте, скільки залишилось до каси.";
+    const title =
+      state.language === "en"
+        ? "Shopping Budget Companion — know what’s left before checkout"
+        : state.language === "fi"
+          ? "Shopping Budget Companion — tiedä paljonko on jäljellä ennen kassaa"
+          : "Shopping Budget Companion — знайте, скільки залишилось до каси";
+    const description =
+      state.language === "en"
+        ? "Set a shopping limit, add prices as you go and always see what’s left before checkout."
+        : state.language === "fi"
+          ? "Aseta ostosraja, lisää hinnat ostosten aikana ja näe aina, paljonko on jäljellä ennen kassaa."
+          : "Встановіть ліміт покупок, додавайте ціни під час покупок і завжди бачте, скільки залишилось до каси.";
 
     document.title = title;
     document
@@ -201,7 +78,7 @@ export function I18nProvider({
 
       if (typeof translated === "object" && translated !== null) {
         const category = new Intl.PluralRules(
-          LOCALES[state.language],
+          localeForLanguage(state.language),
         ).select(count);
         template =
           translated[category] ??
@@ -237,7 +114,7 @@ export function I18nProvider({
 
     return {
       language: state.language,
-      locale: LOCALES[state.language],
+      locale: localeForLanguage(state.language),
       changing,
       saveFailed,
       changeFailed,
@@ -249,5 +126,3 @@ export function I18nProvider({
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
-
-export const useI18n = (): I18nContextValue => useContext(I18nContext);

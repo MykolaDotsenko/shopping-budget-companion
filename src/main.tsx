@@ -3,11 +3,11 @@ import { createRoot } from "react-dom/client";
 
 import { App } from "#app-entry";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
+import { I18nProvider } from "./app/i18n";
 import {
-  I18nProvider,
   loadLanguageCatalog,
   readLanguagePreference,
-} from "./app/i18n";
+} from "./app/i18n-core";
 import "./app/shopping-theme.css";
 import "./index.css";
 

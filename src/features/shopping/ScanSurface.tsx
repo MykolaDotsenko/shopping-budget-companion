@@ -924,7 +924,7 @@ export default function ScanSurface({
                   aria-pressed={phase.torchOn}
                   onClick={toggleTorch}
                 >
-                  {t("Light")}
+                  {t("Camera light")}
                 </button>
               ) : null}
               {mode === "barcode" ? (

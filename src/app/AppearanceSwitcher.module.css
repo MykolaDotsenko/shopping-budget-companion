@@ -98,7 +98,9 @@
 }
 
 .option[data-mode="aurora"] .swatch {
-  background: linear-gradient(135deg, #8de8ff, #9d8cff 54%, #ff8ad8);
+  background: linear-gradient(135deg, #8ff3ff, #9d8cff 54%, #ff8ad8);
+  border-color: #dffcff;
+  box-shadow: inset 0 0 0 1px #ffffff66, 0 0 10px #8ff3ffb8, 0 0 22px #9d8cff70;
 }
 
 .option:focus-visible {

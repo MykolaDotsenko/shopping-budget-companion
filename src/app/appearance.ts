@@ -22,7 +22,7 @@ export interface AppearanceDocumentTarget {
 const THEME_COLORS = Object.freeze({
   light: "#f4f1eb",
   dark: "#0f1210",
-  aurora: "#070912",
+  aurora: "#050611",
 });
 
 const isAppearanceMode = (

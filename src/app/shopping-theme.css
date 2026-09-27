@@ -94,33 +94,37 @@
 :root[data-theme="aurora"] {
   color-scheme: dark;
 
-  --surface-page: #070912;
-  --surface-panel: #101625;
-  --surface-soft: #161e31;
-  --surface-raised: #1c2640;
+  --surface-page: #050611;
+  --surface-panel: #0d1427;
+  --surface-soft: #121d35;
+  --surface-raised: #182744;
+  --surface-accent-soft: #142943;
   --text-primary: #fff;
-  --text-secondary: #b2bdd1;
-  --text-secondary-strong: #d0d7e5;
-  --border-subtle: #2f3c59;
-  --field-border: #6878a0;
-  --accent-primary: #8de8ff;
-  --accent-contrast: #061017;
-  --status-warning: #ffd18c;
-  --status-danger: #ff9cb5;
-  --focus-ring: #bdcaff;
-  --progress-track: #202a40;
+  --text-secondary: #b9c8df;
+  --text-secondary-strong: #e0e8f5;
+  --border-subtle: #50729e;
+  --border-strong: #72cde3;
+  --field-border: #76a9d6;
+  --accent-primary: #8ff3ff;
+  --accent-contrast: #031017;
+  --status-warning: #ffd79a;
+  --status-danger: #ff9ec8;
+  --focus-ring: #d5d9ff;
+  --progress-track: #1b2a46;
   --page-canvas:
-    radial-gradient(36rem 26rem at 6% -6%, #19c6ff47, transparent 70%),
-    radial-gradient(32rem 28rem at 106% 16%, #8b5cff40, transparent 70%),
-    radial-gradient(40rem 24rem at 40% 110%, #ff4fd82e, transparent 70%),
-    linear-gradient(165deg, #0c1a33, #0b0b1f 52%, #070912);
-  --hero-surface: linear-gradient(160deg, #17223d, #101625 62%);
-  --panel-shadow: inset 0 1px 0 #ffffff0f, 0 0 0 1px #8de8ff1a, 0 18px 44px #0009, 0 0 40px #7b8cff1f;
-  --elevated-shadow: inset 0 1px 0 #ffffff14, 0 0 0 1px #8de8ff29, 0 24px 60px #000b, 0 0 60px #9d8cff2e;
-  --primary-action-shadow: 0 0 0 1px #8de8ff59, 0 10px 26px #8de8ff2e, 0 0 44px #9d8cff33;
+    radial-gradient(46rem 32rem at -8% -10%, #18d9ff55, transparent 68%),
+    radial-gradient(42rem 32rem at 110% 6%, #8368ff4d, transparent 68%),
+    radial-gradient(46rem 28rem at 50% 112%, #ff4fd839, transparent 68%),
+    linear-gradient(150deg, #0a1934, #0a0c22 48%, #120923 74%, #050611);
+  --hero-surface:
+    radial-gradient(circle at 12% 0%, #8ff3ff17, transparent 44%),
+    linear-gradient(155deg, #152746, #111a34 52%, #0b1327);
+  --overlay-backdrop: rgb(2 4 14 / 0.72);
+  --panel-shadow: inset 0 1px 0 #ffffff1c, 0 0 0 1px #8ff3ff38, 0 0 22px #8ff3ff20, 0 18px 46px #000a;
+  --elevated-shadow: inset 0 1px 0 #ffffff24, 0 0 0 1px #8ff3ff57, 0 0 28px #8ff3ff2e, 0 0 54px #9d8cff32, 0 26px 72px #000c;
+  --primary-action-shadow: inset 0 1px 0 #ffffff8a, 0 0 0 1px #d9fbffb8, 0 0 18px #8ff3ffad, 0 0 42px #9d8cff6b;
 }
-
 :root[data-theme="aurora"] [aria-pressed="true"] {
-  box-shadow: 0 0 0 1px #8de8ff8c, 0 0 18px #8de8ff38;
+  box-shadow: 0 0 0 1px #d9fbffad, 0 0 16px #8ff3ff8a, 0 0 32px #9d8cff57;
 }
 

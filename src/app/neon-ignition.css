@@ -18,7 +18,7 @@
 }
 
 :root[data-neon-ignition] :is(button, input) {
-  animation: neon-tube 1.1s linear 0.3s;
+  animation: neon-tube 1.2s linear 0.25s;
 }
 
 :root[data-neon-ignition] :is(button, input):nth-of-type(3n + 2) {
@@ -43,8 +43,8 @@
   30% {
     box-shadow:
       0 0 0 1px #8de8ff,
-      0 0 14px #8de8ffb3,
-      0 0 34px #9d8cff66;
+      0 0 18px #8ff3ffd0,
+      0 0 46px #9d8cff85;
   }
 
   10%,
@@ -55,8 +55,8 @@
   48% {
     box-shadow:
       0 0 0 1px #8de8ffcc,
-      0 0 22px #8de8ff80,
-      0 0 48px #9d8cff4d;
+      0 0 26px #8ff3ffa0,
+      0 0 58px #9d8cff70;
   }
 }
 

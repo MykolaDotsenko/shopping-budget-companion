@@ -9,7 +9,6 @@ import {
 import styles from "./FinishTripSurface.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
 import {
-  englishPluralTranslate,
   englishTranslate,
   type Translate,
   type TranslatePlural,
@@ -56,8 +55,7 @@ export function FinishTripSurface({
   historyNotice,
   historyNeedsAttention = false,
   t = englishTranslate,
-  tp = englishPluralTranslate,
-}: FinishTripSurfaceProps) {
+ }: FinishTripSurfaceProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [failure, setFailure] = useState<FinishTripFailure | null>(null);
   const [submitting, setSubmitting] = useState(false);

@@ -203,7 +203,6 @@ describe("scanning while shopping", () => {
     await user.click(screen.getByRole("button", { name: "Add price" }));
     let entry = screen.getByRole("main", { name: "What does this item cost?" });
     await user.click(within(entry).getByRole("button", { name: "Increase quantity" }));
-    await user.click(within(entry).getByText(/Name for next time/));
     await user.type(within(entry).getByLabelText("Item name"), "Bread");
     await user.click(within(entry).getByRole("button", { name: "Read price tag" }));
 

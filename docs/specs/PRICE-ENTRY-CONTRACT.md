@@ -107,9 +107,11 @@ Changes must:
 
 Item label is optional.
 
+The name field is directly available on the price-entry surface without an extra disclosure tap, but it remains visually secondary to price and does not receive initial focus. The compact field must not displace the price-first hierarchy or make a label feel required.
+
 The user must be able to add a price without naming the item.
 
-If a remembered-item/current-price flow pre-fills a label, the label must remain editable according to the feature contract.
+If a remembered-item/current-price flow pre-fills a label, the label must remain immediately visible and editable according to the feature contract.
 
 When entry opens with a label ("Enter current price" on a remembered item, a scanned product, or a label carried through the camera), it shows "Current price for <label>".
 

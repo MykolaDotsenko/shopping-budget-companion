@@ -89,6 +89,7 @@ export function PriceEntrySurface({
   locale = SHOPPING_LOCALE,
 }: PriceEntrySurfaceProps) {
   const amountInputId = useId();
+  const labelInputId = useId();
   const statusId = useId();
   const projectionId = useId();
   const modeHintId = useId();
@@ -486,11 +487,11 @@ export function PriceEntrySurface({
           ) : null}
 
           {activeConfirmation === null ? (
-            <details className={styles.labelDetails}>
-              <summary>Name for next time <span>Optional</span></summary>
-              <label className={styles.labelField}>
-                <span>Item name</span>
+            <div className={styles.labelBlock}>
+              <div className={styles.labelField}>
+                <label htmlFor={labelInputId}>Item name</label>
                 <input
+                  id={labelInputId}
                   value={label}
                   autoComplete="off"
                   spellCheck={false}
@@ -514,16 +515,14 @@ export function PriceEntrySurface({
                     }
                   }}
                 />
-              </label>
-              <p className={styles.labelHint}>
-                Named items show up in Recent Items next time.
-              </p>
+                <span className={styles.labelOptional}>Optional</span>
+              </div>
               {labelNotice ? (
                 <p className={styles.labelError} role="status">
                   {labelNotice}
                 </p>
               ) : null}
-            </details>
+            </div>
           ) : null}
 
           <section

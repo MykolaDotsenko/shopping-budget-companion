@@ -6,7 +6,6 @@ const HISTORY_KEY = "budget-cart:history";
 const addNamedPrice = async (page, price, name) => {
   await page.getByRole("button", { name: "Add price" }).click();
   await page.getByRole("textbox", { name: "Price" }).fill(price);
-  await page.getByText("Name for next time", { exact: false }).click();
   await page.getByRole("textbox", { name: "Item name" }).fill(name);
   await page.getByRole("button", { name: `Add · €${price}` }).click();
 };

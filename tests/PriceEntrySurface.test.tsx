@@ -77,10 +77,10 @@ describe("PriceEntrySurface", () => {
       />,
     );
 
+    expect(screen.getByLabelText("Item name")).not.toBeNull();
+    expect(screen.queryByText("Name for next time", { exact: false })).toBeNull();
+
     await user.type(screen.getByLabelText("Price"), "1.39");
-    await user.click(
-      screen.getByText("Name for next time", { exact: false }),
-    );
     await user.type(screen.getByLabelText("Item name"), "Milk 1L");
     await user.click(
       screen.getByRole("button", { name: "Add · €1.39" }),
@@ -659,7 +659,7 @@ describe("PriceEntrySurface", () => {
     });
   });
 
-  it("keeps optional naming out of the baseline path but includes it when chosen", async () => {
+  it("keeps the optional name directly available without making it part of the required price path", async () => {
     const user = userEvent.setup();
     const onValidatedItem = vi.fn();
 
@@ -672,20 +672,11 @@ describe("PriceEntrySurface", () => {
       />,
     );
 
-    const namingSummary = screen.getByText(
-      "Name for next time",
-      { exact: false },
-    );
-    const namingDetails = namingSummary.closest("details");
-
-    expect(namingDetails).not.toBeNull();
-    expect((namingDetails as HTMLDetailsElement).open).toBe(false);
-
-    await user.click(namingSummary);
-
-    expect((namingDetails as HTMLDetailsElement).open).toBe(true);
-
     const name = screen.getByRole("textbox", { name: "Item name" });
+    expect(name).not.toBeNull();
+    expect((name as HTMLInputElement).value).toBe("");
+    expect(screen.getByText("Optional")).not.toBeNull();
+
     await user.type(name, "Milk 1L");
     await user.type(screen.getByLabelText("Price"), "1.39");
     await user.click(
@@ -713,7 +704,6 @@ describe("PriceEntrySurface", () => {
     );
 
     await user.type(screen.getByLabelText("Price"), "1.39");
-    await user.click(screen.getByText("Name for next time", { exact: false }));
     await user.type(
       screen.getByRole("textbox", { name: "Item name" }),
       "Milk 1L{Enter}",
@@ -1221,7 +1211,6 @@ describe("PriceEntrySurface with a price tag reading", () => {
     await user.click(screen.getByRole("button", { name: "Read price tag" }));
     expect(onReadPriceTag).toHaveBeenLastCalledWith({ quantity: 2 });
 
-    await user.click(screen.getByText(/Name for next time/));
     await user.type(screen.getByLabelText("Item name"), " Bread ");
     await user.click(screen.getByRole("button", { name: "Read price tag" }));
     expect(onReadPriceTag).toHaveBeenLastCalledWith({ label: "Bread", quantity: 2 });

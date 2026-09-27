@@ -895,7 +895,6 @@ export default function ScanSurface({
                 Recognize product
               </button>
             ) : null}
-            <p className={styles.note}>Images stay on this device.</p>
             <div className={styles.row}>
               {phase.kind === "live" && phase.torch !== null ? (
                 <button

@@ -68,6 +68,9 @@ export default defineConfig(() => {
     cohortAnalysisEnabled;
   const priceOcrBuild =
     !cohortAnalysisEnabled && process.env.VITE_SHOPPING_PRICE_OCR !== "0";
+  const visualRecognitionBuild =
+    !cohortAnalysisEnabled &&
+    process.env.VITE_SHOPPING_VISUAL_RECOGNITION !== "0";
 
   return {
     define: {
@@ -163,7 +166,11 @@ export default defineConfig(() => {
           globPatterns: [
             "**/*.{js,css,html,svg,png,webmanifest}",
           ],
-          globIgnores: ["**/assets/ocr/**"],
+          globIgnores: [
+            "**/assets/ocr/**",
+            "**/assets/transformers-visual-recognizer-*.js",
+            "**/assets/visual-recognition-engine-*.js",
+          ],
           runtimeCaching: [
             {
               urlPattern: ({ sameOrigin, url }) =>
@@ -176,11 +183,22 @@ export default defineConfig(() => {
             },
             {
               urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                (url.pathname.includes("/assets/transformers-visual-recognizer-") ||
+                  url.pathname.includes("/assets/visual-recognition-engine-")),
+              handler: "CacheFirst",
+              options: {
+                cacheName: "visual-recognition-engine",
+                expiration: { maxEntries: 12 },
+              },
+            },
+            {
+              urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin && url.pathname.endsWith(".wasm"),
               handler: "CacheFirst",
               options: {
-                cacheName: "barcode-engine",
-                expiration: { maxEntries: 2 },
+                cacheName: "wasm-engines",
+                expiration: { maxEntries: 8 },
               },
             },
           ],
@@ -196,6 +214,14 @@ export default defineConfig(() => {
                 name: "react",
                 test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
               },
+              ...(visualRecognitionBuild
+                ? [
+                    {
+                      name: "visual-recognition-engine",
+                      test: /node_modules[\\/](?:@huggingface|onnxruntime-(?:web|common)|flatbuffers|protobufjs|long)[\\/]/,
+                    },
+                  ]
+                : []),
             ],
           },
         },

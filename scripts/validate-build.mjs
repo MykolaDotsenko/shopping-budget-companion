@@ -171,12 +171,9 @@ const PRICE_READER_CHUNK_PREFIX = "tesseract-price-reader-";
 const MAX_PRICE_READER_JS_BYTES = 40_000;
 const MAX_PRICE_READER_JS_GZIP_BYTES = 14_000;
 const MAX_PRICE_READER_ASSET_BYTES = 10_500_000;
-const VISUAL_ADAPTER_CHUNK_PREFIX = "transformers-visual-recognizer-";
-const VISUAL_ENGINE_CHUNK_PREFIX = "visual-recognition-engine-";
-const MAX_VISUAL_ADAPTER_JS_BYTES = 40_000;
-const MAX_VISUAL_ADAPTER_JS_GZIP_BYTES = 16_000;
-const MAX_VISUAL_ENGINE_JS_BYTES = 4_500_000;
-const MAX_VISUAL_ENGINE_JS_GZIP_BYTES = 1_500_000;
+const VISUAL_RUNTIME_CHUNK_PREFIX = "transformers-visual-recognizer-";
+const MAX_VISUAL_RUNTIME_JS_BYTES = 650_000;
+const MAX_VISUAL_RUNTIME_JS_GZIP_BYTES = 220_000;
 const MAX_VISUAL_ENGINE_WASM_BYTES = 30_000_000;
 const forbiddenMarkers = [
   "Retention Beta",
@@ -195,18 +192,14 @@ const engineJsFiles = allJsFiles.filter((file) =>
 const priceReaderJsFiles = allJsFiles.filter((file) =>
   file.startsWith(PRICE_READER_CHUNK_PREFIX),
 );
-const visualAdapterJsFiles = allJsFiles.filter((file) =>
-  file.startsWith(VISUAL_ADAPTER_CHUNK_PREFIX),
-);
-const visualEngineJsFiles = allJsFiles.filter((file) =>
-  file.startsWith(VISUAL_ENGINE_CHUNK_PREFIX),
+const visualRuntimeJsFiles = allJsFiles.filter((file) =>
+  file.startsWith(VISUAL_RUNTIME_CHUNK_PREFIX),
 );
 const jsFiles = allJsFiles.filter(
   (file) =>
     !file.startsWith(BARCODE_ENGINE_CHUNK_PREFIX) &&
     !file.startsWith(PRICE_READER_CHUNK_PREFIX) &&
-    !file.startsWith(VISUAL_ADAPTER_CHUNK_PREFIX) &&
-    !file.startsWith(VISUAL_ENGINE_CHUNK_PREFIX),
+    !file.startsWith(VISUAL_RUNTIME_CHUNK_PREFIX),
 );
 const cssFiles = files.filter((file) => file.endsWith(".css"));
 const wasmFiles = files.filter((file) => file.endsWith(".wasm"));
@@ -460,8 +453,7 @@ const priceReaderSummary = await validatePriceReader();
 const validateVisualRecognition = async () => {
   if (!visualRecognitionEnabled) {
     if (
-      visualAdapterJsFiles.length > 0 ||
-      visualEngineJsFiles.length > 0 ||
+      visualRuntimeJsFiles.length > 0 ||
       visualWasmFiles.length > 0
     ) {
       throw new Error(
@@ -472,49 +464,29 @@ const validateVisualRecognition = async () => {
     return ["visual recognition switched off"];
   }
 
-  if (
-    visualAdapterJsFiles.length !== 1 ||
-    visualEngineJsFiles.length < 1 ||
-    visualWasmFiles.length < 1
-  ) {
+  if (visualRuntimeJsFiles.length !== 1 || visualWasmFiles.length < 1) {
     throw new Error(
-      `Public build must emit one lazy visual adapter, at least one isolated engine chunk and visual WASM (found ${visualAdapterJsFiles.length}, ${visualEngineJsFiles.length} and ${visualWasmFiles.length}).`,
+      `Public build must emit one fully lazy visual runtime chunk and visual WASM (found ${visualRuntimeJsFiles.length} and ${visualWasmFiles.length}).`,
     );
   }
 
-  for (const file of [...visualAdapterJsFiles, ...visualEngineJsFiles]) {
-    if (initialJsSet.has(file)) {
-      throw new Error("Visual recognition must stay out of the initial bundle.");
-    }
+  if (initialJsSet.has(visualRuntimeJsFiles[0])) {
+    throw new Error("Visual recognition must stay out of the initial bundle.");
   }
 
-  const adapterBytes = await totalSize(visualAdapterJsFiles, assetSize);
-  const adapterGzipBytes = await totalSize(visualAdapterJsFiles, assetGzipSize);
-  const engineBytes = await totalSize(visualEngineJsFiles, assetSize);
-  const engineGzipBytes = await totalSize(visualEngineJsFiles, assetGzipSize);
+  const runtimeBytes = await totalSize(visualRuntimeJsFiles, assetSize);
+  const runtimeGzipBytes = await totalSize(visualRuntimeJsFiles, assetGzipSize);
   const wasmBytes = await totalSize(visualWasmFiles, assetSize);
 
-  if (adapterBytes > MAX_VISUAL_ADAPTER_JS_BYTES) {
+  if (runtimeBytes > MAX_VISUAL_RUNTIME_JS_BYTES) {
     throw new Error(
-      `Visual recognition adapter budget exceeded: ${adapterBytes} > ${MAX_VISUAL_ADAPTER_JS_BYTES} bytes.`,
+      `Visual recognition runtime budget exceeded: ${runtimeBytes} > ${MAX_VISUAL_RUNTIME_JS_BYTES} bytes.`,
     );
   }
 
-  if (adapterGzipBytes > MAX_VISUAL_ADAPTER_JS_GZIP_BYTES) {
+  if (runtimeGzipBytes > MAX_VISUAL_RUNTIME_JS_GZIP_BYTES) {
     throw new Error(
-      `Visual recognition adapter gzip budget exceeded: ${adapterGzipBytes} > ${MAX_VISUAL_ADAPTER_JS_GZIP_BYTES} bytes.`,
-    );
-  }
-
-  if (engineBytes > MAX_VISUAL_ENGINE_JS_BYTES) {
-    throw new Error(
-      `Visual recognition engine budget exceeded: ${engineBytes} > ${MAX_VISUAL_ENGINE_JS_BYTES} bytes.`,
-    );
-  }
-
-  if (engineGzipBytes > MAX_VISUAL_ENGINE_JS_GZIP_BYTES) {
-    throw new Error(
-      `Visual recognition engine gzip budget exceeded: ${engineGzipBytes} > ${MAX_VISUAL_ENGINE_JS_GZIP_BYTES} bytes.`,
+      `Visual recognition runtime gzip budget exceeded: ${runtimeGzipBytes} > ${MAX_VISUAL_RUNTIME_JS_GZIP_BYTES} bytes.`,
     );
   }
 
@@ -525,9 +497,8 @@ const validateVisualRecognition = async () => {
   }
 
   return [
-    `visual adapter JS ${adapterBytes} bytes / ${adapterGzipBytes} gzip`,
-    `visual engine JS ${engineBytes} bytes / ${engineGzipBytes} gzip`,
-    `visual engine WASM ${wasmBytes} bytes`,
+    `visual runtime JS ${runtimeBytes} bytes / ${runtimeGzipBytes} gzip`,
+    `visual runtime WASM ${wasmBytes} bytes`,
   ];
 };
 
@@ -548,8 +519,7 @@ if (serviceWorker.includes('url:"screenshots/')) {
 }
 
 if (
-  serviceWorker.includes('url:"assets/transformers-visual-recognizer-') ||
-  serviceWorker.includes('url:"assets/visual-recognition-engine-')
+  serviceWorker.includes('url:"assets/transformers-visual-recognizer-')
 ) {
   throw new Error(
     "Visual recognition runtime chunks must not be precached for every visitor.",

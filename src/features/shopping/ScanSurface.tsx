@@ -808,10 +808,10 @@ export default function ScanSurface({
             aria-labelledby="visual-download-title"
           >
             <div>
-              <h2 id="visual-download-title">Download recognition model?</h2>
+              <h2 id="visual-download-title">Download model?</h2>
               <p>
-                First use downloads a large on-device model. It can take time
-                and use mobile data. Your photo stays on this device.
+                First use downloads a large model and may use mobile data.
+                Your photo stays on this device.
               </p>
             </div>
             <div className={styles.row}>
@@ -897,7 +897,7 @@ export default function ScanSurface({
             ) : null}
             <p className={styles.note}>
               {mode === "product"
-                ? "The photo stays on this device. First use downloads the pinned recognition model."
+                ? "The photo stays on this device."
                 : "The camera image stays on this device."}
             </p>
             <div className={styles.row}>

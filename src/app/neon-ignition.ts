@@ -16,7 +16,7 @@ interface Spark {
 }
 
 const PALETTE = ["#8de8ff", "#9d8cff", "#ff8ad8", "#ffffff"] as const;
-const SPARK_COUNT = 32;
+const SPARK_COUNT = 48;
 const REVEAL_MS = 1100;
 const BURST_MS = 1400;
 const SETTLE_MS = 2000;
@@ -27,12 +27,12 @@ const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3;
 const createSparks = (): readonly Spark[] =>
   Array.from({ length: SPARK_COUNT }, (_, index) => ({
     angle: (index / SPARK_COUNT) * TAU + Math.random() * 0.4,
-    reach: 80 + Math.random() * 170,
-    length: 12 + Math.random() * 26,
-    width: 1.4 + Math.random() * 2,
+    reach: 90 + Math.random() * 220,
+    length: 14 + Math.random() * 32,
+    width: 1.4 + Math.random() * 2.4,
     color: PALETTE[index % PALETTE.length] ?? PALETTE[0],
-    delay: Math.random() * 120,
-    life: 560 + Math.random() * 420,
+    delay: Math.random() * 150,
+    life: 620 + Math.random() * 500,
   }));
 
 export const igniteNeon = (origin: IgnitionPoint, commit: () => void): void => {
@@ -95,7 +95,7 @@ export const igniteNeon = (origin: IgnitionPoint, commit: () => void): void => {
       return;
     }
 
-    const radius = 40 + easeOutCubic(t) * 260;
+    const radius = 46 + easeOutCubic(t) * 340;
     const glow = paint.createRadialGradient(
       origin.x,
       origin.y,
@@ -105,10 +105,11 @@ export const igniteNeon = (origin: IgnitionPoint, commit: () => void): void => {
       radius,
     );
 
-    glow.addColorStop(0, "rgb(255 255 255 / 0.95)");
-    glow.addColorStop(0.18, "rgb(191 244 255 / 0.75)");
-    glow.addColorStop(0.45, "rgb(141 232 255 / 0.32)");
-    glow.addColorStop(0.72, "rgb(157 140 255 / 0.14)");
+    glow.addColorStop(0, "rgb(255 255 255 / 1)");
+    glow.addColorStop(0.12, "rgb(223 252 255 / 0.9)");
+    glow.addColorStop(0.3, "rgb(143 243 255 / 0.52)");
+    glow.addColorStop(0.56, "rgb(157 140 255 / 0.28)");
+    glow.addColorStop(0.78, "rgb(255 138 216 / 0.13)");
     glow.addColorStop(1, "rgb(157 140 255 / 0)");
     paint.globalAlpha = t < 0.14 ? t / 0.14 : 1 - (t - 0.14) / 0.86;
     paint.fillStyle = glow;
@@ -134,11 +135,13 @@ export const igniteNeon = (origin: IgnitionPoint, commit: () => void): void => {
     spectrum.addColorStop(0.33, "#9d8cff");
     spectrum.addColorStop(0.66, "#ff8ad8");
     spectrum.addColorStop(1, "#8de8ff");
-    ring(paint, radius, 64, "#9d8cff", 0.12 * fade);
-    ring(paint, radius, 26, "#8de8ff", 0.26 * fade);
-    ring(paint, radius, 6, spectrum, fade);
-    ring(paint, radius, 2, "#ffffff", 0.9 * fade);
-    ring(paint, radius * 0.84, 2.4, "#ff8ad8", 0.4 * fade);
+    ring(paint, radius, 88, "#9d8cff", 0.13 * fade);
+    ring(paint, radius, 42, "#8ff3ff", 0.24 * fade);
+    ring(paint, radius, 12, spectrum, 0.55 * fade);
+    ring(paint, radius, 5, spectrum, fade);
+    ring(paint, radius, 1.8, "#ffffff", 0.95 * fade);
+    ring(paint, radius * 0.88, 3, "#ff8ad8", 0.52 * fade);
+    ring(paint, radius * 0.72, 2.2, "#8ff3ff", 0.34 * fade);
   };
 
   const drawSparks = (paint: CanvasRenderingContext2D, elapsed: number): void => {
@@ -158,7 +161,8 @@ export const igniteNeon = (origin: IgnitionPoint, commit: () => void): void => {
       const alpha = 1 - t * t;
 
       for (const [lineWidth, strength] of [
-        [spark.width * 3.4, 0.22],
+        [spark.width * 5.2, 0.12],
+        [spark.width * 3.2, 0.28],
         [spark.width, 1],
       ] as const) {
         paint.globalAlpha = alpha * strength;

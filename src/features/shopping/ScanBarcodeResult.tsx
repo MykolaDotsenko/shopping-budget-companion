@@ -233,7 +233,7 @@ export function ScanBarcodeResult({
           value={name}
           autoComplete="off"
           spellCheck={false}
-          placeholder="Milk 1L"
+          placeholder={t("Milk 1L")}
           maxLength={120}
           onChange={(event) => {
             setName(event.currentTarget.value);

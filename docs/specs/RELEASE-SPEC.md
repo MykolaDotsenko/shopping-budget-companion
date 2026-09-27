@@ -284,7 +284,11 @@ Acceptance:
 - Transformers.js 4.3.0 runs a pinned CLIP model revision locally, preferring WebGPU and falling back to WASM;
 - model/runtime files may be downloaded on first use, but product photos, candidate labels and shopping state are not sent to the model host;
 - at most 30 candidate labels enter one recognition request and at most five ranked candidates are shown;
-- the score is presented only as ranking context, not as calibrated certainty;
+- recent personal labels are capped before common unbarcoded produce is added, so a large Price Memory cannot starve the common-product candidate set;
+- raw model scores are not shown as percentages or certainty; the UI presents only relative ranking such as "Best match" and "Alternative";
+- every ranked-result screen has an explicit "None of these" escape to manual entry;
+- before the first model acquisition on a device, the shopper explicitly acknowledges that a large on-device model may be downloaded and that mobile data may be used;
+- leaving the app while recognition/model preparation is active aborts the active interaction and returns to a resumable camera state rather than accepting a late result;
 - a candidate never mutates shopping state directly: the shopper chooses a label, then confirms the current price through normal price entry;
 - no match, timeout, unavailable runtime or camera failure always leaves manual entry available;
 - `VITE_SHOPPING_VISUAL_RECOGNITION=0` removes the recognizer runtime from a build.

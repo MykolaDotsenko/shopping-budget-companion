@@ -94,33 +94,138 @@
 :root[data-theme="aurora"] {
   color-scheme: dark;
 
-  --surface-page: #070912;
-  --surface-panel: #101625;
-  --surface-soft: #161e31;
-  --surface-raised: #1c2640;
-  --text-primary: #fff;
-  --text-secondary: #b2bdd1;
-  --text-secondary-strong: #d0d7e5;
-  --border-subtle: #2f3c59;
-  --field-border: #6878a0;
-  --accent-primary: #8de8ff;
-  --accent-contrast: #061017;
-  --status-warning: #ffd18c;
-  --status-danger: #ff9cb5;
-  --focus-ring: #bdcaff;
-  --progress-track: #202a40;
+  --surface-page: #050611;
+  --surface-panel: #0d1427;
+  --surface-soft: #121d35;
+  --surface-raised: #182744;
+  --surface-accent-soft: #142943;
+  --text-primary: #ffffff;
+  --text-secondary: #b9c8df;
+  --text-secondary-strong: #e0e8f5;
+  --border-subtle: #50729e;
+  --border-strong: #72cde3;
+  --field-border: #76a9d6;
+  --accent-primary: #8ff3ff;
+  --accent-contrast: #031017;
+  --status-warning: #ffd79a;
+  --status-danger: #ff9ec8;
+  --focus-ring: #d5d9ff;
+  --progress-track: #1b2a46;
   --page-canvas:
-    radial-gradient(36rem 26rem at 6% -6%, #19c6ff47, transparent 70%),
-    radial-gradient(32rem 28rem at 106% 16%, #8b5cff40, transparent 70%),
-    radial-gradient(40rem 24rem at 40% 110%, #ff4fd82e, transparent 70%),
-    linear-gradient(165deg, #0c1a33, #0b0b1f 52%, #070912);
-  --hero-surface: linear-gradient(160deg, #17223d, #101625 62%);
-  --panel-shadow: inset 0 1px 0 #ffffff0f, 0 0 0 1px #8de8ff1a, 0 18px 44px #0009, 0 0 40px #7b8cff1f;
-  --elevated-shadow: inset 0 1px 0 #ffffff14, 0 0 0 1px #8de8ff29, 0 24px 60px #000b, 0 0 60px #9d8cff2e;
-  --primary-action-shadow: 0 0 0 1px #8de8ff59, 0 10px 26px #8de8ff2e, 0 0 44px #9d8cff33;
+    radial-gradient(48rem 34rem at -8% -12%, #18d9ff59, transparent 68%),
+    radial-gradient(44rem 34rem at 112% 4%, #8368ff52, transparent 68%),
+    radial-gradient(50rem 30rem at 50% 112%, #ff4fd83d, transparent 68%),
+    radial-gradient(22rem 20rem at 58% 34%, #24ffd21f, transparent 72%),
+    linear-gradient(150deg, #0a1934 0%, #0a0c22 46%, #120923 72%, #050611 100%);
+  --hero-surface:
+    radial-gradient(circle at 18% 0%, #8ff3ff17, transparent 44%),
+    radial-gradient(circle at 92% 14%, #a886ff1f, transparent 42%),
+    linear-gradient(155deg, #152746 0%, #111a34 52%, #0b1327 100%);
+  --overlay-backdrop: rgb(2 4 14 / 0.72);
+  --panel-shadow:
+    inset 0 1px 0 #ffffff1c,
+    inset 0 0 28px #8ff3ff0a,
+    0 0 0 1px #8ff3ff38,
+    0 0 18px #8ff3ff1f,
+    0 0 34px #9d8cff1f,
+    0 18px 46px #000a;
+  --elevated-shadow:
+    inset 0 1px 0 #ffffff24,
+    inset 0 0 40px #9d8cff10,
+    0 0 0 1px #8ff3ff57,
+    0 0 24px #8ff3ff2b,
+    0 0 58px #9d8cff38,
+    0 26px 72px #000c;
+  --primary-action-shadow:
+    inset 0 1px 0 #ffffff8a,
+    0 0 0 1px #d9fbffb8,
+    0 0 16px #8ff3ffb3,
+    0 0 34px #8ff3ff73,
+    0 0 58px #a886ff52,
+    0 14px 36px #0009;
+}
+
+:root[data-theme="aurora"] main {
+  background-size: 130% 130%;
+  animation: aurora-canvas-drift 18s ease-in-out infinite alternate;
+}
+
+:root[data-theme="aurora"] :is(button, [role="button"]) {
+  filter:
+    drop-shadow(0 0 4px #8ff3ff47)
+    drop-shadow(0 0 10px #9d8cff24);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease,
+    transform 120ms ease;
+}
+
+:root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):hover {
+  filter:
+    drop-shadow(0 0 7px #8ff3ff8f)
+    drop-shadow(0 0 18px #9d8cff66)
+    drop-shadow(0 0 28px #ff8ad83d);
+  transform: translateY(-1px);
+}
+
+:root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):active {
+  filter:
+    drop-shadow(0 0 5px #8ff3ff75)
+    drop-shadow(0 0 12px #9d8cff52);
+  transform: translateY(0) scale(0.985);
+}
+
+:root[data-theme="aurora"] :is(button, [role="button"]):focus-visible,
+:root[data-theme="aurora"] :is(input, textarea, select):focus-visible {
+  outline-color: #d8ddff;
+  filter:
+    drop-shadow(0 0 7px #8ff3ffbf)
+    drop-shadow(0 0 20px #9d8cff8f)
+    drop-shadow(0 0 34px #ff8ad84f);
 }
 
 :root[data-theme="aurora"] [aria-pressed="true"] {
-  box-shadow: 0 0 0 1px #8de8ff8c, 0 0 18px #8de8ff38;
+  box-shadow:
+    inset 0 0 18px #8ff3ff1f,
+    0 0 0 1px #d9fbffad,
+    0 0 14px #8ff3ff8a,
+    0 0 30px #9d8cff57;
+}
+
+:root[data-theme="aurora"] ::selection {
+  background: #8ff3ff4d;
+  color: #ffffff;
+}
+
+@keyframes aurora-canvas-drift {
+  0% {
+    background-position: 0% 0%, 100% 0%, 45% 100%, 55% 35%, 50% 50%;
+  }
+
+  50% {
+    background-position: 6% 5%, 94% 8%, 52% 94%, 48% 42%, 50% 50%;
+  }
+
+  100% {
+    background-position: 2% 10%, 98% 4%, 46% 90%, 62% 30%, 50% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="aurora"] main {
+    animation: none;
+  }
+
+  :root[data-theme="aurora"] :is(button, [role="button"]) {
+    transition: none;
+  }
+
+  :root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):hover,
+  :root[data-theme="aurora"] :is(button, [role="button"]):not(:disabled):active {
+    transform: none;
+  }
 }
 

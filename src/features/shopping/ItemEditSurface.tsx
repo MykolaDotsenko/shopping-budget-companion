@@ -228,7 +228,7 @@ export function ItemEditSurface({
             value={label}
             autoComplete="off"
             spellCheck={false}
-            placeholder="e.g. Milk 1L"
+            placeholder={t("e.g. Milk 1L")}
             onChange={(event) => {
               const characters = [...event.currentTarget.value];
               const tooLong = characters.length > MAX_ITEM_LABEL_CODE_POINTS;

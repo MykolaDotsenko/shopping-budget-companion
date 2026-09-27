@@ -160,7 +160,7 @@ export function HistoryDataControls({
               className={styles.secondaryButton}
               onClick={onCancel}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               type="button"

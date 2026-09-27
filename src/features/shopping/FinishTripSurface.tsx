@@ -125,7 +125,7 @@ export function FinishTripSurface({
 
           {discardFailed ? (
             <p className={styles.error} role="alert">
-              The trip could not be cancelled. Try again.
+              {t("The trip could not be cancelled. Try again.")}
             </p>
           ) : null}
 
@@ -138,7 +138,7 @@ export function FinishTripSurface({
                 setDiscardFailed(!discard());
               }}
             >
-              Cancel trip
+              {t("Cancel trip")}
             </button>
           </div>
         </section>

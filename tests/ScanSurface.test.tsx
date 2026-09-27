@@ -705,6 +705,7 @@ describe("ScanSurface product recognition mode", () => {
     ).not.toBeNull();
     expect(camera.captureStill).not.toHaveBeenCalled();
     expect(recognizer.prepare).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Not now" })).toBe(document.activeElement);
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
@@ -742,7 +743,9 @@ describe("ScanSurface product recognition mode", () => {
     recognizer.prepare.mockImplementation(
       async (signal?: AbortSignal) => {
         preparationSignal = signal;
-        return await new Promise<boolean>(() => undefined);
+        return await new Promise<boolean>((resolve) => {
+          signal?.addEventListener("abort", () => resolve(false), { once: true });
+        });
       },
     );
 

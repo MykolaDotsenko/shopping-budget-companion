@@ -243,8 +243,10 @@ export function ActiveTripScreen({
         <PersistenceHealthNotice
           controller={controller}
           health={state.persistence}
+          t={t}
+          tp={tp}
         />
-        <HistoryIntegrityNotice controller={controller} />
+        <HistoryIntegrityNotice controller={controller} t={t} tp={tp} />
 
         <section className={styles.summary} aria-label={t("Budget summary")}>
           <div className={styles.summaryRow}>

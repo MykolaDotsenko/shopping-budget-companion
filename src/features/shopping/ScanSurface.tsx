@@ -810,7 +810,7 @@ export default function ScanSurface({
             <div>
               <h2 id="visual-download-title">Download model?</h2>
               <p>
-                First use downloads a large model and may use mobile data.
+                First use downloads a model and may use mobile data.
                 Your photo stays on this device.
               </p>
             </div>

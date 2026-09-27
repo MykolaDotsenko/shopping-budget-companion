@@ -42,37 +42,28 @@ export const visualRecognitionLabels = (
   );
   const labels: string[] = [];
   const seen = new Set<string>();
+  const personal = newestFirst.map((record) => record.label);
+  const candidates = [
+    ...personal.slice(0, VISUAL_RECOGNITION_MAX_PERSONAL_LABELS),
+    ...COMMON_UNBARCODED_PRODUCTS,
+    ...personal.slice(VISUAL_RECOGNITION_MAX_PERSONAL_LABELS),
+  ];
 
-  const add = (candidate: string): boolean => {
+  for (const candidate of candidates) {
     const label = normalize(candidate);
     const key = label.toLocaleLowerCase("en");
 
-    if (label === "" || seen.has(key)) {
-      return false;
+    if (label !== "" && !seen.has(key)) {
+      seen.add(key);
+      labels.push(label);
     }
 
-    seen.add(key);
-    labels.push(label);
-    return true;
-  };
-
-  let personalCount = 0;
-
-  for (const record of newestFirst) {
-    if (add(record.label)) {
-      personalCount += 1;
-    }
-
-    if (personalCount >= VISUAL_RECOGNITION_MAX_PERSONAL_LABELS) {
+    if (labels.length >= VISUAL_RECOGNITION_MAX_LABELS) {
       break;
     }
   }
 
-  for (const candidate of COMMON_UNBARCODED_PRODUCTS) {
-    add(candidate);
-
-    if (labels.length >= VISUAL_RECOGNITION_MAX_LABELS) {
-      return Object.freeze(labels);
+  return Object.freeze(labels);
     }
   }
 

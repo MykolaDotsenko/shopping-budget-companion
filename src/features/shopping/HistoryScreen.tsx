@@ -19,12 +19,20 @@ import { HistoryIntegrityNotice } from "./HistoryIntegrityNotice";
 import { PersistenceHealthNotice } from "./PersistenceHealthNotice";
 import styles from "./HistoryScreen.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export interface HistoryScreenProps {
   readonly controller: ShoppingAppController;
   readonly onBack: () => void;
   readonly onTripStarted?: () => void;
   readonly locale?: string;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
 type ConfirmationState =
@@ -38,6 +46,8 @@ export function HistoryScreen({
   onBack,
   onTripStarted,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: HistoryScreenProps) {
   const state = useShoppingAppState(controller);
   const ordered = [...state.completedTrips].sort(
@@ -119,7 +129,7 @@ export function HistoryScreen({
 
     if (!result.ok) {
       setErrorMessage(
-        "A new trip could not be started from this budget. Check local saving and try again.",
+        t("A new trip could not be started from this budget. Check local saving and try again."),
       );
       return;
     }
@@ -133,13 +143,13 @@ export function HistoryScreen({
 
     if (!result.ok) {
       setErrorMessage(
-        "This trip could not be deleted safely. Nothing was removed.",
+        t("This trip could not be deleted safely. Nothing was removed."),
       );
       return;
     }
 
     setConfirmation({ kind: "none" });
-    setStatusMessage("Trip deleted from this device.");
+    setStatusMessage(t("Trip deleted from this device."));
     queueMicrotask(() => {
       statusRef.current?.focus();
     });
@@ -151,13 +161,13 @@ export function HistoryScreen({
 
     if (!result.ok) {
       setErrorMessage(
-        "Trip history could not be cleared safely. Nothing was removed.",
+        t("Trip history could not be cleared safely. Nothing was removed."),
       );
       return;
     }
 
     setConfirmation({ kind: "none" });
-    setStatusMessage("Trip history cleared from this device.");
+    setStatusMessage(t("Trip history cleared from this device."));
     queueMicrotask(() => {
       statusRef.current?.focus();
     });
@@ -169,13 +179,13 @@ export function HistoryScreen({
 
     if (!result.ok) {
       setErrorMessage(
-        "Remembered prices could not be cleared safely. Nothing was removed.",
+        t("Remembered prices could not be cleared safely. Nothing was removed."),
       );
       return;
     }
 
     setConfirmation({ kind: "none" });
-    setStatusMessage("Remembered item prices cleared from this device.");
+    setStatusMessage(t("Remembered item prices cleared from this device."));
     queueMicrotask(() => {
       statusRef.current?.focus();
     });
@@ -196,15 +206,15 @@ export function HistoryScreen({
             className={styles.backButton}
             onClick={onBack}
           >
-            Back
+            {t("Back")}
           </button>
           <div>
-            <p className={styles.eyebrow}>Trip history</p>
+            <p className={styles.eyebrow}>{t("Trip history")}</p>
             <h1 id="history-title" tabIndex={-1}>
-              Past shopping trips
+              {t("Past shopping trips")}
             </h1>
             <p>
-              Your past trips and, when you added one, the receipt total.
+              {t("Your past trips and, when you added one, the receipt total.")}
             </p>
           </div>
         </header>
@@ -213,8 +223,10 @@ export function HistoryScreen({
           controller={controller}
           health={state.persistence}
           context="idle"
+          t={t}
+          tp={tp}
         />
-        <HistoryIntegrityNotice controller={controller} />
+        <HistoryIntegrityNotice controller={controller} t={t} tp={tp} />
 
         {statusMessage ? (
           <p
@@ -236,8 +248,8 @@ export function HistoryScreen({
 
         {ordered.length === 0 ? (
           <section className={styles.emptyState}>
-            <strong>No completed trips yet.</strong>
-            <span>Finish a shopping trip and it will appear here.</span>
+            <strong>{t("No completed trips yet.")}</strong>
+            <span>{t("Finish a shopping trip and it will appear here.")}</span>
           </section>
         ) : (
           <ol className={styles.tripList}>
@@ -246,6 +258,8 @@ export function HistoryScreen({
                 key={trip.id}
                 trip={trip}
                 locale={locale}
+                t={t}
+                tp={tp}
                 canChangeHistory={canChangeHistory}
                 canRepeat={canRepeat}
                 deleting={
@@ -298,6 +312,8 @@ export function HistoryScreen({
           }}
           onConfirmClearPriceMemory={clearPriceMemory}
           onCancel={cancelConfirmation}
+          t={t}
+          tp={tp}
         />
       </section>
     </main>

@@ -35,8 +35,6 @@ export const budgetOutcome = (
       ? trip.actualCheckoutMinor
       : null;
   const amount = paid === null ? remaining(trip) : trip.budgetMinor - paid;
-  const prefix = paid === null ? "" : "Paid ";
-
   if (amount === 0) {
     return {
       status: "on",

@@ -12,6 +12,7 @@ export const messages = {
   "Appearance changed for this session but could not be saved.": "Ulkoasu vaihtui tälle istunnolle, mutta valintaa ei voitu tallentaa.",
   "System": "Järjestelmä",
   "Light": "Vaalea",
+  "Camera light": "Valo",
   "Dark": "Tumma",
   "Aurora": "Aurora",
   "Shopping Budget Companion": "Shopping Budget Companion",

@@ -121,3 +121,32 @@ test("Ukrainian localization survives the full core shopping flow", async ({
     page.getByRole("heading", { name: "Попередні походи за покупками" }),
   ).toBeVisible();
 });
+
+
+test("privacy page follows, persists and returns the selected language", async ({
+  page,
+}) => {
+  await page.goto("/privacy/");
+
+  await page.getByRole("button", { name: "Українська" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "uk");
+  await expect(
+    page.getByRole("heading", { name: "Конфіденційність", level: 1 }),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Конфіденційність", level: 1 }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Українська" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.getByRole("link", { name: "← Назад до застосунку" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Скільки ви можете витратити сьогодні?",
+    }),
+  ).toBeVisible();
+});

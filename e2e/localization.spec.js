@@ -126,7 +126,11 @@ test("Ukrainian localization survives the full core shopping flow", async ({
 test("privacy page follows, persists and returns the selected language", async ({
   page,
 }) => {
-  await page.goto("/privacy/");
+  await page.goto("/");
+  await page.getByRole("link", { name: "Privacy" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Privacy", level: 1 }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Українська" }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "uk");

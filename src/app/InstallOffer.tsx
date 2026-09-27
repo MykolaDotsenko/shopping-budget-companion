@@ -74,7 +74,7 @@ export function InstallOffer({ source, hasSavedShopping }: InstallOfferProps) {
               prompt.install();
             }}
           >
-            Install
+            {t("Install")}
           </button>
         )}
         <button type="button" className={styles.secondary} onClick={dismiss}>

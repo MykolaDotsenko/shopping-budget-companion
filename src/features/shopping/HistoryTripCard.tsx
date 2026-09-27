@@ -235,10 +235,10 @@ export function HistoryTripCard({
               className={styles.secondaryButton}
               onClick={closeCheckout}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button type="submit" className={styles.saveCheckoutButton}>
-              Save
+              {t("Save")}
             </button>
           </div>
           {checkoutError === "" ? null : (

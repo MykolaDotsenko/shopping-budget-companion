@@ -161,6 +161,8 @@ const MAX_PUBLIC_CSS_GZIP_BYTES = 16_300;
 const MAX_INITIAL_CSS_GZIP_BYTES = 10_800;
 const barcodeScannerEnabled = process.env.VITE_SHOPPING_BARCODE_SCANNER !== "0";
 const priceOcrEnabled = process.env.VITE_SHOPPING_PRICE_OCR !== "0";
+const visualRecognitionEnabled =
+  process.env.VITE_SHOPPING_VISUAL_RECOGNITION !== "0";
 const BARCODE_ENGINE_CHUNK_PREFIX = "zxing-fallback-detector-";
 const MAX_BARCODE_ENGINE_JS_BYTES = 60_000;
 const MAX_BARCODE_ENGINE_JS_GZIP_BYTES = 20_000;
@@ -169,6 +171,12 @@ const PRICE_READER_CHUNK_PREFIX = "tesseract-price-reader-";
 const MAX_PRICE_READER_JS_BYTES = 40_000;
 const MAX_PRICE_READER_JS_GZIP_BYTES = 14_000;
 const MAX_PRICE_READER_ASSET_BYTES = 10_500_000;
+const VISUAL_ADAPTER_CHUNK_PREFIX = "transformers-visual-recognizer-";
+const VISUAL_ENGINE_CHUNK_PREFIX = "visual-recognition-engine-";
+const MAX_VISUAL_ADAPTER_JS_BYTES = 40_000;
+const MAX_VISUAL_ADAPTER_JS_GZIP_BYTES = 16_000;
+const MAX_VISUAL_ENGINE_JS_BYTES = 4_500_000;
+const MAX_VISUAL_ENGINE_JS_GZIP_BYTES = 1_500_000;
 const forbiddenMarkers = [
   "Retention Beta",
   "Local beta evidence",
@@ -186,10 +194,18 @@ const engineJsFiles = allJsFiles.filter((file) =>
 const priceReaderJsFiles = allJsFiles.filter((file) =>
   file.startsWith(PRICE_READER_CHUNK_PREFIX),
 );
+const visualAdapterJsFiles = allJsFiles.filter((file) =>
+  file.startsWith(VISUAL_ADAPTER_CHUNK_PREFIX),
+);
+const visualEngineJsFiles = allJsFiles.filter((file) =>
+  file.startsWith(VISUAL_ENGINE_CHUNK_PREFIX),
+);
 const jsFiles = allJsFiles.filter(
   (file) =>
     !file.startsWith(BARCODE_ENGINE_CHUNK_PREFIX) &&
-    !file.startsWith(PRICE_READER_CHUNK_PREFIX),
+    !file.startsWith(PRICE_READER_CHUNK_PREFIX) &&
+    !file.startsWith(VISUAL_ADAPTER_CHUNK_PREFIX) &&
+    !file.startsWith(VISUAL_ENGINE_CHUNK_PREFIX),
 );
 const cssFiles = files.filter((file) => file.endsWith(".css"));
 const wasmFiles = files.filter((file) => file.endsWith(".wasm"));
@@ -201,6 +217,10 @@ if (jsFiles.length === 0) {
 const assetSize = async (file) => (await stat(path.join(assets, file))).size;
 const assetGzipSize = async (file) =>
   gzipSync(await readFile(path.join(assets, file))).byteLength;
+const assetSha256 = async (file) =>
+  createHash("sha256")
+    .update(await readFile(path.join(assets, file)))
+    .digest("hex");
 
 const totalSize = async (names, sizeReader) =>
   (
@@ -313,9 +333,17 @@ const validateBarcodeEngine = async () => {
     return ["barcode scanning switched off"];
   }
 
-  if (engineJsFiles.length !== 1 || wasmFiles.length !== 1) {
+  const barcodeWasmFiles = [];
+
+  for (const file of wasmFiles) {
+    if ((await assetSha256(file)) === ZXING_WASM_SHA256) {
+      barcodeWasmFiles.push(file);
+    }
+  }
+
+  if (engineJsFiles.length !== 1 || barcodeWasmFiles.length !== 1) {
     throw new Error(
-      `Public build must emit exactly one lazy barcode engine chunk and one WASM asset (found ${engineJsFiles.length} and ${wasmFiles.length}).`,
+      `Public build must emit exactly one lazy barcode engine chunk and one matching ZXing WASM asset (found ${engineJsFiles.length} and ${barcodeWasmFiles.length}).`,
     );
   }
 
@@ -325,10 +353,8 @@ const validateBarcodeEngine = async () => {
 
   const engineJsBytes = await assetSize(engineJsFiles[0]);
   const engineJsGzipBytes = await assetGzipSize(engineJsFiles[0]);
-  const wasmBytes = await assetSize(wasmFiles[0]);
-  const wasmSha256 = createHash("sha256")
-    .update(await readFile(path.join(assets, wasmFiles[0])))
-    .digest("hex");
+  const barcodeWasmFile = barcodeWasmFiles[0];
+  const wasmBytes = await assetSize(barcodeWasmFile);
 
   if (engineJsBytes > MAX_BARCODE_ENGINE_JS_BYTES) {
     throw new Error(
@@ -345,12 +371,6 @@ const validateBarcodeEngine = async () => {
   if (wasmBytes > MAX_BARCODE_ENGINE_WASM_BYTES) {
     throw new Error(
       `Barcode engine WASM budget exceeded: ${wasmBytes} > ${MAX_BARCODE_ENGINE_WASM_BYTES} bytes.`,
-    );
-  }
-
-  if (wasmSha256 !== ZXING_WASM_SHA256) {
-    throw new Error(
-      "Self-hosted barcode WASM does not match the bundled ZXing reader build.",
     );
   }
 
@@ -435,6 +455,66 @@ const validatePriceReader = async () => {
 const barcodeEngineSummary = await validateBarcodeEngine();
 const priceReaderSummary = await validatePriceReader();
 
+const validateVisualRecognition = async () => {
+  if (!visualRecognitionEnabled) {
+    if (visualAdapterJsFiles.length > 0 || visualEngineJsFiles.length > 0) {
+      throw new Error(
+        "A build with visual recognition switched off must not ship its runtime chunks.",
+      );
+    }
+
+    return ["visual recognition switched off"];
+  }
+
+  if (visualAdapterJsFiles.length !== 1 || visualEngineJsFiles.length < 1) {
+    throw new Error(
+      `Public build must emit one lazy visual adapter and at least one isolated engine chunk (found ${visualAdapterJsFiles.length} and ${visualEngineJsFiles.length}).`,
+    );
+  }
+
+  for (const file of [...visualAdapterJsFiles, ...visualEngineJsFiles]) {
+    if (initialJsSet.has(file)) {
+      throw new Error("Visual recognition must stay out of the initial bundle.");
+    }
+  }
+
+  const adapterBytes = await totalSize(visualAdapterJsFiles, assetSize);
+  const adapterGzipBytes = await totalSize(visualAdapterJsFiles, assetGzipSize);
+  const engineBytes = await totalSize(visualEngineJsFiles, assetSize);
+  const engineGzipBytes = await totalSize(visualEngineJsFiles, assetGzipSize);
+
+  if (adapterBytes > MAX_VISUAL_ADAPTER_JS_BYTES) {
+    throw new Error(
+      `Visual recognition adapter budget exceeded: ${adapterBytes} > ${MAX_VISUAL_ADAPTER_JS_BYTES} bytes.`,
+    );
+  }
+
+  if (adapterGzipBytes > MAX_VISUAL_ADAPTER_JS_GZIP_BYTES) {
+    throw new Error(
+      `Visual recognition adapter gzip budget exceeded: ${adapterGzipBytes} > ${MAX_VISUAL_ADAPTER_JS_GZIP_BYTES} bytes.`,
+    );
+  }
+
+  if (engineBytes > MAX_VISUAL_ENGINE_JS_BYTES) {
+    throw new Error(
+      `Visual recognition engine budget exceeded: ${engineBytes} > ${MAX_VISUAL_ENGINE_JS_BYTES} bytes.`,
+    );
+  }
+
+  if (engineGzipBytes > MAX_VISUAL_ENGINE_JS_GZIP_BYTES) {
+    throw new Error(
+      `Visual recognition engine gzip budget exceeded: ${engineGzipBytes} > ${MAX_VISUAL_ENGINE_JS_GZIP_BYTES} bytes.`,
+    );
+  }
+
+  return [
+    `visual adapter JS ${adapterBytes} bytes / ${adapterGzipBytes} gzip`,
+    `visual engine JS ${engineBytes} bytes / ${engineGzipBytes} gzip`,
+  ];
+};
+
+const visualRecognitionSummary = await validateVisualRecognition();
+
 const serviceWorker = await readFile(path.join(dist, "sw.js"), "utf8");
 
 if (!serviceWorker.includes('url:"index.html"')) {
@@ -449,6 +529,15 @@ if (serviceWorker.includes('url:"screenshots/')) {
   throw new Error("The install screenshots must not be precached for every visitor.");
 }
 
+if (
+  serviceWorker.includes('url:"assets/transformers-visual-recognizer-') ||
+  serviceWorker.includes('url:"assets/visual-recognition-engine-')
+) {
+  throw new Error(
+    "Visual recognition runtime chunks must not be precached for every visitor.",
+  );
+}
+
 for (const file of initialJsFiles) {
   const fileContent = await readFile(path.join(assets, file), "utf8");
 
@@ -458,6 +547,13 @@ for (const file of initialJsFiles) {
 
   if (fileContent.includes("tessedit_char_whitelist")) {
     throw new Error(`Initial bundle ${file} includes the price reader.`);
+  }
+
+  if (
+    fileContent.includes("zero-shot-image-classification") ||
+    fileContent.includes("Xenova/clip-vit-base-patch32")
+  ) {
+    throw new Error(`Initial bundle ${file} includes the visual recognizer.`);
   }
 }
 
@@ -481,6 +577,7 @@ console.log(
     `lazy JS ${lazyJsFiles.length} chunk(s) / ${lazyJsBytes} bytes`,
     ...barcodeEngineSummary,
     ...priceReaderSummary,
+    ...visualRecognitionSummary,
     `initial CSS ${initialCssBytes} bytes / ${initialCssGzipBytes} gzip`,
     `total CSS ${totalCssBytes} bytes / ${totalCssGzipBytes} gzip`,
     "installable offline shell present",

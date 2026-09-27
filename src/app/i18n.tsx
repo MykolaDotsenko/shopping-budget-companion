@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -157,6 +158,24 @@ export function I18nProvider({
   const [changing, setChanging] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [changeFailed, setChangeFailed] = useState(false);
+
+  useEffect(() => {
+    const title = state.language === "en"
+      ? "Shopping Budget Companion — know what’s left before checkout"
+      : state.language === "fi"
+        ? "Shopping Budget Companion — tiedä paljonko on jäljellä ennen kassaa"
+        : "Shopping Budget Companion — знайте, скільки залишилось до каси";
+    const description = state.language === "en"
+      ? "Set a shopping limit, add prices as you go and always see what’s left before checkout."
+      : state.language === "fi"
+        ? "Aseta ostosraja, lisää hinnat ostosten aikana ja näe aina, paljonko on jäljellä ennen kassaa."
+        : "Встановіть ліміт покупок, додавайте ціни під час покупок і завжди бачте, скільки залишилось до каси.";
+
+    document.title = title;
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute("content", description);
+  }, [state.language]);
 
   const value = useMemo<I18nContextValue>(() => {
     const t = (

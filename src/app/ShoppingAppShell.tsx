@@ -468,6 +468,8 @@ function ShoppingAppScreens({
             controller={controller}
             trip={state.completedSummary}
             locale={locale}
+            t={t}
+            tp={tp}
             onDone={() => {
               setOverlay(NO_OVERLAY);
             }}
@@ -527,6 +529,7 @@ function ShoppingAppScreens({
                 },
               })}
           locale={locale}
+          t={t}
           onCancel={() => {
             evidence.abandonManualEntry();
 
@@ -687,6 +690,7 @@ function ShoppingAppScreens({
         <BudgetSettingsSurface
           trip={state.activeTrip}
           locale={locale}
+          t={t}
           onCancel={() => {
             setOverlay(NO_OVERLAY);
             returnFocusToAdjustBudget();
@@ -729,6 +733,8 @@ function ShoppingAppScreens({
         <FinishTripSurface
           trip={state.activeTrip}
           locale={locale}
+          t={t}
+          tp={tp}
           onCancel={() => {
             setOverlay(NO_OVERLAY);
             returnFocusToFinishTrip();
@@ -792,6 +798,7 @@ function ShoppingAppScreens({
             trip={state.activeTrip}
             item={item}
             locale={locale}
+            t={t}
             onCancel={() => {
               const itemId = item.id;
               setOverlay(NO_OVERLAY);

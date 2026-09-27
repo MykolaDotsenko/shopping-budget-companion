@@ -782,7 +782,9 @@ function ShoppingAppScreens({
             setLastAddedMessage(t("Trip cancelled. Nothing was saved."));
             return true;
           }}
-          historyNotice={<HistoryIntegrityNotice controller={controller} />}
+          historyNotice={
+            <HistoryIntegrityNotice controller={controller} t={t} tp={tp} />
+          }
           historyNeedsAttention={state.historyIntegrity.status === "degraded"}
         />
         {qaPanel}

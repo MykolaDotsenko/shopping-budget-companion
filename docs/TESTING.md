@@ -66,7 +66,7 @@ Coverage is a regression guard for code where arithmetic, lifecycle, durability 
 - `src/domain/**`;
 - `src/application/**`;
 - `src/infrastructure/storage/**`;
-- the camera, scanning and lookup adapters: `src/infrastructure/barcode/browser-barcode-reader.ts`, `src/infrastructure/camera/browser-camera.ts`, `src/infrastructure/price-ocr/tesseract-layout.ts`, `src/infrastructure/price-ocr/lazy-price-reader.ts` and `src/infrastructure/product-lookup/**`.
+- the camera, scanning and lookup adapters: `src/infrastructure/barcode/browser-barcode-reader.ts`, `src/infrastructure/camera/browser-camera.ts`, `src/infrastructure/price-ocr/tesseract-layout.ts`, `src/infrastructure/price-ocr/lazy-price-reader.ts`, `src/infrastructure/product-lookup/**` and the visual-recognition adapter tests.
 
 The baseline measured on 2026-09-26, with each scope aggregating every file it covers, was:
 
@@ -100,7 +100,7 @@ Coverage does **not** replace browser, accessibility, persistence-failure, real-
 
 The Quality workflow runs on every pull request and every push to `main`, and tests the exact artifact it deploys:
 
-- **quality** — installs with `npm ci`; generates a production CycloneDX SBOM and validates its envelope, product identity and runtime dependency inventory; runs `npm audit --omit=dev --audit-level=high`; runs `npm run check`; builds and validates a build with `VITE_SHOPPING_BARCODE_SCANNER=0` and `VITE_SHOPPING_PRICE_OCR=0`; then builds and validates the public release build, builds every guarded evidence build, checks that each guarded build is relocatable and has no manifest or service worker, and uploads the combined site as one immutable `pages-site` artifact;
+- **quality** — installs with `npm ci`; generates a production CycloneDX SBOM and validates its envelope, product identity and runtime dependency inventory; runs `npm audit --omit=dev --audit-level=high`; runs `npm run check`; builds and validates a build with `VITE_SHOPPING_BARCODE_SCANNER=0`, `VITE_SHOPPING_PRICE_OCR=0` and `VITE_SHOPPING_VISUAL_RECOGNITION=0`; then builds and validates the public release build, builds every guarded evidence build, checks that each guarded build is relocatable and has no manifest or service worker, and uploads the combined site as one immutable `pages-site` artifact;
 - **provenance** — on pushes and same-repository pull requests, verifies the SBOM digest and attaches signed build-provenance and SBOM attestations to the exact uploaded `pages-site` digest;
 - **artifact-integrity** — checks that the artifact holds the public install files, that every guarded surface has its page but no manifest or service worker, and that no source, package, `study/`, build-directory or SBOM file entered it;
 - **browser** (Chromium, Firefox and WebKit) — runs the public Playwright suite against the exact public build; its axe scans run in the Chromium leg;

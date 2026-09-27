@@ -255,7 +255,7 @@ Design goals:
 - current budget context remains understandable;
 - exact projected consequence appears before commit;
 - quantity is available without overwhelming the default flow;
-- optional label remains optional;
+- optional item name is directly editable without an extra disclosure tap, while remaining visually subordinate and never required;
 - over-budget confirmation is explicit;
 - keypad/mode behaviour is predictable;
 - after commit, the user returns cleanly to the trip.

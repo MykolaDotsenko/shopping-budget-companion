@@ -411,7 +411,6 @@ export default function ScanSurface({
     }
 
     let cancelled = false;
-    setVisualWarmup({ kind: "preparing", fraction: null });
 
     void visualRecognizer.prepare().then((ready) => {
       if (!cancelled) {
@@ -470,6 +469,11 @@ export default function ScanSurface({
 
     setMode(next);
     setManualError("");
+
+    if (next === "product") {
+      setVisualWarmup({ kind: "idle" });
+    }
+
     onModeChange?.(next);
 
     if (!cameraWanted) {

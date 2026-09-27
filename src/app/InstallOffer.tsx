@@ -5,6 +5,7 @@ import {
   isIosSafari,
   type InstallPromptSource,
 } from "../infrastructure/runtime/install-prompt";
+import { useI18n } from "./i18n";
 import styles from "./InstallOffer.module.css";
 
 export const INSTALL_OFFER_STORAGE_KEY = "shopping-budget:install-offer";
@@ -28,6 +29,7 @@ export interface InstallOfferProps {
 }
 
 export function InstallOffer({ source, hasSavedShopping }: InstallOfferProps) {
+  const { t } = useI18n();
   const prompt = useSyncExternalStore(
     source.subscribe,
     source.current,
@@ -55,12 +57,12 @@ export function InstallOffer({ source, hasSavedShopping }: InstallOfferProps) {
   return (
     <aside className={styles.offer} aria-labelledby="install-offer-title">
       <h2 id="install-offer-title" className={styles.title}>
-        {prompt === null ? "Add it to your Home Screen first" : "Install the app"}
+        {prompt === null ? t("Add it to your Home Screen first") : t("Install the app")}
       </h2>
       <p className={styles.copy}>
         {prompt === null
-          ? "Safari may clear saved data from sites you haven’t opened for about a week. Opened from your Home Screen, your trips stay. In Safari’s Share menu, choose Add to Home Screen."
-          : "Open it from your home screen in one tap, even without a connection."}
+          ? t("Safari may clear saved data from sites you haven’t opened for about a week. Opened from your Home Screen, your trips stay. In Safari’s Share menu, choose Add to Home Screen.")
+          : t("Open it from your home screen in one tap, even without a connection.")}
       </p>
       <div className={styles.actions}>
         {prompt === null ? null : (
@@ -76,7 +78,7 @@ export function InstallOffer({ source, hasSavedShopping }: InstallOfferProps) {
           </button>
         )}
         <button type="button" className={styles.secondary} onClick={dismiss}>
-          {prompt === null ? "Got it" : "Not now"}
+          {prompt === null ? t("Got it") : t("Not now")}
         </button>
       </div>
     </aside>

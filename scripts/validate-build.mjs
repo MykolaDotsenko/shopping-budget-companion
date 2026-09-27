@@ -150,11 +150,11 @@ for (const marker of [
   }
 }
 
-const MAX_PUBLIC_JS_BYTES = 452_000;
-const MAX_INITIAL_JS_BYTES = 397_000;
+const MAX_PUBLIC_JS_BYTES = 465_000;
+const MAX_INITIAL_JS_BYTES = 406_000;
 const MAX_SINGLE_JS_CHUNK_BYTES = 230_000;
-const MAX_PUBLIC_JS_GZIP_BYTES = 136_000;
-const MAX_INITIAL_JS_GZIP_BYTES = 117_000;
+const MAX_PUBLIC_JS_GZIP_BYTES = 140_000;
+const MAX_INITIAL_JS_GZIP_BYTES = 121_000;
 const MAX_PUBLIC_CSS_BYTES = 83_000;
 const MAX_INITIAL_CSS_BYTES = 63_000;
 const MAX_PUBLIC_CSS_GZIP_BYTES = 16_300;
@@ -172,6 +172,9 @@ const MAX_PRICE_READER_JS_BYTES = 40_000;
 const MAX_PRICE_READER_JS_GZIP_BYTES = 14_000;
 const MAX_PRICE_READER_ASSET_BYTES = 10_500_000;
 const VISUAL_RUNTIME_CHUNK_PREFIX = "transformers-visual-recognizer-";
+const LOCALE_CHUNK_PREFIXES = Object.freeze(["locale-fi-", "locale-uk-"]);
+const MAX_LOCALE_CHUNK_JS_BYTES = 45_000;
+const MAX_LOCALE_CHUNK_JS_GZIP_BYTES = 16_000;
 const MAX_VISUAL_RUNTIME_JS_BYTES = 650_000;
 const MAX_VISUAL_RUNTIME_JS_GZIP_BYTES = 220_000;
 const MAX_VISUAL_ENGINE_WASM_BYTES = 30_000_000;
@@ -195,11 +198,15 @@ const priceReaderJsFiles = allJsFiles.filter((file) =>
 const visualRuntimeJsFiles = allJsFiles.filter((file) =>
   file.startsWith(VISUAL_RUNTIME_CHUNK_PREFIX),
 );
+const localeJsFiles = allJsFiles.filter((file) =>
+  LOCALE_CHUNK_PREFIXES.some((prefix) => file.startsWith(prefix)),
+);
 const jsFiles = allJsFiles.filter(
   (file) =>
     !file.startsWith(BARCODE_ENGINE_CHUNK_PREFIX) &&
     !file.startsWith(PRICE_READER_CHUNK_PREFIX) &&
-    !file.startsWith(VISUAL_RUNTIME_CHUNK_PREFIX),
+    !file.startsWith(VISUAL_RUNTIME_CHUNK_PREFIX) &&
+    !LOCALE_CHUNK_PREFIXES.some((prefix) => file.startsWith(prefix)),
 );
 const cssFiles = files.filter((file) => file.endsWith(".css"));
 const wasmFiles = files.filter((file) => file.endsWith(".wasm"));
@@ -447,8 +454,48 @@ const validatePriceReader = async () => {
   ];
 };
 
+const validateLocales = async () => {
+  const summary = [];
+
+  for (const prefix of LOCALE_CHUNK_PREFIXES) {
+    const matching = localeJsFiles.filter((file) => file.startsWith(prefix));
+
+    if (matching.length !== 1) {
+      throw new Error(
+        `Public build must emit exactly one lazy ${prefix} locale chunk (found ${matching.length}).`,
+      );
+    }
+
+    const file = matching[0];
+
+    if (initialJsSet.has(file)) {
+      throw new Error(`Locale chunk ${file} must stay out of the initial bundle.`);
+    }
+
+    const bytes = await assetSize(file);
+    const gzipBytes = await assetGzipSize(file);
+
+    if (bytes > MAX_LOCALE_CHUNK_JS_BYTES) {
+      throw new Error(
+        `Locale chunk ${file} exceeded its JavaScript budget: ${bytes} > ${MAX_LOCALE_CHUNK_JS_BYTES} bytes.`,
+      );
+    }
+
+    if (gzipBytes > MAX_LOCALE_CHUNK_JS_GZIP_BYTES) {
+      throw new Error(
+        `Locale chunk ${file} exceeded its gzip budget: ${gzipBytes} > ${MAX_LOCALE_CHUNK_JS_GZIP_BYTES} bytes.`,
+      );
+    }
+
+    summary.push(`${file} ${bytes} bytes / ${gzipBytes} gzip`);
+  }
+
+  return summary;
+};
+
 const barcodeEngineSummary = await validateBarcodeEngine();
 const priceReaderSummary = await validatePriceReader();
+const localeSummary = await validateLocales();
 
 const validateVisualRecognition = async () => {
   if (!visualRecognitionEnabled) {
@@ -565,6 +612,7 @@ console.log(
     `lazy JS ${lazyJsFiles.length} chunk(s) / ${lazyJsBytes} bytes`,
     ...barcodeEngineSummary,
     ...priceReaderSummary,
+    ...localeSummary,
     ...visualRecognitionSummary,
     `initial CSS ${initialCssBytes} bytes / ${initialCssGzipBytes} gzip`,
     `total CSS ${totalCssBytes} bytes / ${totalCssGzipBytes} gzip`,

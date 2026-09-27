@@ -220,7 +220,7 @@ export function StartTripScreen({
 
     if (!buffer.ok) {
       setErrorMessage(
-        `Safety buffer: ${buffer.message}`,
+        t("Safety buffer: {message}", { message: buffer.message }),
       );
       setBufferOpen(true);
       queueMicrotask(() => {
@@ -271,7 +271,7 @@ export function StartTripScreen({
     const result = controller.startTripFromCompleted(recentTrip.id);
 
     if (!result.ok) {
-      setErrorMessage(applicationErrorMessage(result));
+      setErrorMessage(applicationErrorMessage(result, t));
       return;
     }
 
@@ -317,10 +317,12 @@ export function StartTripScreen({
                   amount: formatEur(recentTrip.budgetMinor, locale),
                 })}
                 {recentTrip.safetyBufferMinor > 0
-                  ? ` · ${formatEur(
-                      recentTrip.safetyBufferMinor,
-                      locale,
-                    )} safety buffer`
+                  ? t(" · {amount} safety buffer", {
+                      amount: formatEur(
+                        recentTrip.safetyBufferMinor,
+                        locale,
+                      ),
+                    })
                   : ""}
               </small>
             </span>

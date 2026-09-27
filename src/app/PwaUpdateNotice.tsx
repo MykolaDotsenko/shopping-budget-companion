@@ -42,7 +42,7 @@ export function PwaUpdateNotice({
             setNeedRefresh(false);
           }}
         >
-          Later
+          {t("Later")}
         </button>
         <button
           className={styles.primary}
@@ -51,7 +51,7 @@ export function PwaUpdateNotice({
             void updateServiceWorker(true);
           }}
         >
-          Update app
+          {t("Update app")}
         </button>
       </div>
     </aside>

@@ -307,7 +307,7 @@ export function HistoryTripCard({
             onStartSimilar(trip);
           }}
         >
-          Shop again
+          {t("Shop again")}
         </button>
 
         <button
@@ -324,7 +324,7 @@ export function HistoryTripCard({
             }
           }}
         >
-          Delete trip
+          {t("Delete trip")}
         </button>
 
         {deleting ? (
@@ -351,7 +351,7 @@ export function HistoryTripCard({
                 className={styles.secondaryButton}
                 onClick={onCancelDelete}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="button"
@@ -360,7 +360,7 @@ export function HistoryTripCard({
                   onConfirmDelete(trip);
                 }}
               >
-                Yes, delete
+                {t("Yes, delete")}
               </button>
             </div>
           </section>

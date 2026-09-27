@@ -61,7 +61,7 @@ const placeholders = (value) =>
 
 const collectSourceMessages = () => {
   const messages = new Set(dynamicKeys);
-  const pluralKeys = new Set();
+  const pluralSources = new Map();
 
   for (const file of scanRoots.flatMap(sourceFiles)) {
     const source = fs.readFileSync(file, "utf8");
@@ -74,20 +74,22 @@ const collectSourceMessages = () => {
       /\btp\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"/gu,
     )) {
       const one = decodeLiteral(match[1]);
+      const other = decodeLiteral(match[2]);
       messages.add(one);
-      pluralKeys.add(one);
+      pluralSources.set(one, { one, other });
     }
   }
 
-  return { messages, pluralKeys };
+  return { messages, pluralSources };
 };
 
-const validateCatalog = (catalog, locale, sourceMessages, pluralKeys) => {
+const validateCatalog = (catalog, locale, sourceMessages, pluralSources) => {
   const missing = [...sourceMessages].filter((key) => !(key in catalog)).sort();
   expect(missing, `missing ${locale} translations`).toEqual([]);
 
   for (const key of sourceMessages) {
     const translated = catalog[key];
+    const pluralSource = pluralSources.get(key);
     const expectedPlaceholders = placeholders(key);
 
     if (typeof translated === "string") {
@@ -104,17 +106,21 @@ const validateCatalog = (catalog, locale, sourceMessages, pluralKeys) => {
       expect(typeof variant, `${locale} ${category} variant missing for "${key}"`).toBe(
         "string",
       );
+      const sourceTemplate =
+        pluralSource === undefined || category === "one"
+          ? key
+          : pluralSource.other;
       expect(
         placeholders(variant),
         `${locale} ${category} placeholders differ for "${key}"`,
-      ).toEqual(expectedPlaceholders);
+      ).toEqual(placeholders(sourceTemplate));
     }
   }
 
   const requiredPluralCategories = new Intl.PluralRules(locale).resolvedOptions()
     .pluralCategories;
 
-  for (const key of pluralKeys) {
+  for (const key of pluralSources.keys()) {
     const translated = catalog[key];
     expect(
       typeof translated,
@@ -131,14 +137,14 @@ const validateCatalog = (catalog, locale, sourceMessages, pluralKeys) => {
 };
 
 describe("localization catalogs", () => {
-  const { messages, pluralKeys } = collectSourceMessages();
+  const { messages, pluralSources } = collectSourceMessages();
 
   it("covers every public Finnish UI message with matching placeholders and plurals", () => {
-    validateCatalog(fiMessages, "fi-FI", messages, pluralKeys);
+    validateCatalog(fiMessages, "fi-FI", messages, pluralSources);
   });
 
   it("covers every public Ukrainian UI message with matching placeholders and plurals", () => {
-    validateCatalog(ukMessages, "uk-UA", messages, pluralKeys);
+    validateCatalog(ukMessages, "uk-UA", messages, pluralSources);
   });
 
   it("keeps the localization surface substantial", () => {

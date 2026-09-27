@@ -490,11 +490,9 @@ export function StartTripScreen({
                   completedTripCount,
                 )
               : rememberedPriceCount > 0
-                ? tp(
-                    "Manage remembered price · {count}",
-                    "Manage remembered prices · {count}",
-                    rememberedPriceCount,
-                  )
+                ? t("Manage remembered prices · {count}", {
+                    count: rememberedPriceCount,
+                  })
                 : t("Repair remembered prices")}
           </button>
         ) : null}

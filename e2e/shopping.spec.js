@@ -198,11 +198,11 @@ test("keeps explicit Aurora appearance durable and independent from shopping sta
     mode: "aurora",
     theme: "aurora",
     persisted: "aurora",
-    page: "#070912",
-    panel: "#101625",
-    raised: "#1c2640",
-    accent: "#8de8ff",
-    themeColor: "#070912",
+    page: "#050611",
+    panel: "#0d1427",
+    raised: "#182744",
+    accent: "#8ff3ff",
+    themeColor: "#050611",
   });
 
   await startQuickBudget(page);

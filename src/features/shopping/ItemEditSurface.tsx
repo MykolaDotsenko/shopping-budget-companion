@@ -30,6 +30,7 @@ import {
 import { trustLabel } from "./item-trust";
 import styles from "./ItemEditSurface.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import { englishTranslate, type Translate } from "./translation";
 
 export interface ItemEditIntent {
   readonly unitPriceMinor: MinorUnits;
@@ -44,6 +45,7 @@ export interface ItemEditSurfaceProps {
   readonly onSave: (intent: ItemEditIntent) => boolean | void;
   readonly onRemove: () => boolean | void;
   readonly locale?: string;
+  readonly t?: Translate;
 }
 
 const absoluteMoney = (value: number): SignedMinorUnits => {
@@ -65,6 +67,7 @@ export function ItemEditSurface({
   onSave,
   onRemove,
   locale = SHOPPING_LOCALE,
+  t = englishTranslate,
 }: ItemEditSurfaceProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const openedAt = useRef(Number.POSITIVE_INFINITY);
@@ -133,7 +136,7 @@ export function ItemEditSurface({
     });
 
     if (accepted === false) {
-      setSubmissionError("Could not save these changes. Try again.");
+      setSubmissionError(t("Could not save these changes. Try again."));
       return;
     }
 
@@ -148,48 +151,43 @@ export function ItemEditSurface({
     const safe = safeRemaining(projectedTrip);
 
     if (nominal < 0) {
-      projectionPrimary = `After saving: ${formatEur(
-        absoluteMoney(nominal),
-        locale,
-      )} over your limit`;
+      projectionPrimary = t("After saving: {amount} over your limit", {
+        amount: formatEur(absoluteMoney(nominal), locale),
+      });
     } else if (projectedTrip.safetyBufferMinor > 0 && safe < 0) {
-      projectionPrimary = "After saving: €0.00 safe to spend";
-      projectionSecondary = `${formatEur(
-        absoluteMoney(nominal),
-        locale,
-      )} of your ${formatEur(
-        projectedTrip.safetyBufferMinor,
-        locale,
-      )} safety buffer would be left.`;
+      projectionPrimary = t("After saving: {amount} safe to spend", {
+        amount: formatEur(absoluteMoney(0), locale),
+      });
+      projectionSecondary = t("{amount} of your {buffer} safety buffer would be left.", {
+        amount: formatEur(absoluteMoney(nominal), locale),
+        buffer: formatEur(projectedTrip.safetyBufferMinor, locale),
+      });
     } else if (projectedTrip.safetyBufferMinor > 0) {
-      projectionPrimary = `After saving: ${formatEur(
-        absoluteMoney(safe),
-        locale,
-      )} safe to spend`;
-      projectionSecondary = `Your ${formatEur(
-        projectedTrip.safetyBufferMinor,
-        locale,
-      )} safety buffer stays untouched.`;
+      projectionPrimary = t("After saving: {amount} safe to spend", {
+        amount: formatEur(absoluteMoney(safe), locale),
+      });
+      projectionSecondary = t("Your {buffer} safety buffer stays untouched.", {
+        buffer: formatEur(projectedTrip.safetyBufferMinor, locale),
+      });
     } else {
-      projectionPrimary = `After saving: ${formatEur(
-        absoluteMoney(nominal),
-        locale,
-      )} left`;
+      projectionPrimary = t("After saving: {amount} left", {
+        amount: formatEur(absoluteMoney(nominal), locale),
+      });
     }
 
     if (projectionSecondary === "") {
-      projectionSecondary = `Cart would be ${formatEur(
-        cartTotal(projectedTrip),
-        locale,
-      )} of ${formatEur(projectedTrip.budgetMinor, locale)}.`;
+      projectionSecondary = t("Cart would be {cart} of {budget}.", {
+        cart: formatEur(cartTotal(projectedTrip), locale),
+        budget: formatEur(projectedTrip.budgetMinor, locale),
+      });
     }
   }
 
   const invalidMessage =
     priceState.kind === "invalid"
-      ? "Enter a valid price above €0 with no more than two decimals."
+      ? t("Enter a valid price above €0 with no more than two decimals.")
       : priceState.kind === "incomplete"
-        ? "Finish the price."
+        ? t("Finish the price.")
         : "";
 
   return (
@@ -206,9 +204,9 @@ export function ItemEditSurface({
       <section className={styles.sheet}>
         <header className={styles.header}>
           <div>
-            <p className={styles.eyebrow}>Edit item</p>
+            <p className={styles.eyebrow}>{t("Edit item")}</p>
             <h1 id="edit-item-title">
-              {item.label ?? "Edit price and quantity"}
+              {item.label ?? t("Edit price and quantity")}
             </h1>
           </div>
           <button
@@ -216,16 +214,16 @@ export function ItemEditSurface({
             className={styles.cancelButton}
             onClick={onCancel}
           >
-            Cancel
+            {t("Cancel")}
           </button>
         </header>
 
         <p className={styles.trust}>
-          {trustLabel(item)}
+          {trustLabel(item, t)}
         </p>
 
         <label className={styles.field}>
-          <span>Item name <small>Optional · helps Recent Items</small></span>
+          <span>{t("Item name")} <small>{t("Optional · helps Recent Items")}</small></span>
           <input
             value={label}
             autoComplete="off"
@@ -238,7 +236,9 @@ export function ItemEditSurface({
               setLabel(characters.slice(0, MAX_ITEM_LABEL_CODE_POINTS).join(""));
               setLabelNotice(
                 tooLong
-                  ? `Names stop at ${MAX_ITEM_LABEL_CODE_POINTS} characters; the rest was left out.`
+                  ? t("Names stop at {max} characters; the rest was left out.", {
+                      max: MAX_ITEM_LABEL_CODE_POINTS,
+                    })
                   : "",
               );
             }}
@@ -251,7 +251,7 @@ export function ItemEditSurface({
         </label>
 
         <label className={styles.field}>
-          <span>Price</span>
+          <span>{t("Price")}</span>
           <div className={styles.priceInput}>
             <span aria-hidden="true">€</span>
             <input
@@ -289,12 +289,12 @@ export function ItemEditSurface({
           aria-labelledby="edit-quantity-title"
         >
           <div>
-            <span id="edit-quantity-title">Quantity</span>
+            <span id="edit-quantity-title">{t("Quantity")}</span>
           </div>
           <div className={styles.stepper}>
             <button
               type="button"
-              aria-label="Decrease edited quantity"
+              aria-label={t("Decrease edited quantity")}
               disabled={!canDecreaseQuantity(quantity)}
               onClick={() => {
                 setQuantity((current) => decreaseQuantity(current));
@@ -302,10 +302,10 @@ export function ItemEditSurface({
             >
               −
             </button>
-            <output aria-label="Edited quantity">{quantity}</output>
+            <output aria-label={t("Edited quantity")}>{quantity}</output>
             <button
               type="button"
-              aria-label="Increase edited quantity"
+              aria-label={t("Increase edited quantity")}
               disabled={!canIncreaseQuantity(quantity)}
               onClick={() => {
                 setQuantity((current) => increaseQuantity(current));
@@ -335,7 +335,7 @@ export function ItemEditSurface({
           disabled={!changed || validPrice === null || submitted}
           onClick={submit}
         >
-          {submitted ? "Saving…" : "Save changes"}
+          {submitted ? t("Saving…") : t("Save changes")}
         </button>
 
         <button
@@ -347,7 +347,7 @@ export function ItemEditSurface({
             }
           }}
         >
-          Remove item
+          {t("Remove item")}
         </button>
       </section>
     </main>

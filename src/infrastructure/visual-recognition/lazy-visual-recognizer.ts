@@ -4,6 +4,8 @@ import type {
 } from "../../application/visual-recognition-ports";
 
 const IDLE_RELEASE_MS = 120_000;
+const visualRecognitionBuildEnabled =
+  import.meta.env.VITE_SHOPPING_VISUAL_RECOGNITION !== "0";
 
 export const createLazyVisualProductRecognizer =
   (): VisualProductRecognizerPort => {
@@ -11,6 +13,12 @@ export const createLazyVisualProductRecognizer =
     let releaseTimer: number | null = null;
 
     const implementation = (): Promise<VisualProductRecognizerPort> => {
+      if (!visualRecognitionBuildEnabled) {
+        return Promise.reject(
+          new Error("Visual recognition is disabled in this build"),
+        );
+      }
+
       implementationPromise ??= import("./transformers-visual-recognizer").then(
         ({ createTransformersVisualProductRecognizer }) =>
           createTransformersVisualProductRecognizer(),

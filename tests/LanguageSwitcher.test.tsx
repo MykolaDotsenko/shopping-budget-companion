@@ -58,14 +58,12 @@ describe("LanguageSwitcher", () => {
       </I18nContext.Provider>,
     );
 
-    expect(screen.getByRole("button", { name: "Українська" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "English" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+    expect(
+      screen.getByRole("button", { name: "Українська" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen.getByRole("button", { name: "English" }).getAttribute("aria-pressed"),
+    ).toBe("false");
   });
 
   it("surfaces load and persistence warnings without expanding the normal control", () => {
@@ -75,7 +73,7 @@ describe("LanguageSwitcher", () => {
       </I18nContext.Provider>,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
+    expect(screen.getByRole("alert").textContent).toContain(
       "That language could not be loaded. Try again when you are online.",
     );
 
@@ -85,7 +83,7 @@ describe("LanguageSwitcher", () => {
       </I18nContext.Provider>,
     );
 
-    expect(screen.getByRole("status")).toHaveTextContent(
+    expect(screen.getByRole("status").textContent).toContain(
       "Language changed for this session but could not be saved.",
     );
   });

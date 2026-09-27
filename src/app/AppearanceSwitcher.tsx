@@ -8,7 +8,7 @@ import {
   readAppearancePreference,
   type AppearanceMode,
 } from "./appearance";
-import { useI18n } from "./i18n";
+import { useI18n } from "./i18n-context";
 import styles from "./AppearanceSwitcher.module.css";
 
 const LABELS: Readonly<Record<AppearanceMode, string>> = {

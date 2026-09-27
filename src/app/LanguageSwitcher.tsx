@@ -10,6 +10,7 @@ export function LanguageSwitcher() {
     language,
     changing,
     saveFailed,
+    changeFailed,
     setLanguage,
     t,
   } = useI18n();
@@ -41,7 +42,11 @@ export function LanguageSwitcher() {
         ))}
       </div>
 
-      {saveFailed ? (
+      {changeFailed ? (
+        <p className={styles.warning} role="alert">
+          {t("That language could not be loaded. Try again when you are online.")}
+        </p>
+      ) : saveFailed ? (
         <p className={styles.warning} role="status">
           {t("Language changed for this session but could not be saved.")}
         </p>

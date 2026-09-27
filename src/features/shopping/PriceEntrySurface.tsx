@@ -334,7 +334,7 @@ export function PriceEntrySurface({
 
           {initialLabel !== undefined ? (
             <p className={styles.currentPriceContext}>
-              {t("Current price for {item}", { item: initialLabel })}
+              {t("Current price for")} <strong>{initialLabel}</strong>
             </p>
           ) : null}
 

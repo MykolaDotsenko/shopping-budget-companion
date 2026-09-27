@@ -66,7 +66,8 @@ import {
   writeVisualModelDownloadAcknowledgement,
 } from "./input-preferences";
 import { AppearanceSwitcher } from "./AppearanceSwitcher";
-import { SHOPPING_LOCALE } from "../features/shopping/shopping-locale";
+import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useI18n } from "./i18n";
 import { focusNextScreen } from "../features/shopping/focus-next-screen";
 import { useShoppingShellFocus } from "./use-shopping-shell-focus";
 import styles from "./ShoppingAppShell.module.css";
@@ -199,6 +200,7 @@ function ShoppingAppScreens({
   lastAddedMessage,
   setLastAddedMessage,
 }: ShoppingAppScreensProps) {
+  const { locale, t } = useI18n();
   const state = useShoppingAppState(controller);
   const {
     addPriceButtonRef,
@@ -267,17 +269,17 @@ function ShoppingAppScreens({
   const scanLabel =
     scanProduct !== null
       ? scanBarcode !== null && scanPrice !== null
-        ? "Scan barcode, product or price tag"
+        ? t("Scan barcode, product or price tag")
         : scanBarcode !== null
-          ? "Scan barcode or product"
+          ? t("Scan barcode or product")
           : scanPrice !== null
-            ? "Recognize product or read price tag"
-            : "Recognize product"
+            ? t("Recognize product or read price tag")
+            : t("Recognize product")
       : scanBarcode !== null && scanPrice !== null
-        ? "Scan barcode or price tag"
+        ? t("Scan barcode or price tag")
         : scanBarcode !== null
-          ? "Scan barcode"
-          : "Read price tag";
+          ? t("Scan barcode")
+          : t("Read price tag");
   const returnFocus = (target: FocusReturn, sourceMemoryId?: PriceMemoryId): void => {
     if (target === "scan") {
       returnFocusToScan();
@@ -327,8 +329,8 @@ function ShoppingAppScreens({
 
     const warning =
       saveProblem.issue.code === "storage-full"
-        ? "Changes aren’t being saved: storage for this app is full."
-        : "Changes aren’t being saved right now.";
+        ? t("Changes aren’t being saved: storage for this app is full.")
+        : t("Changes aren’t being saved right now.");
 
     setLastAddedMessage((current) => (current === "" ? warning : `${current} ${warning}`));
   }, [saveProblem, setLastAddedMessage]);
@@ -360,7 +362,7 @@ function ShoppingAppScreens({
 
   const openingScreen = (
     <main className={styles.loading} aria-busy="true">
-      <p>Opening…</p>
+      <p>{t("Opening…")}</p>
     </main>
   );
   const historyScreen = (
@@ -375,7 +377,7 @@ function ShoppingAppScreens({
           onBack={() => {
             setOverlay(NO_OVERLAY);
           }}
-          locale={SHOPPING_LOCALE}
+          locale={locale}
         />
       </Suspense>
       {qaPanel}
@@ -386,7 +388,7 @@ function ShoppingAppScreens({
     return (
       <>
         <main className={styles.loading} aria-busy="true">
-          <p>Opening your shopping budget…</p>
+          <p>{t("Opening your shopping budget…")}</p>
         </main>
         {qaPanel}
       </>
@@ -429,7 +431,12 @@ function ShoppingAppScreens({
             evidence.resetQaTiming();
             setOverlay({ kind: "history" });
           }}
-          utilityControl={<AppearanceSwitcher />}
+          utilityControl={
+            <>
+              <LanguageSwitcher />
+              <AppearanceSwitcher />
+            </>
+          }
           notice={
             installPrompt === undefined ? null : (
               <InstallOffer
@@ -460,7 +467,7 @@ function ShoppingAppScreens({
           <CompletedSummaryScreen
             controller={controller}
             trip={state.completedSummary}
-            locale={SHOPPING_LOCALE}
+            locale={locale}
             onDone={() => {
               setOverlay(NO_OVERLAY);
             }}
@@ -468,7 +475,7 @@ function ShoppingAppScreens({
               evidence.recordTripStarted("repeat");
               setOverlay(NO_OVERLAY);
               setLastAddedMessage(
-                "New trip started with your previous budget.",
+                t("New trip started with your previous budget."),
               );
             }}
             onViewHistory={() => {
@@ -519,7 +526,7 @@ function ShoppingAppScreens({
                   });
                 },
               })}
-          locale={SHOPPING_LOCALE}
+          locale={locale}
           onCancel={() => {
             evidence.abandonManualEntry();
 
@@ -552,7 +559,7 @@ function ShoppingAppScreens({
             }
 
             setLastAddedMessage(
-              addedFeedback(result.state.activeTrip, addedItem, SHOPPING_LOCALE),
+              addedFeedback(result.state.activeTrip, addedItem, locale, t),
             );
 
             evidence.commitManualEntry(
@@ -588,7 +595,7 @@ function ShoppingAppScreens({
         <Suspense
           fallback={
             <main className={styles.loading} aria-busy="true">
-              <p>Opening the camera…</p>
+              <p>{t("Opening the camera…")}</p>
             </main>
           }
         >
@@ -604,7 +611,7 @@ function ShoppingAppScreens({
             initialMode={overlay.mode}
             onModeChange={writeScanModePreference}
             context={overlay.context}
-            locale={SHOPPING_LOCALE}
+            locale={locale}
             onCancel={() => {
               if (entry !== undefined) {
                 openTripOverlay(
@@ -651,10 +658,14 @@ function ShoppingAppScreens({
               }
 
               setLastAddedMessage(
-                `${record.label} added at its remembered price. ${remainingFeedback(
-                  result.state.activeTrip,
-                  SHOPPING_LOCALE,
-                )}`,
+                t("{label} added at its remembered price. {remaining}", {
+                  label: record.label,
+                  remaining: remainingFeedback(
+                    result.state.activeTrip,
+                    locale,
+                    t,
+                  ),
+                }),
               );
               setOverlay(NO_OVERLAY);
               returnFocusToScan();
@@ -675,7 +686,7 @@ function ShoppingAppScreens({
       <>
         <BudgetSettingsSurface
           trip={state.activeTrip}
-          locale={SHOPPING_LOCALE}
+          locale={locale}
           onCancel={() => {
             setOverlay(NO_OVERLAY);
             returnFocusToAdjustBudget();
@@ -689,10 +700,13 @@ function ShoppingAppScreens({
 
             if (result.changed) {
               setLastAddedMessage(
-                `Budget updated. ${remainingFeedback(
-                  result.state.activeTrip,
-                  SHOPPING_LOCALE,
-                )}`,
+                t("Budget updated. {remaining}", {
+                  remaining: remainingFeedback(
+                    result.state.activeTrip,
+                    locale,
+                    t,
+                  ),
+                }),
               );
             }
 
@@ -714,7 +728,7 @@ function ShoppingAppScreens({
       <>
         <FinishTripSurface
           trip={state.activeTrip}
-          locale={SHOPPING_LOCALE}
+          locale={locale}
           onCancel={() => {
             setOverlay(NO_OVERLAY);
             returnFocusToFinishTrip();
@@ -755,7 +769,7 @@ function ShoppingAppScreens({
             }
 
             setOverlay(NO_OVERLAY);
-            setLastAddedMessage("Trip cancelled. Nothing was saved.");
+            setLastAddedMessage(t("Trip cancelled. Nothing was saved."));
             return true;
           }}
           historyNotice={<HistoryIntegrityNotice controller={controller} />}
@@ -777,7 +791,7 @@ function ShoppingAppScreens({
           <ItemEditSurface
             trip={state.activeTrip}
             item={item}
-            locale={SHOPPING_LOCALE}
+            locale={locale}
             onCancel={() => {
               const itemId = item.id;
               setOverlay(NO_OVERLAY);
@@ -797,7 +811,8 @@ function ShoppingAppScreens({
               setLastAddedMessage(
                 `Item removed. ${remainingFeedback(
                   result.state.activeTrip,
-                  SHOPPING_LOCALE,
+                  locale,
+                  t,
                 )}`,
               );
               setOverlay(NO_OVERLAY);
@@ -825,7 +840,8 @@ function ShoppingAppScreens({
               setLastAddedMessage(
                 `Item updated. ${remainingFeedback(
                   result.state.activeTrip,
-                  SHOPPING_LOCALE,
+                  locale,
+                  t,
                 )}`,
               );
               setOverlay(NO_OVERLAY);

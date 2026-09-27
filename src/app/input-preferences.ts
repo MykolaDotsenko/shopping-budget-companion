@@ -3,7 +3,7 @@ import type { ScanMode } from "../features/shopping/scan-targets";
 
 export const SCAN_MODE_STORAGE_KEY = "shopping-budget:scan-mode";
 export const PRICE_ENTRY_MODE_STORAGE_KEY = "shopping-budget:price-entry-mode";
-export const VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY =
+const VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY =
   "shopping-budget:visual-model-download-ack";
 
 const storage = (): Storage | null => {
@@ -50,14 +50,8 @@ export const writePriceEntryModePreference = (mode: MoneyDraftMode): void => {
 };
 
 
-export const readVisualModelDownloadAcknowledgement = (): boolean => {
-  try {
-    return storage()?.getItem(VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
+export const readVisualModelDownloadAcknowledgement = (): boolean =>
+  readPreference(VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY, ["1"], "0") === "1";
 
-export const writeVisualModelDownloadAcknowledgement = (): void => {
+export const writeVisualModelDownloadAcknowledgement = (): void =>
   writePreference(VISUAL_MODEL_DOWNLOAD_ACK_STORAGE_KEY, "1");
-};

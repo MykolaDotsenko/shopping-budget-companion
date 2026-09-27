@@ -203,7 +203,7 @@ export function RecentItemsSection({
           <p className={styles.kicker}>{t("Faster repeat shopping")}</p>
           <h2 id="recent-items-title">{t("Recent Items")}</h2>
         </div>
-        <span>{tp("{count} remembered item", "{count} remembered items", remembered.length)}</span>
+        <span>{t("{count} remembered", { count: remembered.length })}</span>
       </div>
 
       <p className={styles.intro}>

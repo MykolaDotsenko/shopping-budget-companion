@@ -290,7 +290,7 @@ export function StartTripScreen({
             {t("How much can you spend today?")}
           </h1>
           <p className={styles.supporting}>
-            {t("Set your limit. Add prices. Always know what’s left.")}
+            {t("Set your limit. Add prices. Always know what's left.")}
           </p>
         </div>
 

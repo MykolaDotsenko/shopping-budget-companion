@@ -68,9 +68,6 @@ export default defineConfig(() => {
     cohortAnalysisEnabled;
   const priceOcrBuild =
     !cohortAnalysisEnabled && process.env.VITE_SHOPPING_PRICE_OCR !== "0";
-  const visualRecognitionBuild =
-    !cohortAnalysisEnabled &&
-    process.env.VITE_SHOPPING_VISUAL_RECOGNITION !== "0";
 
   return {
     define: {
@@ -169,7 +166,6 @@ export default defineConfig(() => {
           globIgnores: [
             "**/assets/ocr/**",
             "**/assets/transformers-visual-recognizer-*.js",
-            "**/assets/visual-recognition-engine-*.js",
           ],
           runtimeCaching: [
             {
@@ -184,8 +180,7 @@ export default defineConfig(() => {
             {
               urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin &&
-                (url.pathname.includes("/assets/transformers-visual-recognizer-") ||
-                  url.pathname.includes("/assets/visual-recognition-engine-")),
+                url.pathname.includes("/assets/transformers-visual-recognizer-"),
               handler: "CacheFirst",
               options: {
                 cacheName: "visual-recognition-engine",
@@ -214,14 +209,6 @@ export default defineConfig(() => {
                 name: "react",
                 test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
               },
-              ...(visualRecognitionBuild
-                ? [
-                    {
-                      name: "visual-recognition-engine",
-                      test: /node_modules[\\/](?:@huggingface|onnxruntime-(?:web|common)|flatbuffers|protobufjs|long)[\\/]/,
-                    },
-                  ]
-                : []),
             ],
           },
         },

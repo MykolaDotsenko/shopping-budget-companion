@@ -77,10 +77,10 @@ describe("PriceEntrySurface", () => {
       />,
     );
 
+    expect(screen.getByLabelText("Item name")).not.toBeNull();
+    expect(screen.queryByText("Name for next time", { exact: false })).toBeNull();
+
     await user.type(screen.getByLabelText("Price"), "1.39");
-    await user.click(
-      screen.getByText("Name for next time", { exact: false }),
-    );
     await user.type(screen.getByLabelText("Item name"), "Milk 1L");
     await user.click(
       screen.getByRole("button", { name: "Add · €1.39" }),
@@ -713,7 +713,6 @@ describe("PriceEntrySurface", () => {
     );
 
     await user.type(screen.getByLabelText("Price"), "1.39");
-    await user.click(screen.getByText("Name for next time", { exact: false }));
     await user.type(
       screen.getByRole("textbox", { name: "Item name" }),
       "Milk 1L{Enter}",

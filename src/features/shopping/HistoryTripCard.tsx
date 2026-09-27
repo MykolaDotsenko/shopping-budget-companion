@@ -14,6 +14,7 @@ import {
   type CompletedTrip,
 } from "../../domain/shopping-trip";
 import styles from "./HistoryScreen.module.css";
+import { decimalAmountPlaceholder } from "./shopping-locale";
 import {
   budgetOutcome,
   formatAbsoluteEur,
@@ -219,7 +220,7 @@ export function HistoryTripCard({
                 value={checkoutRaw}
                 inputMode="decimal"
                 autoComplete="off"
-                placeholder="0.00"
+                placeholder={decimalAmountPlaceholder(locale)}
                 aria-invalid={checkoutError !== ""}
                 aria-describedby={checkoutError === "" ? undefined : checkoutErrorId}
                 onChange={(event) => {

@@ -282,3 +282,44 @@ Production barcode reading (D-053) and price-tag reading (D-055) shipped, and th
 ### Revisit when
 
 A camera decision needs quantitative evidence that a field log cannot provide.
+
+
+## D-057 — Production visual recognition ships as a local-inference optional accelerator
+
+Date: 2026-09-27
+
+Status: accepted
+
+### Decision
+
+The owner promotes visual product recognition into the public app as an optional third mode of the shared camera.
+
+Production recognition:
+
+- is behind the provider-neutral `VisualProductRecognizerPort`;
+- uses `@huggingface/transformers` 4.3.0 with the pinned `Xenova/clip-vit-base-patch32` model revision `d15189d7028b43f1d3e65039190477f6af591c2a`;
+- prefers WebGPU and falls back to WASM;
+- ranks a bounded closed set made from recent Price Memory labels plus common unbarcoded produce;
+- keeps captured images and candidate labels on the device;
+- downloads the pinned model/runtime only on first explicit use instead of placing it in the critical application shell;
+- requires the shopper to choose a candidate and then confirm the current price through the ordinary price-entry path;
+- can be removed from a build with `VITE_SHOPPING_VISUAL_RECOGNITION=0`.
+
+Model acquisition is a network dependency on first use. It is not a shopping-state service: no photo, candidate label, price or trip state is sent to the model host.
+
+### Rationale
+
+The owner explicitly requested production visual recognition. The existing camera and manual-price boundaries make it possible to add recognition without granting an ML output authority over money or committed product state.
+
+The retired CLIP benchmark (D-056) was not restored. Only the useful production adapter pattern returns: lazy model loading, pinned identity, local inference, bounded candidate validation, cancellation and human confirmation.
+
+### Consequence
+
+- issue #88 becomes post-release field validation rather than an implementation gate;
+- weak recognition evidence must lead to remediation or switching the feature off, not to silent auto-selection;
+- Product mode may need a network connection on its first use to acquire the pinned model, while the core shopping flow remains fully usable without it;
+- build validation keeps the recognition runtime out of the initial bundle and PWA precache.
+
+### Revisit when
+
+Representative phone/store evidence shows the current CLIP closed-set approach is too slow, too large, or insufficiently accurate for SKU/product identity. The preferred next experiment is bounded reference-image embedding retrieval rather than weakening confirmation.

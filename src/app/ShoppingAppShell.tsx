@@ -213,10 +213,6 @@ function ShoppingAppScreens({
     returnFocusToEditItem,
   } = useShoppingShellFocus();
   const [openedOverlay, setOverlay] = useState<OverlayState>(NO_OVERLAY);
-  const [
-    visualModelDownloadAcknowledged,
-    setVisualModelDownloadAcknowledged,
-  ] = useState(() => readVisualModelDownloadAcknowledgement());
   const overlay: OverlayState =
     "tripId" in openedOverlay &&
     openedOverlay.tripId !== state.activeTrip?.id
@@ -603,11 +599,8 @@ function ShoppingAppScreens({
             priceReader={scanPrice}
             productLookup={productLookup}
             visualRecognizer={scanProduct}
-            visualModelDownloadAcknowledged={visualModelDownloadAcknowledged}
-            onAcknowledgeVisualModelDownload={() => {
-              writeVisualModelDownloadAcknowledgement();
-              setVisualModelDownloadAcknowledged(true);
-            }}
+            visualModelDownloadAcknowledged={readVisualModelDownloadAcknowledgement()}
+            onAcknowledgeVisualModelDownload={writeVisualModelDownloadAcknowledgement}
             initialMode={overlay.mode}
             onModeChange={writeScanModePreference}
             context={overlay.context}

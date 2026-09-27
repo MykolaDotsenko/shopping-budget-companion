@@ -1,4 +1,4 @@
-import type { MessageCatalog } from "../i18n";
+import type { MessageCatalog } from "../i18n-core";
 
 export const messages = {
   "Language": "Kieli",

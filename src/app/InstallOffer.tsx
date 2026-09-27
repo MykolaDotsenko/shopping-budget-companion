@@ -5,7 +5,7 @@ import {
   isIosSafari,
   type InstallPromptSource,
 } from "../infrastructure/runtime/install-prompt";
-import { useI18n } from "./i18n";
+import { useI18n } from "./i18n-context";
 import styles from "./InstallOffer.module.css";
 
 export const INSTALL_OFFER_STORAGE_KEY = "shopping-budget:install-offer";

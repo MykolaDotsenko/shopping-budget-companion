@@ -77,8 +77,8 @@ export function ScanVisualResult({
       {outcome.kind === "candidates" ? (
         <>
           <p>
-            Pick the product that matches what you are holding. These are
-            ranked suggestions from a closed set, not certainty estimates.
+            Pick what you are holding. These are ranked suggestions, not
+            certainty estimates.
           </p>
           <ul className={styles.candidates}>
             {candidates.map((candidate, index) => (

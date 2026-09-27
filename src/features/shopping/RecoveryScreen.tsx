@@ -7,13 +7,16 @@ import type {
 } from "../../application/shopping-app-controller";
 import { focusNextScreen } from "./focus-next-screen";
 import styles from "./RecoveryScreen.module.css";
+import { englishTranslate, type Translate } from "./translation";
 
 export interface RecoveryScreenProps {
   readonly controller: ShoppingAppController;
+  readonly t?: Translate;
 }
 
 const recoveryCopy = (
   issue: PersistenceProblem,
+  t: Translate,
 ): {
   readonly title: string;
   readonly body: string;
@@ -21,29 +24,29 @@ const recoveryCopy = (
   switch (issue.code) {
     case "unsupported-version":
       return {
-        title: "Saved trip needs a newer app version",
+        title: t("Saved trip needs a newer app version"),
         body:
-          "This device contains shopping data written by a newer version. It has been preserved unchanged. Update the app to use it, or choose another way to continue below.",
+          t("This device contains shopping data written by a newer version. It has been preserved unchanged. Update the app to use it, or choose another way to continue below."),
       };
     case "malformed-json":
     case "invalid-envelope":
     case "invalid-data":
       return {
-        title: "Saved trip needs recovery",
+        title: t("Saved trip needs recovery"),
         body:
-          "The saved shopping data could not be read safely. It has been preserved unchanged instead of being guessed into a cart.",
+          t("The saved shopping data could not be read safely. It has been preserved unchanged instead of being guessed into a cart."),
       };
     case "storage-unavailable":
       return {
-        title: "This browser isn’t letting the app save",
+        title: t("This browser isn’t letting the app save"),
         body:
-          "Storage for this site is blocked or unavailable, for example by privacy settings. You can still shop in this tab. To keep trips between visits, allow this site to store data, then try again.",
+          t("Storage for this site is blocked or unavailable, for example by privacy settings. You can still shop in this tab. To keep trips between visits, allow this site to store data, then try again."),
       };
     default:
       return {
-        title: "Saved trip could not be restored safely",
+        title: t("Saved trip could not be restored safely"),
         body:
-          "The app stopped before changing the saved data. You can try reading it again without overwriting the preserved record.",
+          t("The app stopped before changing the saved data. You can try reading it again without overwriting the preserved record."),
       };
   }
 };
@@ -56,7 +59,10 @@ const canSetAside = (issue: PersistenceProblem): boolean =>
     "unsupported-version",
   ].includes(issue.code);
 
-export function RecoveryScreen({ controller }: RecoveryScreenProps) {
+export function RecoveryScreen({
+  controller,
+  t = englishTranslate,
+}: RecoveryScreenProps) {
   const state = useShoppingAppState(controller);
   const [retryMessage, setRetryMessage] = useState("");
 
@@ -65,7 +71,7 @@ export function RecoveryScreen({ controller }: RecoveryScreenProps) {
   }
 
   const issue = state.recovery.issue;
-  const copy = recoveryCopy(issue);
+  const copy = recoveryCopy(issue, t);
   const raw = state.recovery.raw;
   const setAsideAvailable = canSetAside(issue) && raw !== undefined;
   const storageBlocked = issue.code === "storage-unavailable";
@@ -76,7 +82,7 @@ export function RecoveryScreen({ controller }: RecoveryScreenProps) {
 
     if (next.lifecycle === "recovery") {
       setRetryMessage(
-        "The saved trip still cannot be restored safely. Nothing was overwritten.",
+        t("The saved trip still cannot be restored safely. Nothing was overwritten."),
       );
       return;
     }
@@ -90,7 +96,7 @@ export function RecoveryScreen({ controller }: RecoveryScreenProps) {
 
     if (!result.ok) {
       setRetryMessage(
-        "The saved trip could not be set aside safely, so it was left unchanged.",
+        t("The saved trip could not be set aside safely, so it was left unchanged."),
       );
       return;
     }
@@ -118,7 +124,7 @@ export function RecoveryScreen({ controller }: RecoveryScreenProps) {
 
         <div className={styles.intro}>
           <p className={styles.eyebrow}>
-            {storageBlocked ? "Saving is off" : "Recovery mode"}
+            {storageBlocked ? t("Saving is off") : t("Recovery mode")}
           </p>
           <h1 id="recovery-title" tabIndex={-1}>
             {copy.title}
@@ -134,11 +140,10 @@ export function RecoveryScreen({ controller }: RecoveryScreenProps) {
                 className={styles.retryButton}
                 onClick={setAside}
               >
-                Set aside and start fresh
+                {t("Set aside and start fresh")}
               </button>
               <p className={styles.safetyNote}>
-                Keeps an exact backup of the unreadable trip on this device and
-                starts a new saved trip. The backup is not shown in the app.
+                {t("Keeps an exact backup of the unreadable trip on this device and starts a new saved trip. The backup is not shown in the app.")}
               </p>
             </>
           ) : null}
@@ -149,15 +154,14 @@ export function RecoveryScreen({ controller }: RecoveryScreenProps) {
             }
             onClick={continueWithoutSaving}
           >
-            Continue without saving
+            {t("Continue without saving")}
           </button>
           <p className={styles.safetyNote}>
-            Totals, finished trips and remembered prices work in this tab only;
-            closing or reloading it loses them.
-            {storageBlocked ? "" : " The saved record stays untouched."}
+            {t("Totals, finished trips and remembered prices work in this tab only; closing or reloading it loses them.")}
+            {storageBlocked ? "" : t(" The saved record stays untouched.")}
           </p>
           <button type="button" className={styles.linkButton} onClick={retry}>
-            {storageBlocked ? "Try again" : "Try reading again"}
+            {storageBlocked ? t("Try again") : t("Try reading again")}
           </button>
         </div>
 
@@ -169,12 +173,11 @@ export function RecoveryScreen({ controller }: RecoveryScreenProps) {
 
         {raw !== undefined ? (
           <details className={styles.details}>
-            <summary>Recovery details</summary>
+            <summary>{t("Recovery details")}</summary>
             <p>
-              This is the preserved raw record for diagnostics. Opening this
-              section does not modify it.
+              {t("This is the preserved raw record for diagnostics. Opening this section does not modify it.")}
             </p>
-            <pre tabIndex={0} aria-label="Preserved raw record">
+            <pre tabIndex={0} aria-label={t("Preserved raw record")}>
               {raw}
             </pre>
           </details>

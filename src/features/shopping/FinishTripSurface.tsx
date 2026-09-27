@@ -8,6 +8,12 @@ import {
 } from "../../domain/shopping-trip";
 import styles from "./FinishTripSurface.module.css";
 import { SHOPPING_LOCALE } from "./shopping-locale";
+import {
+  englishPluralTranslate,
+  englishTranslate,
+  type Translate,
+  type TranslatePlural,
+} from "./translation";
 
 export type FinishTripFailure = "not-saved" | "history-unreadable" | "storage-full";
 
@@ -19,16 +25,21 @@ export interface FinishTripSurfaceProps {
   readonly locale?: string;
   readonly historyNotice?: ReactNode;
   readonly historyNeedsAttention?: boolean;
+  readonly t?: Translate;
+  readonly tp?: TranslatePlural;
 }
 
-const failureMessage = (failure: FinishTripFailure): string => {
+const failureMessage = (
+  failure: FinishTripFailure,
+  t: Translate,
+): string => {
   switch (failure) {
     case "history-unreadable":
-      return "Saved trip history needs attention before this trip can be added to it. The trip is still open here.";
+      return t("Saved trip history needs attention before this trip can be added to it. The trip is still open here.");
     case "not-saved":
-      return "Trip history could not be saved. Your active trip is still intact.";
+      return t("Trip history could not be saved. Your active trip is still intact.");
     case "storage-full":
-      return "Storage for this app is full, so the trip was not saved to History. It is still open: choose Keep shopping to make room, then finish again.";
+      return t("Storage for this app is full, so the trip was not saved to History. It is still open: choose Keep shopping to make room, then finish again.");
     default: {
       const exhaustive: never = failure;
       return exhaustive;
@@ -44,6 +55,8 @@ export function FinishTripSurface({
   locale = SHOPPING_LOCALE,
   historyNotice,
   historyNeedsAttention = false,
+  t = englishTranslate,
+  tp = englishPluralTranslate,
 }: FinishTripSurfaceProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [failure, setFailure] = useState<FinishTripFailure | null>(null);
@@ -87,7 +100,7 @@ export function FinishTripSurface({
       className={styles.cancelButton}
       onClick={onCancel}
     >
-      Keep shopping
+      {t("Keep shopping")}
     </button>
   );
 
@@ -105,11 +118,10 @@ export function FinishTripSurface({
       {discard !== null ? (
         <section className={styles.panel}>
           <header className={styles.header}>
-            <p className={styles.eyebrow}>Finish shopping</p>
-            <h1 id="finish-trip-title">Nothing to finish yet</h1>
+            <p className={styles.eyebrow}>{t("Finish shopping")}</p>
+            <h1 id="finish-trip-title">{t("Nothing to finish yet")}</h1>
             <p>
-              This trip has no items, so there is nothing to save. Cancel it
-              to go back to the start.
+              {t("This trip has no items, so there is nothing to save. Cancel it to go back to the start.")}
             </p>
           </header>
 
@@ -135,37 +147,35 @@ export function FinishTripSurface({
       ) : (
         <section className={styles.panel}>
           <header className={styles.header}>
-            <p className={styles.eyebrow}>Finish shopping</p>
-            <h1 id="finish-trip-title">Ready to finish this trip?</h1>
+            <p className={styles.eyebrow}>{t("Finish shopping")}</p>
+            <h1 id="finish-trip-title">{t("Ready to finish this trip?")}</h1>
             <p>
-              Your trip will be saved to History on this device. You can add
-              the receipt total next.
+              {t("Your trip will be saved to History on this device. You can add the receipt total next.")}
             </p>
           </header>
 
-          <section className={styles.summary} aria-label="Trip review">
+          <section className={styles.summary} aria-label={t("Trip review")}>
             <div>
-              <span>Cart total</span>
+              <span>{t("Cart total")}</span>
               <strong>{formatEur(total, locale)}</strong>
             </div>
             <div>
-              <span>Budget</span>
+              <span>{t("Budget")}</span>
               <strong>{formatEur(trip.budgetMinor, locale)}</strong>
             </div>
             <div>
-              <span>Items</span>
-              <strong>{quantity}</strong>
+              <span>{t("Items")}</span>
+              <strong>{tp("{count} item", "{count} items", quantity)}</strong>
             </div>
           </section>
 
           <p className={styles.safety}>
-            Items can’t be changed after finishing. If saving fails, the trip
-            stays open.
+            {t("Items can’t be changed after finishing. If saving fails, the trip stays open.")}
           </p>
 
           {visibleFailure !== null ? (
             <p className={styles.error} role="alert">
-              {failureMessage(visibleFailure)}
+              {failureMessage(visibleFailure, t)}
             </p>
           ) : null}
 
@@ -179,7 +189,7 @@ export function FinishTripSurface({
               disabled={submitting}
               onClick={finish}
             >
-              {submitting ? "Finishing…" : "Finish trip"}
+              {submitting ? t("Finishing…") : t("Finish trip")}
             </button>
           </div>
         </section>

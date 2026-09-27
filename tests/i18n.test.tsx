@@ -55,11 +55,11 @@ describe("I18nProvider", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByTestId("language")).toHaveTextContent("fi");
-    expect(screen.getByTestId("locale")).toHaveTextContent("fi-FI");
-    expect(screen.getByTestId("start")).toHaveTextContent("Aloita ostokset");
-    expect(screen.getByTestId("one")).toHaveTextContent("1 tuote");
-    expect(screen.getByTestId("two")).toHaveTextContent("2 tuotetta");
+    expect(screen.getByTestId("language").textContent).toContain("fi");
+    expect(screen.getByTestId("locale").textContent).toContain("fi-FI");
+    expect(screen.getByTestId("start").textContent).toContain("Aloita ostokset");
+    expect(screen.getByTestId("one").textContent).toContain("1 tuote");
+    expect(screen.getByTestId("two").textContent).toContain("2 tuotetta");
 
     await waitFor(() => {
       expect(document.title).toContain("tiedä paljonko on jäljellä");
@@ -78,15 +78,15 @@ describe("I18nProvider", () => {
     await user.click(screen.getByRole("button", { name: "switch-uk" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("language")).toHaveTextContent("uk");
+      expect(screen.getByTestId("language").textContent).toContain("uk");
     });
 
-    expect(screen.getByTestId("locale")).toHaveTextContent("uk-UA");
-    expect(screen.getByTestId("start")).toHaveTextContent("Почати покупки");
-    expect(screen.getByTestId("one")).toHaveTextContent("1 товар");
-    expect(screen.getByTestId("two")).toHaveTextContent("2 товари");
-    expect(screen.getByTestId("five")).toHaveTextContent("5 товарів");
-    expect(screen.getByTestId("twenty-one")).toHaveTextContent("21 товар");
+    expect(screen.getByTestId("locale").textContent).toContain("uk-UA");
+    expect(screen.getByTestId("start").textContent).toContain("Почати покупки");
+    expect(screen.getByTestId("one").textContent).toContain("1 товар");
+    expect(screen.getByTestId("two").textContent).toContain("2 товари");
+    expect(screen.getByTestId("five").textContent).toContain("5 товарів");
+    expect(screen.getByTestId("twenty-one").textContent).toContain("21 товар");
     expect(document.documentElement.getAttribute("lang")).toBe("uk");
     expect(window.localStorage.getItem("shopping-budget:language")).toBe("uk");
   });
@@ -103,13 +103,13 @@ describe("I18nProvider", () => {
     await user.click(screen.getByRole("button", { name: "switch-en" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("language")).toHaveTextContent("en");
+      expect(screen.getByTestId("language").textContent).toContain("en");
     });
 
-    expect(screen.getByTestId("locale")).toHaveTextContent("en-FI");
-    expect(screen.getByTestId("start")).toHaveTextContent("Start shopping");
-    expect(screen.getByTestId("one")).toHaveTextContent("1 item");
-    expect(screen.getByTestId("two")).toHaveTextContent("2 items");
+    expect(screen.getByTestId("locale").textContent).toContain("en-FI");
+    expect(screen.getByTestId("start").textContent).toContain("Start shopping");
+    expect(screen.getByTestId("one").textContent).toContain("1 item");
+    expect(screen.getByTestId("two").textContent).toContain("2 items");
     expect(document.documentElement.getAttribute("lang")).toBe("en");
   });
 
@@ -128,11 +128,11 @@ describe("I18nProvider", () => {
     await user.click(screen.getByRole("button", { name: "switch-fi" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("language")).toHaveTextContent("fi");
+      expect(screen.getByTestId("language").textContent).toContain("fi");
     });
 
-    expect(screen.getByTestId("start")).toHaveTextContent("Aloita ostokset");
-    expect(screen.getByTestId("save-failed")).toHaveTextContent("true");
+    expect(screen.getByTestId("start").textContent).toContain("Aloita ostokset");
+    expect(screen.getByTestId("save-failed").textContent).toContain("true");
     expect(document.documentElement.getAttribute("lang")).toBe("fi");
   });
 });

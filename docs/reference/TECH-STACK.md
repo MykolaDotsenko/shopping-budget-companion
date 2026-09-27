@@ -181,3 +181,5 @@ Do not upgrade major technology merely to make the stack look newer.
 - Does it add a second source of state/validation?
 - Does it improve the user experience or only architecture aesthetics?
 - Will it make future AI/contributor reasoning harder?
+
+- `@huggingface/transformers` 4.3.0 — lazy local visual-product inference with pinned CLIP model; WebGPU first, WASM fallback.

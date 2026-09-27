@@ -15,12 +15,21 @@ import type {
 } from "../../application/camera-ports";
 import type { PriceTagReaderPort } from "../../application/price-tag-ports";
 import type { ShoppingAppController } from "../../application/shopping-app-controller";
+import { visualRecognitionLabels } from "../../application/visual-recognition-catalog";
+import type {
+  VisualProductCandidate,
+  VisualProductRecognizerPort,
+} from "../../application/visual-recognition-ports";
 import type { MinorUnits } from "../../domain/money";
 import type { PriceMemoryRecord } from "../../domain/price-memory";
 import type { Gtin } from "../../domain/product-code";
 import type { PriceTagCandidate } from "../../domain/shelf-price";
 import { ScanBarcodeResult, type Identified } from "./ScanBarcodeResult";
 import { ScanPriceResult } from "./ScanPriceResult";
+import {
+  ScanVisualResult,
+  type VisualRecognitionProblem,
+} from "./ScanVisualResult";
 import {
   canRetry,
   codeErrorCopy,
@@ -43,6 +52,7 @@ export interface ScanSurfaceProps {
   readonly barcodeReader: BarcodeReaderPort | null;
   readonly priceReader: PriceTagReaderPort | null;
   readonly productLookup: ProductLookupPort | null;
+  readonly visualRecognizer: VisualProductRecognizerPort | null;
   readonly initialMode: ScanMode;
   readonly onModeChange?: (mode: ScanMode) => void;
   readonly context?: ScanContext;
@@ -67,12 +77,21 @@ type Phase =
   | { readonly kind: "failed"; readonly failure: ScanFailure }
   | { readonly kind: "typing" }
   | { readonly kind: "reading"; readonly preparing: number | null }
+  | { readonly kind: "recognizing" }
   | { readonly kind: "found"; readonly result: Identified; readonly serial: number }
   | {
       readonly kind: "prices";
       readonly candidates: readonly PriceTagCandidate[];
     }
-  | { readonly kind: "price-problem"; readonly problem: PriceReadProblem };
+  | {
+      readonly kind: "visual-candidates";
+      readonly candidates: readonly VisualProductCandidate[];
+    }
+  | { readonly kind: "price-problem"; readonly problem: PriceReadProblem }
+  | {
+      readonly kind: "visual-problem";
+      readonly problem: VisualRecognitionProblem;
+    };
 
 type Warmup =
   | { readonly kind: "idle" }
@@ -108,6 +127,7 @@ export default function ScanSurface({
   barcodeReader,
   priceReader,
   productLookup,
+  visualRecognizer,
   initialMode,
   onModeChange,
   context: initialContext = {},
@@ -128,23 +148,34 @@ export default function ScanSurface({
   } | null>(null);
   const foundSerialRef = useRef(0);
   const manualId = useId();
-  const [mode, setMode] = useState<ScanMode>(
-    initialMode === "price" && priceReader !== null
-      ? "price"
-      : barcodeReader !== null
-        ? "barcode"
-        : "price",
-  );
+  const initialAvailableMode: ScanMode =
+    initialMode === "barcode" && barcodeReader !== null
+      ? "barcode"
+      : initialMode === "product" && visualRecognizer !== null
+        ? "product"
+        : initialMode === "price" && priceReader !== null
+          ? "price"
+          : barcodeReader !== null
+            ? "barcode"
+            : visualRecognizer !== null
+              ? "product"
+              : "price";
+  const [mode, setMode] = useState<ScanMode>(initialAvailableMode);
   const [scanContext, setScanContext] = useState<ScanContext>(initialContext);
   const [phase, setPhase] = useState<Phase>({ kind: "starting" });
   const [cameraRun, setCameraRun] = useState(1);
   const [sessionSerial, setSessionSerial] = useState(0);
-  const [warmup, setWarmup] = useState<Warmup>({ kind: "idle" });
+  const [priceWarmup, setPriceWarmup] = useState<Warmup>({ kind: "idle" });
+  const [visualWarmup, setVisualWarmup] = useState<Warmup>({ kind: "idle" });
   const [manualCode, setManualCode] = useState("");
   const [manualError, setManualError] = useState("");
   const [capturedUrl, setCapturedUrl] = useState<string | null>(null);
   const cameraWanted = phase.kind === "starting" || phase.kind === "live";
-  const bothModes = barcodeReader !== null && priceReader !== null;
+  const availableModeCount =
+    Number(barcodeReader !== null) +
+    Number(visualRecognizer !== null) +
+    Number(priceReader !== null);
+  const multipleModes = availableModeCount > 1;
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -155,7 +186,9 @@ export default function ScanSurface({
       phase.kind === "found" ||
       phase.kind === "failed" ||
       phase.kind === "prices" ||
-      phase.kind === "price-problem"
+      phase.kind === "visual-candidates" ||
+      phase.kind === "price-problem" ||
+      phase.kind === "visual-problem"
     ) {
       resultRef.current?.focus();
     }
@@ -358,12 +391,12 @@ export default function ScanSurface({
     void priceReader
       .prepare((progress) => {
         if (!cancelled) {
-          setWarmup({ kind: "preparing", fraction: progress.fraction });
+          setPriceWarmup({ kind: "preparing", fraction: progress.fraction });
         }
       })
       .then((ready) => {
         if (!cancelled) {
-          setWarmup(ready ? { kind: "ready" } : { kind: "failed" });
+          setPriceWarmup(ready ? { kind: "ready" } : { kind: "failed" });
         }
       });
 
@@ -371,6 +404,25 @@ export default function ScanSurface({
       cancelled = true;
     };
   }, [mode, priceReader]);
+
+  useEffect(() => {
+    if (mode !== "product" || visualRecognizer === null) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    setVisualWarmup({ kind: "preparing", fraction: null });
+
+    void visualRecognizer.prepare().then((ready) => {
+      if (!cancelled) {
+        setVisualWarmup(ready ? { kind: "ready" } : { kind: "failed" });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, visualRecognizer]);
 
   useEffect(() => {
     const onVisibility = (): void => {
@@ -459,6 +511,75 @@ export default function ScanSurface({
     });
   };
 
+  const recognizeProduct = async (): Promise<void> => {
+    const session = sessionRef.current;
+
+    if (
+      visualRecognizer === null ||
+      session === null ||
+      phase.kind !== "live"
+    ) {
+      return;
+    }
+
+    readAbortRef.current?.abort();
+    const abort = new AbortController();
+    readAbortRef.current = abort;
+    const frame = await session.captureStill(SCAN_FRAMES.product);
+    setCameraRun(0);
+
+    if (abort.signal.aborted) {
+      return;
+    }
+
+    if (frame === null) {
+      setPhase({ kind: "visual-problem", problem: "no-frame" });
+      return;
+    }
+
+    setCapturedUrl(snapshotUrl(frame));
+    setPhase({ kind: "recognizing" });
+
+    const ready = await visualRecognizer.prepare();
+
+    if (abort.signal.aborted) {
+      return;
+    }
+
+    if (!ready) {
+      setPhase({ kind: "visual-problem", problem: "engine-failed" });
+      return;
+    }
+
+    const labels = visualRecognitionLabels(
+      controller.getSnapshot().priceMemories,
+    );
+
+    try {
+      const result = await visualRecognizer.recognize(
+        frame,
+        labels,
+        abort.signal,
+      );
+
+      if (abort.signal.aborted) {
+        return;
+      }
+
+      setPhase(
+        result.status === "recognized"
+          ? { kind: "visual-candidates", candidates: result.candidates }
+          : result.status === "no-match"
+            ? { kind: "visual-problem", problem: "no-match" }
+            : { kind: "visual-problem", problem: result.reason },
+      );
+    } catch {
+      if (!abort.signal.aborted) {
+        setPhase({ kind: "visual-problem", problem: "engine-failed" });
+      }
+    }
+  };
+
   const readPriceTag = async (): Promise<void> => {
     const session = sessionRef.current;
 
@@ -541,6 +662,10 @@ export default function ScanSurface({
     onEnterPrice({ ...scanContext, price });
   };
 
+  const chooseVisualProduct = (label: string): void => {
+    onEnterPrice({ ...scanContext, label });
+  };
+
   const liveStatus = (): string => {
     if (phase.kind === "starting") {
       return "Starting the camera…";
@@ -556,13 +681,27 @@ export default function ScanSurface({
         : "Point the camera at the barcode.";
     }
 
-    if (warmup.kind === "preparing" || warmup.kind === "idle") {
+    if (mode === "product") {
+      if (visualWarmup.kind === "preparing" || visualWarmup.kind === "idle") {
+        return "Getting product recognition ready (first time can take a while)…";
+      }
+
+      if (visualWarmup.kind === "failed") {
+        return "Product recognition couldn't start. You can still enter the product manually.";
+      }
+
+      return phase.hint
+        ? "Fill the frame with one product and avoid glare, then tap Recognize product."
+        : "Fit one product inside the frame, then tap Recognize product.";
+    }
+
+    if (priceWarmup.kind === "preparing" || priceWarmup.kind === "idle") {
       return `Getting the price reader ready (first time only)…${percent(
-        warmup.kind === "preparing" ? warmup.fraction : null,
+        priceWarmup.kind === "preparing" ? priceWarmup.fraction : null,
       )}`;
     }
 
-    if (warmup.kind === "failed") {
+    if (priceWarmup.kind === "failed") {
       return "The price reader couldn't start. You can still type the price.";
     }
 
@@ -578,11 +717,15 @@ export default function ScanSurface({
         ? phase.preparing === null
           ? "Reading the price…"
           : `Getting the price reader ready (first time only)…${percent(phase.preparing)}`
-        : phase.kind === "found"
-          ? "Barcode read."
-          : phase.kind === "prices"
-            ? `${phase.candidates.length === 1 ? "One price" : `${phase.candidates.length} prices`} found.`
-            : liveStatus();
+        : phase.kind === "recognizing"
+          ? "Recognizing the product…"
+          : phase.kind === "found"
+            ? "Barcode read."
+            : phase.kind === "prices"
+              ? `${phase.candidates.length === 1 ? "One price" : `${phase.candidates.length} prices`} found.`
+              : phase.kind === "visual-candidates"
+                ? `${phase.candidates.length === 1 ? "One product match" : `${phase.candidates.length} product matches`} found.`
+                : liveStatus();
 
   return (
     <main className={styles.screen} aria-labelledby="scan-title">
@@ -591,7 +734,11 @@ export default function ScanSurface({
           <div>
             <p className={styles.eyebrow}>Scan</p>
             <h1 id="scan-title" ref={titleRef} tabIndex={-1}>
-              {mode === "price" ? "Read the price tag" : "Find the product"}
+              {mode === "price"
+                ? "Read the price tag"
+                : mode === "product"
+                  ? "Recognize the product"
+                  : "Find the product"}
             </h1>
           </div>
           <button type="button" className={styles.secondary} onClick={onCancel}>
@@ -615,26 +762,41 @@ export default function ScanSurface({
           />
         </div>
 
-        {bothModes && (cameraWanted || phase.kind === "paused" || phase.kind === "failed") ? (
+        {multipleModes && (cameraWanted || phase.kind === "paused" || phase.kind === "failed") ? (
           <div className={styles.modes} role="group" aria-label="What to scan">
-            <button
-              type="button"
-              aria-pressed={mode === "barcode"}
-              onClick={() => {
-                switchMode("barcode");
-              }}
-            >
-              Barcode
-            </button>
-            <button
-              type="button"
-              aria-pressed={mode === "price"}
-              onClick={() => {
-                switchMode("price");
-              }}
-            >
-              Price tag
-            </button>
+            {barcodeReader !== null ? (
+              <button
+                type="button"
+                aria-pressed={mode === "barcode"}
+                onClick={() => {
+                  switchMode("barcode");
+                }}
+              >
+                Barcode
+              </button>
+            ) : null}
+            {visualRecognizer !== null ? (
+              <button
+                type="button"
+                aria-pressed={mode === "product"}
+                onClick={() => {
+                  switchMode("product");
+                }}
+              >
+                Product
+              </button>
+            ) : null}
+            {priceReader !== null ? (
+              <button
+                type="button"
+                aria-pressed={mode === "price"}
+                onClick={() => {
+                  switchMode("price");
+                }}
+              >
+                Price tag
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -642,22 +804,31 @@ export default function ScanSurface({
           {statusText}
         </p>
 
-        {phase.kind === "reading" ? (
+        {phase.kind === "reading" || phase.kind === "recognizing" ? (
           <div
             className={styles.progress}
             role="progressbar"
-            aria-label="Reading the price"
-            {...(phase.preparing === null
-              ? {}
-              : { "aria-valuenow": Math.round(phase.preparing * 100), "aria-valuemin": 0, "aria-valuemax": 100 })}
+            aria-label={
+              phase.kind === "recognizing" ? "Recognizing the product" : "Reading the price"
+            }
+            {...(phase.kind === "reading" && phase.preparing !== null
+              ? {
+                  "aria-valuenow": Math.round(phase.preparing * 100),
+                  "aria-valuemin": 0,
+                  "aria-valuemax": 100,
+                }
+              : {})}
           >
             <span
               style={
-                phase.preparing === null
-                  ? undefined
-                  : { width: `${Math.round(phase.preparing * 100)}%` }
+                phase.kind === "reading" && phase.preparing !== null
+                  ? { width: `${Math.round(phase.preparing * 100)}%` }
+                  : undefined
               }
-              data-indeterminate={phase.preparing === null}
+              data-indeterminate={
+                phase.kind === "recognizing" ||
+                (phase.kind === "reading" && phase.preparing === null)
+              }
             />
           </div>
         ) : null}
@@ -676,8 +847,24 @@ export default function ScanSurface({
                 Read price
               </button>
             ) : null}
+            {mode === "product" && visualRecognizer !== null ? (
+              <button
+                type="button"
+                className={styles.shutter}
+                disabled={
+                  phase.kind !== "live" || visualWarmup.kind !== "ready"
+                }
+                onClick={() => {
+                  void recognizeProduct();
+                }}
+              >
+                Recognize product
+              </button>
+            ) : null}
             <p className={styles.note}>
-              The camera image stays on this device.
+              {mode === "product"
+                ? "The photo stays on this device. First use downloads the pinned recognition model."
+                : "The camera image stays on this device."}
             </p>
             <div className={styles.row}>
               {phase.kind === "live" && phase.torch !== null ? (
@@ -696,7 +883,7 @@ export default function ScanSurface({
                 </button>
               ) : (
                 <button type="button" className={styles.secondary} onClick={typePrice}>
-                  Type price
+                  {mode === "product" ? "Enter manually" : "Type price"}
                 </button>
               )}
             </div>
@@ -730,10 +917,16 @@ export default function ScanSurface({
                 type="button"
                 className={styles.secondary}
                 onClick={() => {
-                  onEnterPrice(mode === "price" ? scanContext : {});
+                  onEnterPrice(
+                    mode === "price" || mode === "product" ? scanContext : {},
+                  );
                 }}
               >
-                {mode === "price" ? "Type price" : "Enter price without scanning"}
+                {mode === "price"
+                  ? "Type price"
+                  : mode === "product"
+                    ? "Enter manually"
+                    : "Enter price without scanning"}
               </button>
             </div>
           </section>
@@ -798,6 +991,21 @@ export default function ScanSurface({
               setMode("barcode");
               restartCamera();
             }}
+          />
+        ) : null}
+
+        {phase.kind === "visual-candidates" || phase.kind === "visual-problem" ? (
+          <ScanVisualResult
+            outcome={
+              phase.kind === "visual-candidates"
+                ? { kind: "candidates", candidates: phase.candidates }
+                : { kind: "problem", problem: phase.problem }
+            }
+            capturedUrl={capturedUrl}
+            headingRef={resultRef}
+            onChoose={chooseVisualProduct}
+            onRetake={restartCamera}
+            onTypePrice={typePrice}
           />
         ) : null}
 

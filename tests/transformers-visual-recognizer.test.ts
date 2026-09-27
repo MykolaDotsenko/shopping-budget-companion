@@ -94,7 +94,7 @@ describe("Transformers visual product recognizer", () => {
   });
 
   it("honors cancellation and never turns a late result into a product choice", async () => {
-    let finish: ((value: unknown) => void) | null = null;
+    let finish!: (value: unknown) => void;
     const classifier = vi.fn(
       () =>
         new Promise<unknown>((resolve) => {
@@ -115,7 +115,7 @@ describe("Transformers visual product recognizer", () => {
     controller.abort();
 
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
-    finish?.([{ label: "Banana", score: 1 }]);
+    finish([{ label: "Banana", score: 1 }]);
   });
 
   it("returns no-match without invoking inference when the candidate set is too small", async () => {

@@ -6,9 +6,9 @@ This file describes **current validation gates and future sequencing**.
 
 It is not a chronological implementation diary; git history keeps the completed phase-by-phase plans.
 
-## Current status — 2026-09-26
+## Current status — 2026-09-27
 
-The core Shopping Budget Companion engineering path is implemented: exact money, the trip domain, local-first persistence and recovery, the remaining-first UI, fast price entry, history, Shop again, Recent Items, Price Memory, data controls and the installable offline shell. Production barcode identification (D-053) and price-tag reading (D-055) ship in the shared in-trip camera behind build kill switches. Guarded evidence builds cover timing QA, the retention beta and cohort analysis. [specs/RELEASE-SPEC.md](./specs/RELEASE-SPEC.md) owns the per-capability status.
+The core Shopping Budget Companion engineering path is implemented: exact money, the trip domain, local-first persistence and recovery, the remaining-first UI, fast price entry, history, Shop again, Recent Items, Price Memory, data controls and the installable offline shell. Production barcode identification (D-053), visual product recognition (D-057) and price-tag reading (D-055) ship in the shared in-trip camera behind build kill switches. Guarded evidence builds cover timing QA, the retention beta and cohort analysis. [specs/RELEASE-SPEC.md](./specs/RELEASE-SPEC.md) owns the per-capability status.
 
 The representative physical-phone interaction gate was accepted by explicit repository-owner/user attestation on 2026-09-24. The check was reported as responsibly completed with no blocking usability problem.
 
@@ -97,9 +97,11 @@ The active roadmap is intentionally narrow and local-first.
    - cover small and curved codes, glossy packs, poor light, store-printed codes and a device without the native detector;
    - decide from the log whether to keep scanning, remediate it or switch it off.
 
-4. **Visual product recognition — issue #88**
-   - production recognition is PLANNED / GATED (section C); the guarded CLIP benchmark was retired (D-056);
-   - before it ships, evidence must cover representative retail products, same-brand and similar-package confusions, and ranked accuracy, decision time, corrections and fallback against manual entry.
+4. **Visual product recognition — issue #88 (post-release validation, D-057)**
+   - use Product mode on representative Android and iOS phones in real stores;
+   - cover loose produce, familiar packaged products, same-brand variants, glare, angle, partial occlusion and visually similar packaging;
+   - log whether the correct product appears in the ranked candidates, time to a human choice, wrong choices, no-match/runtime failures and manual fallback;
+   - decide from the field evidence whether to keep the CLIP closed-set approach, remediate it (prefer bounded reference-image retrieval) or switch it off.
 
 5. **Price-tag field evidence — issue #90 (post-release validation, D-055)**
    - use the production app on representative phones in real stores;
@@ -133,21 +135,26 @@ Barcode identifies **product identity only**. It never supplies authoritative cu
 
 ### C. Visual product recognition
 
-**PLANNED / GATED.** The owner's chosen direction is on-device recognition with a model served by this site, matching against a catalog of common unbarcoded goods plus the shopper's own products. Nothing is implemented yet; the guarded CLIP benchmark was retired (D-056).
+**Production status: IMPLEMENTED (owner promotion, D-057). Physical evidence (issue #88): PLANNED / GATED as post-release validation.**
 
-Production visual recognition, if approved, must preserve:
+Shipped as an optional Product mode in the shared camera:
 
-1. provider-neutral `VisualProductRecognizer` application boundary;
-2. explicit model/provider identity;
-3. explicit `local-only` or `remote-image` data boundary;
-4. transient image handling with no image persistence in shopping/evidence storage;
-5. ranked candidates rather than silent auto-selection;
-6. explicit human confirmation before product identity reaches shopping state;
-7. manual fallback at every failure/low-confidence point;
-8. lazy loading so recognizer code/model does not enter the critical initial bundle;
-9. barcode and visual identity fusion without making either source authoritative shelf price.
+1. provider-neutral `VisualProductRecognizerPort`;
+2. Transformers.js 4.3.0 with pinned `Xenova/clip-vit-base-patch32` revision `d15189d7028b43f1d3e65039190477f6af591c2a`;
+3. WebGPU first, WASM fallback;
+4. bounded closed-set labels: recent Price Memory product names first, then common unbarcoded produce, capped at 30;
+5. transient framed camera capture with local inference; the photo and candidate labels are not uploaded or persisted;
+6. up to five ranked candidates with an explicit statement that the score is ranking context, not calibrated certainty;
+7. explicit candidate choice followed by the existing price-entry flow; visual recognition never supplies shelf price or commits an item itself;
+8. complete manual fallback for no-match, timeout, model/runtime failure and camera failure;
+9. lazy runtime loading and a service-worker runtime cache; the visual engine stays outside the initial bundle and PWA precache;
+10. release switch `VITE_SHOPPING_VISUAL_RECOGNITION`, read by CI from a repository variable.
 
-Category-only recognition is not sufficient when the intended interaction needs SKU-level identity.
+The pinned model is acquired from its model host on first explicit Product-mode use. That is a model-delivery dependency only: shopping state, photos, labels and prices remain local.
+
+If issue #88 concludes that recognition must be remediated or withdrawn, set `VITE_SHOPPING_VISUAL_RECOGNITION=0`. Do not weaken explicit human confirmation or manual entry to improve apparent recognition success.
+
+The current zero-shot approach is best suited to visually meaningful product classes and known labels. Same-brand/SKU-level ambiguity remains a field-evidence risk; if it is material, the preferred next architecture is bounded reference-image embedding retrieval.
 
 ### D. Shelf-label OCR
 
@@ -215,7 +222,7 @@ Build the final case study from verified evidence:
 - offline/PWA reliability;
 - accessibility and cross-browser evidence;
 - real retention evidence;
-- barcode/OCR go/no-go decisions;
+- barcode/visual-recognition/OCR go/no-go decisions;
 - explicit examples of capabilities deliberately rejected or deferred.
 
 ## Explicit product non-goals
@@ -236,7 +243,7 @@ Do not add the following to the active roadmap:
 - AI financial advice;
 - retailer loyalty/social-platform breadth.
 
-A future external product-identity lookup may use a narrowly scoped network adapter, but network failure must never block the core trip and remote state must never become canonical shopping authority.
+Optional product-identity acceleration may use narrowly scoped network delivery (Open Food Facts lookup or first-use visual-model acquisition), but network failure must never block the core trip and remote state must never become canonical shopping authority.
 
 Receipt scanning, voice input and a global store-price database are also outside the active execution roadmap until real-user evidence identifies a recurring problem they uniquely solve.
 

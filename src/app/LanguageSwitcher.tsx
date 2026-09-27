@@ -2,8 +2,15 @@ import { useI18n } from "./i18n-context";
 import {
   APP_LANGUAGES,
   languageName,
+  type AppLanguage,
 } from "./i18n-core";
 import styles from "./LanguageSwitcher.module.css";
+
+const LANGUAGE_CODES: Readonly<Record<AppLanguage, string>> = {
+  en: "EN",
+  fi: "FI",
+  uk: "UA",
+};
 
 export function LanguageSwitcher() {
   const {
@@ -16,28 +23,22 @@ export function LanguageSwitcher() {
   } = useI18n();
 
   return (
-    <section className={styles.language} aria-labelledby="language-title">
-      <div className={styles.heading}>
-        <div>
-          <p className={styles.eyebrow}>{t("Language")}</p>
-          <h2 id="language-title">{t("Choose a language")}</h2>
-        </div>
-        <span className={styles.current}>{languageName(language)}</span>
-      </div>
-
+    <section className={styles.language} aria-label={t("Language")}>
       <div className={styles.options} role="group" aria-label={t("App language")}>
         {APP_LANGUAGES.map((candidate) => (
           <button
             key={candidate}
             type="button"
             className={styles.option}
+            aria-label={languageName(candidate)}
             aria-pressed={language === candidate}
+            lang={candidate}
             disabled={changing}
             onClick={() => {
               void setLanguage(candidate);
             }}
           >
-            {languageName(candidate)}
+            <span aria-hidden="true">{LANGUAGE_CODES[candidate]}</span>
           </button>
         ))}
       </div>

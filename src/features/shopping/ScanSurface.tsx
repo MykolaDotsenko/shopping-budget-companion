@@ -178,6 +178,9 @@ export default function ScanSurface({
   const [mode, setMode] = useState<ScanMode>(initialAvailableMode);
   const [scanContext, setScanContext] = useState<ScanContext>(initialContext);
   const [phase, setPhase] = useState<Phase>({ kind: "starting" });
+  const translatedCameraLight = t("Camera light");
+  const cameraLightLabel =
+    translatedCameraLight === "Camera light" ? "Light" : translatedCameraLight;
   const [cameraRun, setCameraRun] = useState(1);
   const [sessionSerial, setSessionSerial] = useState(0);
   const [priceWarmup, setPriceWarmup] = useState<Warmup>({ kind: "idle" });
@@ -924,7 +927,7 @@ export default function ScanSurface({
                   aria-pressed={phase.torchOn}
                   onClick={toggleTorch}
                 >
-                  {t("Light")}
+                  {cameraLightLabel}
                 </button>
               ) : null}
               {mode === "barcode" ? (

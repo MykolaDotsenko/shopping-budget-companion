@@ -14,6 +14,7 @@ import {
   type CompletedTrip,
 } from "../../domain/shopping-trip";
 import styles from "./HistoryScreen.module.css";
+import { decimalAmountPlaceholder } from "./shopping-locale";
 import {
   budgetOutcome,
   formatAbsoluteEur,
@@ -219,7 +220,7 @@ export function HistoryTripCard({
                 value={checkoutRaw}
                 inputMode="decimal"
                 autoComplete="off"
-                placeholder="0.00"
+                placeholder={decimalAmountPlaceholder(locale)}
                 aria-invalid={checkoutError !== ""}
                 aria-describedby={checkoutError === "" ? undefined : checkoutErrorId}
                 onChange={(event) => {
@@ -235,10 +236,10 @@ export function HistoryTripCard({
               className={styles.secondaryButton}
               onClick={closeCheckout}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button type="submit" className={styles.saveCheckoutButton}>
-              Save
+              {t("Save")}
             </button>
           </div>
           {checkoutError === "" ? null : (
@@ -307,7 +308,7 @@ export function HistoryTripCard({
             onStartSimilar(trip);
           }}
         >
-          Shop again
+          {t("Shop again")}
         </button>
 
         <button
@@ -324,7 +325,7 @@ export function HistoryTripCard({
             }
           }}
         >
-          Delete trip
+          {t("Delete trip")}
         </button>
 
         {deleting ? (
@@ -351,7 +352,7 @@ export function HistoryTripCard({
                 className={styles.secondaryButton}
                 onClick={onCancelDelete}
               >
-                Cancel
+                {t("Cancel")}
               </button>
               <button
                 type="button"
@@ -360,7 +361,7 @@ export function HistoryTripCard({
                   onConfirmDelete(trip);
                 }}
               >
-                Yes, delete
+                {t("Yes, delete")}
               </button>
             </div>
           </section>

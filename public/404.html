@@ -7,6 +7,26 @@
     <meta name="robots" content="noindex" />
     <link rel="icon" type="image/svg+xml" href="https://mykoladotsenko.github.io/shopping-budget-companion/favicon.svg" />
     <title>Page not found — Shopping Budget Companion</title>
+    <script>
+      (() => {
+        const allowed = ["en", "fi", "uk"];
+        let language = "en";
+
+        try {
+          const stored = localStorage.getItem("shopping-budget:language");
+          if (allowed.includes(stored)) {
+            language = stored;
+          } else {
+            const detected = (navigator.languages ?? [navigator.language])
+              .map((value) => value.toLowerCase().split("-")[0])
+              .find((value) => value === "fi" || value === "uk");
+            if (detected) language = detected;
+          }
+        } catch {}
+
+        document.documentElement.lang = language;
+      })();
+    </script>
     <style>
       :root {
         --page: #f4f1eb;
@@ -75,9 +95,40 @@
   </head>
   <body>
     <main>
-      <h1>This page doesn’t exist</h1>
-      <p>The link may be old or mistyped. Your trips are safe in the app.</p>
-      <a href="https://mykoladotsenko.github.io/shopping-budget-companion/">Open Shopping Budget Companion</a>
+      <h1 data-i18n="title">This page doesn’t exist</h1>
+      <p data-i18n="body">The link may be old or mistyped. Your trips are safe in the app.</p>
+      <a data-i18n="action" href="https://mykoladotsenko.github.io/shopping-budget-companion/">Open Shopping Budget Companion</a>
     </main>
+    <script>
+      (() => {
+        const copy = {
+          en: {
+            pageTitle: "Page not found — Shopping Budget Companion",
+            title: "This page doesn’t exist",
+            body: "The link may be old or mistyped. Your trips are safe in the app.",
+            action: "Open Shopping Budget Companion"
+          },
+          fi: {
+            pageTitle: "Sivua ei löytynyt — Shopping Budget Companion",
+            title: "Tätä sivua ei ole",
+            body: "Linkki voi olla vanhentunut tai kirjoitettu väärin. Ostosreissusi ovat turvassa sovelluksessa.",
+            action: "Avaa Shopping Budget Companion"
+          },
+          uk: {
+            pageTitle: "Сторінку не знайдено — Shopping Budget Companion",
+            title: "Такої сторінки немає",
+            body: "Посилання могло застаріти або містити помилку. Ваші походи за покупками збережені в застосунку.",
+            action: "Відкрити Shopping Budget Companion"
+          }
+        };
+        const language = copy[document.documentElement.lang] ? document.documentElement.lang : "en";
+        const selected = copy[language];
+        document.title = selected.pageTitle;
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          const key = element.dataset.i18n;
+          if (key && key in selected) element.textContent = selected[key];
+        });
+      })();
+    </script>
   </body>
 </html>

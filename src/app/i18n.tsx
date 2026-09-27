@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -33,6 +34,7 @@ export function I18nProvider({
   const [changing, setChanging] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const [changeFailed, setChangeFailed] = useState(false);
+  const languageRequestId = useRef(0);
 
   useEffect(() => {
     const title =
@@ -97,18 +99,28 @@ export function I18nProvider({
         return;
       }
 
+      const requestId = ++languageRequestId.current;
       setChanging(true);
       setChangeFailed(false);
 
       try {
         const catalog = await loadLanguageCatalog(language);
+
+        if (requestId !== languageRequestId.current) {
+          return;
+        }
+
         document.documentElement.lang = language;
         setSaveFailed(!persistLanguage(language));
         setState({ language, catalog });
       } catch {
-        setChangeFailed(true);
+        if (requestId === languageRequestId.current) {
+          setChangeFailed(true);
+        }
       } finally {
-        setChanging(false);
+        if (requestId === languageRequestId.current) {
+          setChanging(false);
+        }
       }
     };
 

@@ -22,7 +22,7 @@ import type { CompletedTrip } from "../../domain/shopping-trip";
 import { HistoryIntegrityNotice } from "./HistoryIntegrityNotice";
 import { PersistenceHealthNotice } from "./PersistenceHealthNotice";
 import styles from "./StartTripScreen.module.css";
-import { SHOPPING_LOCALE } from "./shopping-locale";
+import { decimalAmountPlaceholder, SHOPPING_LOCALE } from "./shopping-locale";
 import {
   englishPluralTranslate,
   englishTranslate,
@@ -392,7 +392,7 @@ export function StartTripScreen({
                   inputMode="decimal"
                   autoComplete="off"
                   value={customBudget}
-                  placeholder="50.00"
+                  placeholder={decimalAmountPlaceholder(locale, 50)}
                   aria-invalid={errorMessage !== ""}
                   aria-describedby={errorMessage ? errorId : undefined}
                   onChange={(event) => {

@@ -429,6 +429,9 @@ function ShoppingAppScreens({
           }
           recentTrip={recentCompletedTrip}
           persistenceHealth={state.persistence}
+          locale={locale}
+          t={t}
+          tp={tp}
           onOpenHistory={() => {
             evidence.resetQaTiming();
             setOverlay({ kind: "history" });

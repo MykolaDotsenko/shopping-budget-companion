@@ -13,7 +13,7 @@ import {
 } from "../../domain/shopping-trip";
 import styles from "./BudgetSettingsSurface.module.css";
 import { formatAbsoluteEur, moneyInputErrorMessage } from "./shopping-feedback";
-import { SHOPPING_LOCALE } from "./shopping-locale";
+import { decimalAmountPlaceholder, SHOPPING_LOCALE } from "./shopping-locale";
 import { englishTranslate, type Translate } from "./translation";
 
 export interface SpendingPlanIntent {
@@ -284,7 +284,7 @@ export function BudgetSettingsSurface({
                 value={bufferRaw}
                 inputMode="decimal"
                 autoComplete="off"
-                placeholder="0.00"
+                placeholder={decimalAmountPlaceholder(locale)}
                 aria-describedby={messageId}
                 onChange={(event) => {
                   setBufferRaw(event.currentTarget.value);

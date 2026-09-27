@@ -31,6 +31,33 @@
     <meta name="apple-mobile-web-app-title" content="Shop Budget" />
     <script>
       (() => {
+        const key = "shopping-budget:language";
+        const allowed = ["en", "fi", "uk"];
+        let language = "en";
+
+        try {
+          const stored = localStorage.getItem(key);
+
+          if (allowed.includes(stored)) {
+            language = stored;
+          } else {
+            const detected = (navigator.languages ?? [navigator.language])
+              .map((value) => value.toLowerCase().split("-")[0])
+              .find((value) => value === "fi" || value === "uk");
+
+            if (detected) {
+              language = detected;
+            }
+          }
+        } catch {
+          // Language preference is convenience-only. Rendering must continue.
+        }
+
+        document.documentElement.lang = language;
+      })();
+    </script>
+    <script>
+      (() => {
         const key = "shopping-budget:appearance";
         const allowed = ["system", "light", "dark", "aurora"];
         let mode = "system";

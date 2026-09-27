@@ -102,7 +102,7 @@ export function BudgetSettingsSurface({
       budgetMinor: budget.value,
       safetyBufferMinor: buffer.value,
     };
-  }, [budgetRaw, bufferRaw]);
+  }, [budgetRaw, bufferRaw, t]);
 
   const preview = useMemo(() => {
     if (!parsedPlan.ok) {
@@ -154,10 +154,12 @@ export function BudgetSettingsSurface({
       status: "within" as const,
       primary:
         parsedPlan.safetyBufferMinor > 0
-          ? `${formatAbsoluteEur(
-              projection.value.safeRemainingMinor,
-              locale,
-            )} safe to spend after saving`
+          ? t("{amount} safe to spend after saving", {
+              amount: formatAbsoluteEur(
+                projection.value.safeRemainingMinor,
+                locale,
+              ),
+            })
           : t("{amount} left after saving", {
               amount: formatAbsoluteEur(
                 projection.value.remainingMinor,
@@ -166,13 +168,15 @@ export function BudgetSettingsSurface({
             }),
       secondary:
         parsedPlan.safetyBufferMinor > 0
-          ? `${formatEur(
-              parsedPlan.safetyBufferMinor,
-              locale,
-            )} is kept as your safety buffer.`
+          ? t("{amount} is kept as your safety buffer.", {
+              amount: formatEur(
+                parsedPlan.safetyBufferMinor,
+                locale,
+              ),
+            })
           : t("No safety buffer will be held back."),
     };
-  }, [locale, parsedPlan, trip]);
+  }, [locale, parsedPlan, t, trip]);
 
   const submit = (): void => {
     if (submitting) {
@@ -232,7 +236,7 @@ export function BudgetSettingsSurface({
             className={styles.cancelButton}
             onClick={onCancel}
           >
-            Cancel
+            {t("Cancel")}
           </button>
         </header>
 
@@ -270,7 +274,7 @@ export function BudgetSettingsSurface({
 
           <label className={styles.field} htmlFor={bufferId}>
             <span>
-              Safety buffer <small>{t("Optional")}</small>
+              {t("Safety buffer")} <small>{t("Optional")}</small>
             </span>
             <div className={styles.inputShell}>
               <span aria-hidden="true">€</span>

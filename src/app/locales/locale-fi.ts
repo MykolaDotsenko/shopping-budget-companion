@@ -204,7 +204,10 @@ export const messages = {
     "other": "{count} muistettua viivakoodin nimeä"
   },
   "Some trip history could not be restored": "Osaa ostoshistoriasta ei voitu palauttaa",
-  "{trips} still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.": "{trips} on yhä käytettävissä. Vioittunut osa säilytettiin arvaamisen tai ylikirjoittamisen sijaan, joten valmiita reissuja ei voi lisätä historiaan ennen kuin se siirretään sivuun.",
+  "{count} completed trip is still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.": {
+    "one": "{count} valmis ostosreissu on yhä käytettävissä. Vioittunut osa säilytettiin arvaamisen tai ylikirjoittamisen sijaan, joten valmiita reissuja ei voi lisätä historiaan ennen kuin se siirretään sivuun.",
+    "other": "{count} valmista ostosreissua on yhä käytettävissä. Vioittunut osa säilytettiin arvaamisen tai ylikirjoittamisen sijaan, joten valmiita reissuja ei voi lisätä historiaan ennen kuin se siirretään sivuun."
+  },
   "Trip history was saved by a newer version": "Ostoshistoria on tallennettu uudemmalla versiolla",
   "This version can't read it, so it was preserved unchanged. Update the app to use it, or set it aside to keep finishing trips here.": "Tämä versio ei pysty lukemaan sitä, joten se säilytettiin muuttumattomana. Päivitä sovellus käyttääksesi sitä tai siirrä se sivuun, jotta voit jatkaa reissujen päättämistä tässä.",
   "Trip history can't be read right now": "Ostoshistoriaa ei voi lukea juuri nyt",
@@ -224,10 +227,6 @@ export const messages = {
   "Keep as is": "Pidä ennallaan",
   "Set aside…": "Siirretään sivuun…",
   "Retry": "Yritä uudelleen",
-  "{count} completed trip is": {
-    "one": "{count} valmis ostosreissu on",
-    "other": "{count} valmista ostosreissua on"
-  },
   "{count} readable trip will be kept": {
     "one": "{count} luettava reissu säilytetään",
     "other": "{count} luettavaa reissua säilytetään"

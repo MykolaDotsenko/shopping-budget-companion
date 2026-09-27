@@ -40,13 +40,11 @@ const historyCopy = (
     case "invalid-history-entry":
       return {
         title: t("Some trip history could not be restored"),
-        body: t("{trips} still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.", {
-          trips: tp(
-            "{count} completed trip is",
-            "{count} completed trips are",
-            keptTripCount,
-          ),
-        }),
+        body: tp(
+          "{count} completed trip is still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.",
+          "{count} completed trips are still available. The damaged part was preserved rather than guessed or overwritten, so finished trips can't be added to history until it is set aside.",
+          keptTripCount,
+        ),
       };
     case "unsupported-version":
       return {

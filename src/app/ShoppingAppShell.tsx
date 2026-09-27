@@ -809,11 +809,13 @@ function ShoppingAppScreens({
               }
 
               setLastAddedMessage(
-                `Item removed. ${remainingFeedback(
-                  result.state.activeTrip,
-                  locale,
-                  t,
-                )}`,
+                t("Item removed. {remaining}", {
+                  remaining: remainingFeedback(
+                    result.state.activeTrip,
+                    locale,
+                    t,
+                  ),
+                }),
               );
               setOverlay(NO_OVERLAY);
               returnFocusToAddPrice();
@@ -838,11 +840,13 @@ function ShoppingAppScreens({
               }
 
               setLastAddedMessage(
-                `Item updated. ${remainingFeedback(
-                  result.state.activeTrip,
-                  locale,
-                  t,
-                )}`,
+                t("Item updated. {remaining}", {
+                  remaining: remainingFeedback(
+                    result.state.activeTrip,
+                    locale,
+                    t,
+                  ),
+                }),
               );
               setOverlay(NO_OVERLAY);
 
@@ -861,7 +865,12 @@ function ShoppingAppScreens({
     <>
       <ActiveTripScreen
         controller={controller}
-        utilityControl={<AppearanceSwitcher />}
+        utilityControl={
+          <>
+            <LanguageSwitcher />
+            <AppearanceSwitcher />
+          </>
+        }
         addPriceButtonRef={addPriceButtonRef}
         finishTripButtonRef={finishTripButtonRef}
         adjustBudgetButtonRef={adjustBudgetButtonRef}
@@ -875,10 +884,13 @@ function ShoppingAppScreens({
             result.state.activeTrip !== null
           ) {
             setLastAddedMessage(
-              `Last change undone. ${remainingFeedback(
-                result.state.activeTrip,
-                SHOPPING_LOCALE,
-              )}`,
+              t("Last change undone. {remaining}", {
+                remaining: remainingFeedback(
+                  result.state.activeTrip,
+                  locale,
+                  t,
+                ),
+              }),
             );
             returnFocusToAddPrice();
           }
@@ -937,10 +949,14 @@ function ShoppingAppScreens({
           }
 
           setLastAddedMessage(
-            `${record.label} added at its remembered price. ${remainingFeedback(
-              result.state.activeTrip,
-              SHOPPING_LOCALE,
-            )}`,
+            t("{label} added at its remembered price. {remaining}", {
+              label: record.label,
+              remaining: remainingFeedback(
+                result.state.activeTrip,
+                locale,
+                t,
+              ),
+            }),
           );
           evidence.recordRememberedItemUsed(
             result.state.activeTrip,
@@ -969,10 +985,13 @@ function ShoppingAppScreens({
             result.state.activeTrip !== null
           ) {
             setLastAddedMessage(
-              `Item removed. ${remainingFeedback(
-                result.state.activeTrip,
-                SHOPPING_LOCALE,
-              )}`,
+              t("Item removed. {remaining}", {
+                remaining: remainingFeedback(
+                  result.state.activeTrip,
+                  locale,
+                  t,
+                ),
+              }),
             );
             returnFocusToAddPrice();
           }

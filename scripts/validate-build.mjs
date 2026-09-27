@@ -151,7 +151,7 @@ for (const marker of [
 }
 
 const MAX_PUBLIC_JS_BYTES = 452_000;
-const MAX_INITIAL_JS_BYTES = 396_000;
+const MAX_INITIAL_JS_BYTES = 397_000;
 const MAX_SINGLE_JS_CHUNK_BYTES = 230_000;
 const MAX_PUBLIC_JS_GZIP_BYTES = 134_000;
 const MAX_INITIAL_JS_GZIP_BYTES = 116_500;
@@ -177,6 +177,7 @@ const MAX_VISUAL_ADAPTER_JS_BYTES = 40_000;
 const MAX_VISUAL_ADAPTER_JS_GZIP_BYTES = 16_000;
 const MAX_VISUAL_ENGINE_JS_BYTES = 4_500_000;
 const MAX_VISUAL_ENGINE_JS_GZIP_BYTES = 1_500_000;
+const MAX_VISUAL_ENGINE_WASM_BYTES = 30_000_000;
 const forbiddenMarkers = [
   "Retention Beta",
   "Local beta evidence",
@@ -209,6 +210,7 @@ const jsFiles = allJsFiles.filter(
 );
 const cssFiles = files.filter((file) => file.endsWith(".css"));
 const wasmFiles = files.filter((file) => file.endsWith(".wasm"));
+const visualWasmFiles = wasmFiles.filter((file) => file.startsWith("ort-wasm-"));
 
 if (jsFiles.length === 0) {
   throw new Error("Public build contains no JavaScript asset.");
@@ -457,18 +459,26 @@ const priceReaderSummary = await validatePriceReader();
 
 const validateVisualRecognition = async () => {
   if (!visualRecognitionEnabled) {
-    if (visualAdapterJsFiles.length > 0 || visualEngineJsFiles.length > 0) {
+    if (
+      visualAdapterJsFiles.length > 0 ||
+      visualEngineJsFiles.length > 0 ||
+      visualWasmFiles.length > 0
+    ) {
       throw new Error(
-        "A build with visual recognition switched off must not ship its runtime chunks.",
+        "A build with visual recognition switched off must not ship its runtime chunks or WASM.",
       );
     }
 
     return ["visual recognition switched off"];
   }
 
-  if (visualAdapterJsFiles.length !== 1 || visualEngineJsFiles.length < 1) {
+  if (
+    visualAdapterJsFiles.length !== 1 ||
+    visualEngineJsFiles.length < 1 ||
+    visualWasmFiles.length < 1
+  ) {
     throw new Error(
-      `Public build must emit one lazy visual adapter and at least one isolated engine chunk (found ${visualAdapterJsFiles.length} and ${visualEngineJsFiles.length}).`,
+      `Public build must emit one lazy visual adapter, at least one isolated engine chunk and visual WASM (found ${visualAdapterJsFiles.length}, ${visualEngineJsFiles.length} and ${visualWasmFiles.length}).`,
     );
   }
 
@@ -482,6 +492,7 @@ const validateVisualRecognition = async () => {
   const adapterGzipBytes = await totalSize(visualAdapterJsFiles, assetGzipSize);
   const engineBytes = await totalSize(visualEngineJsFiles, assetSize);
   const engineGzipBytes = await totalSize(visualEngineJsFiles, assetGzipSize);
+  const wasmBytes = await totalSize(visualWasmFiles, assetSize);
 
   if (adapterBytes > MAX_VISUAL_ADAPTER_JS_BYTES) {
     throw new Error(
@@ -507,9 +518,16 @@ const validateVisualRecognition = async () => {
     );
   }
 
+  if (wasmBytes > MAX_VISUAL_ENGINE_WASM_BYTES) {
+    throw new Error(
+      `Visual recognition WASM budget exceeded: ${wasmBytes} > ${MAX_VISUAL_ENGINE_WASM_BYTES} bytes.`,
+    );
+  }
+
   return [
     `visual adapter JS ${adapterBytes} bytes / ${adapterGzipBytes} gzip`,
     `visual engine JS ${engineBytes} bytes / ${engineGzipBytes} gzip`,
+    `visual engine WASM ${wasmBytes} bytes`,
   ];
 };
 

@@ -108,6 +108,7 @@ interface I18nContextValue {
   readonly locale: string;
   readonly changing: boolean;
   readonly saveFailed: boolean;
+  readonly changeFailed: boolean;
   readonly t: (
     source: string,
     values?: Readonly<Record<string, string | number>>,
@@ -126,6 +127,7 @@ const englishContext: I18nContextValue = {
   locale: LOCALES.en,
   changing: false,
   saveFailed: false,
+  changeFailed: false,
   t: (source, values) => interpolate(source, values),
   tp: (oneSource, otherSource, count, values) =>
     interpolate(count === 1 ? oneSource : otherSource, {
@@ -154,6 +156,7 @@ export function I18nProvider({
   }));
   const [changing, setChanging] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [changeFailed, setChangeFailed] = useState(false);
 
   const value = useMemo<I18nContextValue>(() => {
     const t = (
@@ -199,12 +202,15 @@ export function I18nProvider({
       }
 
       setChanging(true);
+      setChangeFailed(false);
 
       try {
         const catalog = await loadLanguageCatalog(language);
         document.documentElement.lang = language;
         setSaveFailed(!persistLanguage(language));
         setState({ language, catalog });
+      } catch {
+        setChangeFailed(true);
       } finally {
         setChanging(false);
       }
@@ -215,11 +221,12 @@ export function I18nProvider({
       locale: LOCALES[state.language],
       changing,
       saveFailed,
+      changeFailed,
       t,
       tp,
       setLanguage,
     };
-  }, [changing, saveFailed, state]);
+  }, [changeFailed, changing, saveFailed, state]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

@@ -142,13 +142,14 @@ Shipped as an optional Product mode in the shared camera:
 1. provider-neutral `VisualProductRecognizerPort`;
 2. Transformers.js 4.3.0 with pinned `Xenova/clip-vit-base-patch32` revision `d15189d7028b43f1d3e65039190477f6af591c2a`;
 3. WebGPU first, WASM fallback;
-4. bounded closed-set labels: recent Price Memory product names first, then common unbarcoded produce, capped at 30;
+4. bounded closed-set labels capped at 30, with personal recent labels capped first so common unbarcoded produce always retains candidate capacity;
 5. transient framed camera capture with local inference; the photo and candidate labels are not uploaded or persisted;
-6. up to five ranked candidates with an explicit statement that the score is ranking context, not calibrated certainty;
+6. up to five ranked candidates presented as relative suggestions without numeric pseudo-confidence, plus an explicit "None of these" path;
 7. explicit candidate choice followed by the existing price-entry flow; visual recognition never supplies shelf price or commits an item itself;
-8. complete manual fallback for no-match, timeout, model/runtime failure and camera failure;
-9. lazy runtime loading and a service-worker runtime cache; the visual engine stays outside the initial bundle and PWA precache;
-10. release switch `VITE_SHOPPING_VISUAL_RECOGNITION`, read by CI from a repository variable.
+8. first-use model acquisition is preceded by a one-time local acknowledgement that the download can be large, and active recognition is abandoned cleanly when the app backgrounds;
+9. complete manual fallback for no-match, timeout, model/runtime failure and camera failure;
+10. lazy runtime loading and a service-worker runtime cache; the visual engine stays outside the initial bundle and PWA precache;
+11. release switch `VITE_SHOPPING_VISUAL_RECOGNITION`, read by CI from a repository variable.
 
 The pinned model is acquired from its model host on first explicit Product-mode use. That is a model-delivery dependency only: shopping state, photos, labels and prices remain local.
 

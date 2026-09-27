@@ -223,9 +223,9 @@ export function ScanBarcodeResult({
   return (
     <section className={styles.result} aria-labelledby="scan-result-title">
       <h2 id="scan-result-title" ref={headingRef} tabIndex={-1}>
-        New product
+        {t("New product")}
       </h2>
-      <p className={styles.code}>Barcode {displayCode}</p>
+      <p className={styles.code}>{t("Barcode {code}", { code: displayCode })}</p>
       <label className={styles.field} htmlFor={nameId}>
         {t("Name for next time (optional)")}
         <input

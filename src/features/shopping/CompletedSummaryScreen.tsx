@@ -188,8 +188,10 @@ export function CompletedSummaryScreen({
           controller={controller}
           health={state.persistence}
           context="completed"
+          t={t}
+          tp={tp}
         />
-        <HistoryIntegrityNotice controller={controller} />
+        <HistoryIntegrityNotice controller={controller} t={t} tp={tp} />
 
         <section className={styles.hero} aria-label={t("Completed trip summary")}>
           <span>{t("Cart total")}</span>

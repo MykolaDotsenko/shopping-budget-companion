@@ -37,7 +37,7 @@ import {
   projectionCopy,
 } from "./price-entry-presentation";
 import styles from "./PriceEntrySurface.module.css";
-import { SHOPPING_LOCALE } from "./shopping-locale";
+import { decimalAmountPlaceholder, SHOPPING_LOCALE } from "./shopping-locale";
 import { englishTranslate, type Translate } from "./translation";
 
 export interface ValidatedItemIntent {
@@ -420,7 +420,7 @@ export function PriceEntrySurface({
                 enterKeyHint="done"
                 aria-describedby={statusId}
                 placeholder={
-                  draft.mode === "decimal" ? "0.00" : "0"
+                  draft.mode === "decimal" ? decimalAmountPlaceholder(locale) : "0"
                 }
                 onChange={(event) => {
                   const nextRaw = event.currentTarget.value;

@@ -6,7 +6,7 @@ This is the executable contract for the current shopping-budget release.
 
 The original core MVP is implemented. Several post-core capabilities are also implemented and are explicitly listed below.
 
-The installable offline PWA shell, optional barcode identification and optional price-tag reading are **IMPLEMENTED**.
+The installable offline PWA shell, optional barcode identification, optional visual product recognition and optional price-tag reading are **IMPLEMENTED**.
 
 ## Core job
 
@@ -47,6 +47,7 @@ A shopper can:
 - retention/timing evidence tooling that does not own shopping state;
 - installable offline application shell with prompt-based updates, and a start-screen install offer (the browser's prompt, or Add to Home Screen steps on Safari for iPhone and iPad before anything is saved there);
 - optional barcode identification with local barcode names and tap-only online name lookup;
+- optional visual product recognition that offers a ranked identity candidate set before normal price entry (D-057);
 - optional price-tag reading that pre-fills price entry for confirmation (D-055).
 
 ### PLANNED / GATED
@@ -269,6 +270,26 @@ The service worker:
 
 After a successful online cache/install pass, active-trip and completed-history workflows remain available offline through the existing local persistence contract.
 
+### FR-030 — Visual product recognition
+
+**IMPLEMENTED.**
+
+The shared in-trip camera can recognize a photographed product against a bounded closed set composed from the shopper's recent Price Memory labels plus common unbarcoded produce.
+
+Acceptance:
+
+- Product is an optional third camera mode beside Barcode and Price tag when enabled;
+- recognition starts only after the shopper explicitly enters Product mode and taps "Recognize product";
+- the captured frame stays on the device and is never persisted or uploaded;
+- Transformers.js 4.3.0 runs a pinned CLIP model revision locally, preferring WebGPU and falling back to WASM;
+- model/runtime files may be downloaded on first use, but product photos, candidate labels and shopping state are not sent to the model host;
+- at most 30 candidate labels enter one recognition request and at most five ranked candidates are shown;
+- the score is presented only as ranking context, not as calibrated certainty;
+- a candidate never mutates shopping state directly: the shopper chooses a label, then confirms the current price through normal price entry;
+- no match, timeout, unavailable runtime or camera failure always leaves manual entry available;
+- `VITE_SHOPPING_VISUAL_RECOGNITION=0` removes the recognizer runtime from a build.
+
+
 ## Canonical state requirements
 
 Canonical active/completed trip data includes only inputs and lifecycle facts required to reconstruct the shopping state.
@@ -317,7 +338,7 @@ The primary flow is usable one-handed on compact phone widths.
 
 ### NFR-007 — Bundle discipline
 
-The shipped PWA shell must remain small and asset-only. Scanner and price-reader code stay lazily loaded outside the initial bundle; OCR engine files are cached at runtime on first use, never precached.
+The shipped PWA shell must remain small and asset-only. Scanner, visual-recognition and price-reader code stay lazily loaded outside the initial bundle; visual-recognition runtime chunks and OCR engine files are cached at runtime on first use, never precached.
 
 ### NFR-008 — Privacy
 

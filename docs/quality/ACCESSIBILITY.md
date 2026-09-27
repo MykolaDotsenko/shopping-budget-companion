@@ -269,10 +269,10 @@ Do not imply currentness through iconography alone.
 
 Scanning is optional; "Add price" stays the primary action and manual entry is reachable from every scan state.
 
-- every action is a text-labelled button and every field has a visible label; the Barcode / Price tag mode switch and the light toggle expose `aria-pressed`;
+- every action is a text-labelled button and every field has a visible label; the Barcode / Product / Price tag mode switch and the light toggle expose `aria-pressed`;
 - the scan status is an always-present polite live region (what to point at, hints after 8 s, first-time preparation progress, how many prices were found);
-- a determinate progress bar reports price reader preparation, and an indeterminate one reports reading;
-- price candidates are large buttons whose names include the amount and, where it applies, "Unit price", "Member price", "Regular price" or "Multi-buy";
+- a determinate progress bar reports price reader preparation; indeterminate progress reports price reading and visual recognition;
+- price candidates are large buttons whose names include the amount and context; visual candidates are large labelled buttons that expose the product label and ranked match score;
 - a price read from a tag stays marked as such in price entry until the shopper changes it;
 - the surface focuses its heading on open, the result or failure heading when one appears, and the digit field when typing a barcode; closing returns focus to the scan action, or to price entry when the camera was opened from there;
 - Escape closes the surface from anywhere in it;
@@ -326,7 +326,7 @@ Cover representative states with axe/semantic assertions:
 - completed summary;
 - history;
 - recovery and history repair;
-- camera barcode result and price candidates.
+- camera barcode result, visual product candidates and price candidates.
 
 Also test focus restoration, keyboard journeys, committed announcements and disabled-state semantics where automation is reliable. The axe scans run once, in Chromium; the focus and keyboard journeys run in Chromium, Firefox and WebKit.
 

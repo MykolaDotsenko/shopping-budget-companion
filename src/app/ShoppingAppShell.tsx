@@ -14,6 +14,7 @@ import type {
 } from "../application/barcode-ports";
 import type { CameraPort } from "../application/camera-ports";
 import type { PriceTagReaderPort } from "../application/price-tag-ports";
+import type { VisualProductRecognizerPort } from "../application/visual-recognition-ports";
 import { useShoppingAppState } from "../application/react/use-shopping-app-state";
 import { needsSaveAttention } from "../application/session-only-persistence";
 import type { ShoppingAppController } from "../application/shopping-app-controller";
@@ -74,6 +75,7 @@ export interface ShoppingAppShellProps {
   readonly barcodeReader?: BarcodeReaderPort | null;
   readonly priceReader?: PriceTagReaderPort | null;
   readonly productLookup?: ProductLookupPort | null;
+  readonly visualRecognizer?: VisualProductRecognizerPort | null;
   readonly installPrompt?: InstallPromptSource;
 }
 
@@ -190,6 +192,7 @@ function ShoppingAppScreens({
   barcodeReader = null,
   priceReader = null,
   productLookup = null,
+  visualRecognizer = null,
   installPrompt,
   lastAddedMessage,
   setLastAddedMessage,
@@ -251,13 +254,28 @@ function ShoppingAppScreens({
   };
   const cameraReady = camera !== null && camera.isAvailable() ? camera : null;
   const scanBarcode = cameraReady === null ? null : barcodeReader;
+  const scanProduct = cameraReady === null ? null : visualRecognizer;
   const scanPrice = cameraReady === null ? null : priceReader;
+  const fallbackScanMode: ScanMode =
+    scanBarcode !== null
+      ? "barcode"
+      : scanProduct !== null
+        ? "product"
+        : "price";
   const scanLabel =
-    scanBarcode !== null && scanPrice !== null
-      ? "Scan barcode or price tag"
-      : scanBarcode !== null
-        ? "Scan barcode"
-        : "Read price tag";
+    scanProduct !== null
+      ? scanBarcode !== null && scanPrice !== null
+        ? "Scan barcode, product or price tag"
+        : scanBarcode !== null
+          ? "Scan barcode or product"
+          : scanPrice !== null
+            ? "Recognize product or read price tag"
+            : "Recognize product"
+      : scanBarcode !== null && scanPrice !== null
+        ? "Scan barcode or price tag"
+        : scanBarcode !== null
+          ? "Scan barcode"
+          : "Read price tag";
   const returnFocus = (target: FocusReturn, sourceMemoryId?: PriceMemoryId): void => {
     if (target === "scan") {
       returnFocusToScan();
@@ -559,7 +577,7 @@ function ShoppingAppScreens({
     overlay.kind === "scan" &&
     state.activeTrip !== null &&
     cameraReady !== null &&
-    (scanBarcode !== null || scanPrice !== null)
+    (scanBarcode !== null || scanProduct !== null || scanPrice !== null)
   ) {
     const entry = overlay.entry;
 
@@ -578,6 +596,7 @@ function ShoppingAppScreens({
             barcodeReader={scanBarcode}
             priceReader={scanPrice}
             productLookup={productLookup}
+            visualRecognizer={scanProduct}
             initialMode={overlay.mode}
             onModeChange={writeScanModePreference}
             context={overlay.context}
@@ -849,7 +868,7 @@ function ShoppingAppScreens({
           evidence.startOrdinaryManualEntry();
           openTripOverlay({ kind: "add-price", returnTo: "price-trigger" });
         }}
-        {...(scanBarcode === null && scanPrice === null
+        {...(scanBarcode === null && scanProduct === null && scanPrice === null
           ? {}
           : {
               scanButtonRef,
@@ -859,12 +878,7 @@ function ShoppingAppScreens({
                 setLastAddedMessage("");
                 openTripOverlay({
                   kind: "scan",
-                  mode:
-                    scanBarcode === null
-                      ? "price"
-                      : scanPrice === null
-                        ? "barcode"
-                        : readScanModePreference("barcode"),
+                  mode: readScanModePreference(fallbackScanMode),
                   context: {},
                 });
               },

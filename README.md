@@ -25,7 +25,7 @@
 - **Fix mistakes easily:** edit, remove and undo; change the budget mid-trip.
 - **Finish and compare:** finish the trip, add the receipt total and see how close you were.
 - **Shop again with less typing:** reuse your last budget, and remembered prices from past trips — always with an explicit way to enter today’s price.
-- **Use the camera if you like:** scan a barcode to recall a product and its last price, or read a shelf price tag; the camera picture never leaves the phone.
+- **Use the camera if you like:** scan a barcode, recognize a product from its picture, or read a shelf price tag. Visual recognition ranks likely product names locally and still sends you through normal price entry; camera pictures never leave the phone.
 - **Private and offline:** no account and no bank connection; everything stays on your device, and the app works offline once opened. Install it to keep it on your home screen; the app offers this on the start screen where the browser allows it, and on iPhone it explains Add to Home Screen before your first trip.
 
 This is deliberately narrower than a generic expense tracker:
@@ -42,7 +42,7 @@ This is deliberately narrower than a generic expense tracker:
 - **Loss-safe completion:** history and active-trip cleanup are reconciliation-aware.
 - **Independent advisory data:** Price Memory and barcode names cannot corrupt active-trip or history durability.
 - **Proportional state architecture:** a plain TypeScript `ShoppingAppController` + `useSyncExternalStore`; no Redux, Zustand, XState, router or backend.
-- **On-device camera features:** barcode reading (native `BarcodeDetector`, self-hosted ZXing WASM fallback) and price-tag reading (self-hosted Tesseract.js) load lazily, keep camera frames on the device and can each be switched off per build.
+- **On-device camera features:** barcode reading (native `BarcodeDetector`, self-hosted ZXing WASM fallback), visual product recognition (lazy Transformers.js + pinned CLIP, WebGPU/WASM) and price-tag reading (self-hosted Tesseract.js) keep camera frames on the device and can each be switched off per build.
 - **Installable offline shell:** Workbox precaches only application assets; the scanner and OCR engines are cached on first use, shopping state stays in `localStorage` and updates are user-controlled.
 - **Evidence separation:** guarded evidence builds never become product state and never enter the public bundle.
 
@@ -71,7 +71,7 @@ ESLint enforces the layer boundaries. See [Architecture](./docs/ARCHITECTURE.md)
 
 ## Tech stack
 
-**Runtime:** React 19.3, TypeScript 6 strict, Vite 8, Zod 4 (`zod/mini`), CSS Modules, native Web APIs, versioned `localStorage`, Workbox-generated PWA shell (`vite-plugin-pwa`), `barcode-detector` + `zxing-wasm` for the barcode fallback, Tesseract.js 7 with Finnish language data for price tags.
+**Runtime:** React 19.3, TypeScript 6 strict, Vite 8, Zod 4 (`zod/mini`), CSS Modules, native Web APIs, versioned `localStorage`, Workbox-generated PWA shell (`vite-plugin-pwa`), `barcode-detector` + `zxing-wasm` for barcode fallback, `@huggingface/transformers` 4.3 with pinned CLIP for local visual recognition, and Tesseract.js 7 with Finnish language data for price tags.
 
 **Quality:** ESLint 10, Vitest 5, React Testing Library, user-event, fast-check, Playwright, axe-core, GitHub Actions, CodeQL, Dependency Review, CycloneDX SBOM and build-provenance attestations.
 
@@ -95,12 +95,12 @@ CI tests the exact artifact it deploys: Chromium, Firefox and WebKit journeys wi
 
 ## Evidence status
 
-Barcode scanning (D-053) and price-tag reading (D-055) shipped ahead of their physical evidence and can each be switched off per build. Still open:
+Barcode scanning (D-053), visual product recognition (D-057) and price-tag reading (D-055) shipped ahead of their physical evidence and can each be switched off per build. Still open:
 
 - ⏳ exact quantitative manual-entry timing baseline (physical-phone usability was accepted by owner attestation on 2026-09-24, but no timing JSON was retained)
 - ⏳ 20–50 real-shopper retention beta, including second- and third-trip behaviour (issue #72)
 - ⏳ physical barcode field evidence for the shipped scanner (issue #73)
-- ⏳ production visual product recognition, planned and gated (issue #88)
+- ⏳ physical visual-recognition field evidence for the shipped Product mode (issue #88)
 - ⏳ physical shelf-label evidence for the shipped price tag reader (issue #90)
 
 Guarded evidence builds (validation surfaces, not private or security boundaries) follow the latest deployed `main`. Multi-day field studies use immutable `/study/<baseline>/...` copies of an exact tested artifact instead:

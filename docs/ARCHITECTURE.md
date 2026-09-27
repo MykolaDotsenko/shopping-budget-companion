@@ -10,7 +10,7 @@ The guarded `/cohort/` route is intentionally different: it is a facilitator-onl
 
 The shopping product's camera lives inside the trip; the old `/camera-tools/` address redirects to the app.
 
-The installable offline PWA shell is **IMPLEMENTED**. Barcode identification (D-053) and price-tag reading (D-055) are **IMPLEMENTED** in the in-trip camera behind build kill switches; a read price only pre-fills price entry, and nothing reaches the cart until the shopper confirms it there. Visual product recognition is not implemented. Human evidence gates (physical-phone usability, timing, retention and camera field evidence) are tracked in [ROADMAP.md](./ROADMAP.md).
+The installable offline PWA shell is **IMPLEMENTED**. Barcode identification (D-053), visual product recognition (D-057) and price-tag reading (D-055) are **IMPLEMENTED** in the in-trip camera behind build kill switches. Visual recognition only proposes identity candidates, a read price only pre-fills price entry, and nothing reaches the cart until the shopper confirms it through the normal flow. Human evidence gates (physical-phone usability, timing, retention and camera field evidence) are tracked in [ROADMAP.md](./ROADMAP.md).
 
 ## Architectural goal
 
@@ -93,7 +93,7 @@ It owns:
 - browser storage access
 - explicit persistence failure mapping
 - safe retirement of historical non-shopping keys
-- camera, barcode, price-OCR and product-lookup adapters
+- camera, barcode, visual-recognition, price-OCR and product-lookup adapters
 
 Infrastructure must reconstruct domain objects through domain validation rather than trusting raw persisted JSON.
 
@@ -309,7 +309,7 @@ Canonical shopping state, history, Price Memory and barcode names remain device-
 - shared-shopping collaboration;
 - remote shopping-state persistence.
 
-The optional, tap-only product-name lookup (the Open Food Facts adapter in `infrastructure/product-lookup/`) is the one external network adapter; barcode and price-reader engine files are served by this site. The lookup remains an accelerator rather than infrastructure authority:
+The optional, tap-only Open Food Facts name lookup and first-use delivery of the pinned visual-recognition model are the two external network boundaries. Barcode and price-reader engine files are served by this site. Visual inference itself is local: photos, candidate labels, prices and shopping state are not uploaded. The lookup remains an accelerator rather than infrastructure authority:
 
 - provider payloads are runtime validated;
 - network failure degrades to manual entry;
@@ -331,21 +331,22 @@ The public product ships an **IMPLEMENTED** installable/offline application shel
 
 Offline browser coverage verifies that an already installed/cached shell can restore an active trip, complete it while offline, persist history and restore that history after another offline reload.
 
-## Barcode and price-tag reading
+## Barcode, visual product recognition and price-tag reading
 
-Production barcode identification (D-053) and price-tag reading (D-055) are implemented and share one camera.
+Production barcode identification (D-053), visual product recognition (D-057) and price-tag reading (D-055) are implemented and share one camera.
 
 Layers:
 
 - `domain/product-code.ts` parses EAN-13/EAN-8/UPC-A/UPC-E into a GTIN-14 or a store-code/coupon verdict; `domain/barcode-link.ts` owns remembered barcode names; `domain/shelf-price.ts` turns OCR text lines and their printed heights into ranked exact-money price candidates;
-- `application/camera-ports.ts` defines `CameraPort`; `application/barcode-ports.ts` defines `BarcodeReaderPort`, `ProductLookupPort` and `BarcodeLinkPersistencePort`; `application/price-tag-ports.ts` defines `PriceTagReaderPort`; `application/barcode-scan.ts` stabilises readings; the controller's `identifyBarcode` and the `barcode` input on add commands are the only state entry points, and a read price reaches state only through confirmed price entry;
-- `infrastructure/camera/` opens the stream, maps camera errors, exposes the torch and captures the framed part of a cover-fitted preview, loaded only when the camera opens; `infrastructure/barcode/` adapts the native detector and the lazily imported ZXing fallback; `infrastructure/price-ocr/` holds the lazily imported Tesseract adapter and its layout mapping; `infrastructure/product-lookup/` holds the lazily imported Open Food Facts adapter; `infrastructure/storage/barcode-link-storage.ts` owns the `budget-cart:barcode-links` record;
+- `application/camera-ports.ts` defines `CameraPort`; `application/barcode-ports.ts` defines `BarcodeReaderPort`, `ProductLookupPort` and `BarcodeLinkPersistencePort`; `application/visual-recognition-ports.ts` defines `VisualProductRecognizerPort`; `application/price-tag-ports.ts` defines `PriceTagReaderPort`; `application/barcode-scan.ts` stabilises readings; the controller's `identifyBarcode` and the `barcode` input on add commands are the only state entry points, and a read price reaches state only through confirmed price entry;
+- `infrastructure/camera/` opens the stream, maps camera errors, exposes the torch and captures the framed part of a cover-fitted preview, loaded only when the camera opens; `infrastructure/barcode/` adapts the native detector and the lazily imported ZXing fallback; `infrastructure/visual-recognition/` owns the lazy pinned CLIP adapter with WebGPU/WASM fallback; `infrastructure/price-ocr/` holds the lazily imported Tesseract adapter and its layout mapping; `infrastructure/product-lookup/` holds the lazily imported Open Food Facts adapter; `infrastructure/storage/barcode-link-storage.ts` owns the `budget-cart:barcode-links` record;
 - `features/shopping/ScanSurface.tsx` is a lazily loaded trip overlay that never mutates state itself;
 - the composition root builds the adapters only when the build switches allow them.
 
 Production adapters preserve these boundaries:
 
 - barcode → identity candidate, not current price authority
+- visual recognition → ranked identity candidates, never automatic product/price authority
 - OCR → price candidate, not committed cart mutation
 - user confirmation → domain/application command
 - failure → manual entry remains available

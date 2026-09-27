@@ -12,6 +12,7 @@ env:
   VITE_SHOPPING_BARCODE_SCANNER: ${{ vars.VITE_SHOPPING_BARCODE_SCANNER }}
   VITE_SHOPPING_PRODUCT_LOOKUP: ${{ vars.VITE_SHOPPING_PRODUCT_LOOKUP }}
   VITE_SHOPPING_PRICE_OCR: ${{ vars.VITE_SHOPPING_PRICE_OCR }}
+  VITE_SHOPPING_VISUAL_RECOGNITION: ${{ vars.VITE_SHOPPING_VISUAL_RECOGNITION }}
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
@@ -114,6 +115,7 @@ jobs:
         env:
           VITE_SHOPPING_BARCODE_SCANNER: "0"
           VITE_SHOPPING_PRICE_OCR: "0"
+          VITE_SHOPPING_VISUAL_RECOGNITION: "0"
         run: |
           npm run build
           npm run build:check

@@ -34,7 +34,7 @@ const writePreference = (key: string, value: string): void => {
 };
 
 export const readScanModePreference = (fallback: ScanMode): ScanMode =>
-  readPreference(SCAN_MODE_STORAGE_KEY, ["barcode", "price"], fallback);
+  readPreference(SCAN_MODE_STORAGE_KEY, ["barcode", "product", "price"], fallback);
 
 export const writeScanModePreference = (mode: ScanMode): void => {
   writePreference(SCAN_MODE_STORAGE_KEY, mode);

@@ -4,6 +4,7 @@ import type {
 } from "../application/barcode-ports";
 import type { CameraPort } from "../application/camera-ports";
 import type { PriceTagReaderPort } from "../application/price-tag-ports";
+import type { VisualProductRecognizerPort } from "../application/visual-recognition-ports";
 import {
   createShoppingAppController,
   type Clock,
@@ -18,10 +19,12 @@ import { createBrowserBarcodeReader } from "../infrastructure/barcode/browser-ba
 import { createBrowserCamera } from "../infrastructure/camera/browser-camera-environment";
 import { createLazyTesseractPriceReader } from "../infrastructure/price-ocr/lazy-price-reader";
 import { createLazyOpenFoodFactsLookup } from "../infrastructure/product-lookup/lazy-product-lookup";
+import { createLazyVisualProductRecognizer } from "../infrastructure/visual-recognition/lazy-visual-recognizer";
 import {
   barcodeScannerEnabled,
   priceOcrEnabled,
   productLookupEnabled,
+  visualRecognitionEnabled,
 } from "../infrastructure/runtime/feature-flags";
 import {
   listenForInstallPrompt,
@@ -115,7 +118,9 @@ export const followStorageChangesFromOtherTabs = (
   });
 
 export const createBrowserCameraPort = (): CameraPort | null =>
-  barcodeScannerEnabled || priceOcrEnabled ? createBrowserCamera() : null;
+  barcodeScannerEnabled || priceOcrEnabled || visualRecognitionEnabled
+    ? createBrowserCamera()
+    : null;
 
 export const createBrowserBarcodeReaderPort = (): BarcodeReaderPort | null =>
   barcodeScannerEnabled ? createBrowserBarcodeReader() : null;
@@ -134,3 +139,9 @@ export const createBrowserProductLookup = (): ProductLookupPort | null =>
         isOnline: () => navigator.onLine,
       })
     : null;
+
+export const createBrowserVisualProductRecognizer =
+  (): VisualProductRecognizerPort | null =>
+    visualRecognitionEnabled && typeof window !== "undefined"
+      ? createLazyVisualProductRecognizer()
+      : null;

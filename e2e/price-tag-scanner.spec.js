@@ -51,7 +51,7 @@ test("reads a price tag with the self-hosted engine and adds it only after confi
 
   await page.goto("/");
   await page.getByRole("button", { name: "€50", exact: true }).click();
-  await page.getByRole("button", { name: /^(Scan barcode or price tag|Read price tag)$/ }).click();
+  await page.getByRole("button", { name: /^(Scan barcode or price tag|Scan barcode, product or price tag|Recognize product or read price tag|Read price tag)$/ }).click();
 
   await expect(
     page.getByRole("heading", { name: /^(Find the product|Read the price tag)$/ }),
@@ -80,7 +80,7 @@ test("reads a price tag with the self-hosted engine and adds it only after confi
   await page.getByRole("button", { name: "Add · €1.29" }).click();
 
   await expect(
-    page.getByRole("button", { name: /^(Scan barcode or price tag|Read price tag)$/ }),
+    page.getByRole("button", { name: /^(Scan barcode or price tag|Scan barcode, product or price tag|Recognize product or read price tag|Read price tag)$/ }),
   ).toBeFocused();
 
   const origin = new URL(page.url()).origin;

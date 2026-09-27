@@ -163,7 +163,10 @@ export default defineConfig(() => {
           globPatterns: [
             "**/*.{js,css,html,svg,png,webmanifest}",
           ],
-          globIgnores: ["**/assets/ocr/**"],
+          globIgnores: [
+            "**/assets/ocr/**",
+            "**/assets/transformers-visual-recognizer-*.js",
+          ],
           runtimeCaching: [
             {
               urlPattern: ({ sameOrigin, url }) =>
@@ -176,11 +179,21 @@ export default defineConfig(() => {
             },
             {
               urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                url.pathname.includes("/assets/transformers-visual-recognizer-"),
+              handler: "CacheFirst",
+              options: {
+                cacheName: "visual-recognition-engine",
+                expiration: { maxEntries: 12 },
+              },
+            },
+            {
+              urlPattern: ({ sameOrigin, url }) =>
                 sameOrigin && url.pathname.endsWith(".wasm"),
               handler: "CacheFirst",
               options: {
-                cacheName: "barcode-engine",
-                expiration: { maxEntries: 2 },
+                cacheName: "wasm-engines",
+                expiration: { maxEntries: 8 },
               },
             },
           ],
@@ -196,6 +209,7 @@ export default defineConfig(() => {
                 name: "react",
                 test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/,
               },
+
             ],
           },
         },

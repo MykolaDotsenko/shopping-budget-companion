@@ -123,7 +123,7 @@ Current combinations:
 - manual + confirmed: a typed price, or a price read from a tag once the shopper confirms it in price entry;
 - price-memory + remembered: a remembered price reused without re-entry.
 
-Barcode or online product identity names the product but never supplies an authoritative current price.
+Barcode, visual recognition or online product identity may suggest/name the product but never supplies an authoritative current price. Visual candidates require an explicit human choice before normal price entry.
 
 The product must never imply more certainty than it has.
 
@@ -200,7 +200,7 @@ Retention interpretation remains a heuristic, not an external benchmark. See `re
 
 ### Input fatigue
 
-Mitigation: price-first entry, auto-cents, repeat-trip acceleration, Price Memory, and optional barcode and price-tag reading, which shipped ahead of evidence behind kill switches (D-053, D-055) and are judged by post-release evidence (issues #73, #90).
+Mitigation: price-first entry, auto-cents, repeat-trip acceleration, Price Memory, and optional barcode, visual recognition and price-tag reading, which shipped ahead of physical evidence behind kill switches (D-053, D-057, D-055) and are judged by post-release evidence (issues #73, #88, #90).
 
 ### Scanner theatre
 

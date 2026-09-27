@@ -92,7 +92,8 @@
   animation: sweep 1.8s ease-in-out infinite alternate;
 }
 
-.frame[data-mode="price"]::after {
+.frame[data-mode="price"]::after,
+.frame[data-mode="product"]::after {
   display: none;
 }
 
@@ -118,7 +119,7 @@
 
 .modes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
   gap: 4px;
   padding: 4px;
   border: 1px solid var(--border);

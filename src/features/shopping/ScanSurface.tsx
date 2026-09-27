@@ -145,6 +145,7 @@ export default function ScanSurface({
   const resultRef = useRef<HTMLHeadingElement>(null);
   const manualInputRef = useRef<HTMLInputElement>(null);
   const readAbortRef = useRef<AbortController | null>(null);
+  const visualDownloadCancelRef = useRef<HTMLButtonElement>(null);
   const sessionRef = useRef<CameraSession | null>(null);
   const frameReaderRef = useRef<{
     readonly session: CameraSession;
@@ -184,6 +185,12 @@ export default function ScanSurface({
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (visualDownloadPrompt) {
+      visualDownloadCancelRef.current?.focus();
+    }
+  }, [visualDownloadPrompt]);
 
   useEffect(() => {
     if (
@@ -810,6 +817,7 @@ export default function ScanSurface({
             </div>
             <div className={styles.row}>
               <button
+                ref={visualDownloadCancelRef}
                 type="button"
                 className={styles.secondary}
                 onClick={() => {

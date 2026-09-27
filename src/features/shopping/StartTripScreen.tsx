@@ -299,9 +299,11 @@ export function StartTripScreen({
             controller={controller}
             health={persistenceHealth}
             context="idle"
+            t={t}
+            tp={tp}
           />
         ) : null}
-        <HistoryIntegrityNotice controller={controller} />
+        <HistoryIntegrityNotice controller={controller} t={t} tp={tp} />
 
         {recentTrip !== null ? (
           <button

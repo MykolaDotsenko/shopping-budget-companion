@@ -78,7 +78,7 @@ That is the whole job: make the spending decision **before checkout**, then make
 
 A price is enough to add an item. Product names are optional.
 
-The common path is deliberately short:
+The common path stays short:
 
 - start from a preset or custom budget;
 - optionally reserve part of that budget as a safety buffer;

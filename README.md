@@ -1,12 +1,12 @@
 # Shopping Budget Companion
 
-**Know what’s left before checkout.** Set a spending limit, add prices as you shop and always see what you can still spend — while the cart can still change.
+**Know what’s left before checkout.** Set a spending limit, add prices as you shop, and always see what you can still spend while the cart is changing.
 
 [![Quality](https://github.com/MykolaDotsenko/shopping-budget-companion/actions/workflows/quality.yml/badge.svg)](https://github.com/MykolaDotsenko/shopping-budget-companion/actions/workflows/quality.yml)
-[![React](https://img.shields.io/badge/React-19.3-20232a?logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-**[Open the app](https://mykoladotsenko.github.io/shopping-budget-companion/)** · [Privacy](https://mykoladotsenko.github.io/shopping-budget-companion/privacy/) · [Send feedback](https://github.com/MykolaDotsenko/shopping-budget-companion/issues/new?template=feedback.yml)
+[**Open the app**](https://mykoladotsenko.github.io/shopping-budget-companion/) ·
+[Privacy](https://mykoladotsenko.github.io/shopping-budget-companion/privacy/) ·
+[Send feedback](https://github.com/MykolaDotsenko/shopping-budget-companion/issues/new?template=feedback.yml)
 
 <p align="center">
   <img
@@ -16,35 +16,54 @@
   />
 </p>
 
----
+## Product loop
 
-## What it does
+```text
+set a budget → add prices → see what remains → finish → compare with receipt
+```
 
-- **Start in one tap:** pick €25, €50, €75 or €100, or type your own limit, with an optional safety buffer for weighed items and deposits.
-- **Add prices fast:** a price is enough; a name is optional. You see what’s left before you add, and a clear warning before going over.
-- **Fix mistakes easily:** edit, remove and undo; change the budget mid-trip.
-- **Finish and compare:** finish the trip, add the receipt total and see how close you were.
-- **Shop again with less typing:** reuse your last budget, and remembered prices from past trips — always with an explicit way to enter today’s price.
-- **Use the camera if you like:** scan a barcode, recognize a product from its picture, or read a shelf price tag. Visual recognition ranks likely product names locally and still sends you through normal price entry; camera pictures never leave the phone.
-- **Private and offline:** no account and no bank connection; everything stays on your device, and the app works offline once opened. Install it to keep it on your home screen; the app offers this on the start screen where the browser allows it, and on iPhone it explains Add to Home Screen before your first trip.
+This is deliberately narrower than a generic expense tracker.
 
-This is deliberately narrower than a generic expense tracker:
+- start from a preset or custom budget;
+- optionally keep a safety buffer for deposits/weighed items;
+- add a price quickly, with product name optional;
+- edit, remove and Undo mistakes;
+- change the budget during a trip;
+- finish with an actual receipt total;
+- reuse the previous budget and remembered prices;
+- install the app and keep using the core flow offline.
 
-**set a spending limit → add prices quickly → always know what remains**
+No account or bank connection is required. Shopping state stays on the device.
 
----
+## Engineering choices that matter
 
-## Engineering highlights
+### Money is exact
 
-- **Exact money:** canonical financial state uses integer minor units, never binary floating point.
-- **Pure domain rules:** totals, remaining budget, safety buffer, projections, over-budget state, product codes and shelf-price candidates live outside React.
-- **Local-first durability:** versioned Zod-validated persistence with explicit degraded-write and recovery states.
-- **Loss-safe completion:** history and active-trip cleanup are reconciliation-aware.
-- **Independent advisory data:** Price Memory and barcode names cannot corrupt active-trip or history durability.
-- **Proportional state architecture:** a plain TypeScript `ShoppingAppController` + `useSyncExternalStore`; no Redux, Zustand, XState, router or backend.
-- **On-device camera features:** barcode reading (native `BarcodeDetector`, self-hosted ZXing WASM fallback), visual product recognition (lazy Transformers.js + pinned CLIP, WebGPU/WASM) and price-tag reading (self-hosted Tesseract.js) keep camera frames on the device and can each be switched off per build.
-- **Installable offline shell:** Workbox precaches only application assets; the scanner and OCR engines are cached on first use, shopping state stays in `localStorage` and updates are user-controlled.
-- **Evidence separation:** guarded evidence builds never become product state and never enter the public bundle.
+Canonical financial state uses **integer minor units**, not JavaScript floating-point values.
+
+Totals, remaining budget, safety buffer, projections and over-budget state live in domain code outside React.
+
+### Persistence can fail without destroying the trip
+
+Stored data is versioned and validated with Zod.
+
+The application distinguishes normal persistence, degraded writes and recovery paths instead of assuming `localStorage` always works. Finishing a trip is reconciliation-aware so history and active-trip cleanup cannot silently drift apart.
+
+### Camera features are helpers, not authority
+
+The manual price-entry flow always remains available.
+
+Optional on-device features include:
+
+- barcode scanning via native `BarcodeDetector` with ZXing WASM fallback;
+- visual product recognition with a lazy-loaded CLIP model;
+- shelf-price reading with Tesseract.js.
+
+Camera frames stay on the device. Recognition results are advisory and still pass through normal user-controlled price entry.
+
+### Offline is part of the product
+
+The installable PWA precaches the application shell. Heavier scanner/OCR assets are loaded when needed instead of bloating the initial install.
 
 ## Architecture
 
@@ -53,33 +72,43 @@ features ─────────▶ application ─────────�
                          ▲                    ▲
         implements ports │                    │ uses
                          └── infrastructure ──┘
-
-composition root (src/app/composition-root.ts): wires the infrastructure adapters into the application
 ```
 
 | Layer | Owns |
 | --- | --- |
-| **Domain** | money, trip invariants, projections, selectors, product codes, barcode links, shelf-price candidates |
-| **Application** | public contracts, ports, lifecycle, use cases, Undo, persistence ordering, recovery |
-| **Infrastructure** | storage transactions, codecs/schemas, camera, barcode and price-OCR engines, product lookup, runtime boundaries |
-| **UI** | rendering, drafts, focus, accessibility, interaction feedback |
-| **QA** | guarded evidence builds only |
+| Domain | money, trip rules, projections, selectors, product codes |
+| Application | use cases, controller, Undo, lifecycle, recovery, persistence ordering |
+| Infrastructure | storage, schemas/codecs, camera, barcode/OCR/product adapters |
+| UI | rendering, drafts, focus, accessibility and interaction feedback |
 
-ESLint enforces the layer boundaries. See [Architecture](./docs/ARCHITECTURE.md).
+A small TypeScript controller with `useSyncExternalStore` is enough for this product. There is no Redux/Zustand/XState layer and no backend to synchronize.
 
----
+See [Architecture](./docs/ARCHITECTURE.md).
 
-## Tech stack
+## Stack
 
-**Runtime:** React 19.3, TypeScript 6 strict, Vite 8, Zod 4 (`zod/mini`), CSS Modules, native Web APIs, versioned `localStorage`, Workbox-generated PWA shell (`vite-plugin-pwa`), `barcode-detector` + `zxing-wasm` for barcode fallback, `@huggingface/transformers` 4.3 with pinned CLIP for local visual recognition, and Tesseract.js 7 with Finnish language data for price tags.
+**Runtime**
 
-**Quality:** ESLint 10, Vitest 5, React Testing Library, user-event, fast-check, Playwright, axe-core, GitHub Actions, CodeQL, Dependency Review, CycloneDX SBOM and build-provenance attestations.
+- React 19
+- TypeScript 6 strict
+- Vite 8
+- Zod 4
+- CSS Modules
+- Workbox/PWA
+- Web Storage and native browser APIs
+- ZXing WASM, Transformers.js/CLIP and Tesseract.js for optional camera helpers
 
-Runtime dependencies must earn their product value; see [Tech stack](./docs/reference/TECH-STACK.md).
+**Verification**
 
----
+- ESLint
+- Vitest + React Testing Library
+- fast-check
+- Playwright
+- axe-core
+- GitHub Actions
+- dependency/security checks
 
-## Quality gates
+## Quality
 
 ```bash
 npm ci
@@ -87,56 +116,32 @@ npm run check
 npm run test:e2e
 ```
 
-`npm run check` validates the documentation, lints, type-checks, runs the unit and component tests with coverage thresholds, builds the app and validates the public build. `npm run test:e2e` runs the public browser suite against a fresh production build.
+The quality gate covers linting, type checking, unit/component tests, coverage thresholds, production build validation and browser journeys.
 
-CI tests the exact artifact it deploys: Chromium, Firefox and WebKit journeys with axe accessibility checks, the guarded evidence builds against their own surfaces, a build with the camera features switched off, a production dependency audit, an SBOM and provenance attestations. Deployment waits for every job. The full contract is in [Testing](./docs/TESTING.md).
+Browser verification exercises Chromium, Firefox and WebKit, including accessibility checks and camera-disabled builds.
 
----
-
-## Evidence status
-
-Barcode scanning (D-053), visual product recognition (D-057) and price-tag reading (D-055) shipped ahead of their physical evidence and can each be switched off per build. Still open:
-
-- ⏳ exact quantitative manual-entry timing baseline (physical-phone usability was accepted by owner attestation on 2026-09-24, but no timing JSON was retained)
-- ⏳ 20–50 real-shopper retention beta, including second- and third-trip behaviour (issue #72)
-- ⏳ physical barcode field evidence for the shipped scanner (issue #73)
-- ⏳ physical visual-recognition field evidence for the shipped Product mode (issue #88)
-- ⏳ physical shelf-label evidence for the shipped price tag reader (issue #90)
-
-Guarded evidence builds (validation surfaces, not private or security boundaries) follow the latest deployed `main`. Multi-day field studies use immutable `/study/<baseline>/...` copies of an exact tested artifact instead:
-
-- **Timing QA:** https://mykoladotsenko.github.io/shopping-budget-companion/qa/
-- **Retention beta:** https://mykoladotsenko.github.io/shopping-budget-companion/beta/
-- **Retention cohort analyzer:** https://mykoladotsenko.github.io/shopping-budget-companion/cohort/
-
----
-
-## Repository structure
+## Repository map
 
 ```text
 src/
-├── app/             # composition root, shopping shell, appearance, PWA update notice
-├── application/     # controller, use cases, contracts, ports, React bridge
-├── domain/          # money, shopping trip, Price Memory, product codes, shelf prices
-├── features/
-│   └── shopping/    # product UI, including the in-trip camera
-├── infrastructure/  # storage, camera, barcode, price OCR and product-lookup adapters
-└── qa/              # guarded evidence builds
+├── app/             composition root and shell
+├── application/     controller, use cases, contracts and ports
+├── domain/          money and shopping rules
+├── features/        shopping UI
+├── infrastructure/  storage and camera adapters
+└── qa/              validation-only surfaces
 
-tests/               # unit, component and application tests
-e2e/                 # Playwright browser and accessibility journeys
-scripts/             # build, documentation and guarded-build tooling
-public/              # icons and static pages
-docs/                # current contracts, specs, decisions, evidence, reference and research
+tests/
+e2e/
+docs/
+scripts/
 ```
 
-Start with the [documentation map](./docs/README.md) instead of browsing individual Markdown files.
-
----
+Start with [docs/README.md](./docs/README.md) if you want the deeper design and decision history.
 
 ## Run locally
 
-Requirements: Node.js 24 (see `.node-version`) and npm 11.
+Requirements: Node.js 24 and npm 11.
 
 ```bash
 git clone https://github.com/MykolaDotsenko/shopping-budget-companion.git
@@ -152,41 +157,22 @@ npm run build
 npm run preview
 ```
 
----
+## Scope and evidence
+
+Barcode, visual-product and shelf-price recognition are shipped features, but they are not required for the core shopping flow.
+
+Physical field validation for those camera features is tracked separately from whether the code works in automated tests. The repository does not treat an automated browser pass as proof that every real supermarket label or barcode will be recognized.
 
 ## Documentation
-
-For AI-assisted work, start with [AGENTS.md](./AGENTS.md). Human contributors should read [CONTRIBUTING.md](./CONTRIBUTING.md); security reporting is defined in [SECURITY.md](./SECURITY.md). [docs/README.md](./docs/README.md) routes every task to its owning document.
-
-Key current contracts:
 
 - [Product](./docs/PRODUCT.md)
 - [Architecture](./docs/ARCHITECTURE.md)
 - [Domain](./docs/DOMAIN.md)
-- [Design](./docs/DESIGN.md)
-- [Roadmap](./docs/ROADMAP.md)
 - [Testing](./docs/TESTING.md)
 - [Data persistence](./docs/architecture/DATA-PERSISTENCE.md)
 - [Decision log](./docs/DECISIONS.md)
-- [Detailed specs](./docs/specs/)
-
----
-
-## What this project demonstrates
-
-This repository is a case study in:
-
-- translating a real product constraint into domain rules;
-- designing exact-money state instead of UI-level arithmetic;
-- handling persistence failure honestly;
-- keeping architecture proportional;
-- adding on-device camera features without weakening the manual path;
-- separating product state from evidence tooling;
-- testing risky journeys across browser engines;
-- building accessibility into interaction contracts;
-- using empirical gates to decide what **not** to build yet.
-
-The goal is not framework breadth. It is a focused product that is technically disciplined, fast in real use, premium without spectacle, and explicit about what has — and has not — been validated.
+- [Contributing](./CONTRIBUTING.md)
+- [Security](./SECURITY.md)
 
 ## License
 

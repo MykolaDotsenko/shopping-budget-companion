@@ -3,7 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const POSITIVE_INTEGER = /^[1-9][0-9]*$/;
 const VERSION =
-  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 
 const requiredArtifact = (artifacts, name) => {
@@ -21,8 +21,10 @@ const requiredArtifact = (artifacts, name) => {
 
   const artifact = matches[0];
 
-  if (artifact.expired === true) {
-    throw new Error("Release artifact " + name + " has expired.");
+  if (artifact.expired !== false) {
+    throw new Error(
+      "Release artifact " + name + " must be explicitly present and unexpired.",
+    );
   }
 
   if (!Number.isSafeInteger(artifact.id) || artifact.id <= 0) {
@@ -49,9 +51,27 @@ export const validateReleaseContract = ({
   qualityRun,
   artifacts,
 }) => {
-  if (typeof version !== "string" || !VERSION.test(version)) {
+  const versionMatch = typeof version === "string" ? VERSION.exec(version) : null;
+  if (versionMatch === null) {
     throw new Error(
       "version must be canonical SemVer without a leading v or build metadata.",
+    );
+  }
+
+  const prerelease = versionMatch[4];
+  if (
+    prerelease !== undefined &&
+    prerelease
+      .split(".")
+      .some(
+        (identifier) =>
+          /^[0-9]+$/.test(identifier) &&
+          identifier.length > 1 &&
+          identifier.startsWith("0"),
+      )
+  ) {
+    throw new Error(
+      "numeric SemVer prerelease identifiers must not contain leading zeroes.",
     );
   }
 
@@ -85,6 +105,10 @@ export const validateReleaseContract = ({
   }
 
   const expectedRunId = Number(runId);
+  if (!Number.isSafeInteger(expectedRunId)) {
+    throw new Error("quality_run_id must be a safe positive integer.");
+  }
+
   if (
     qualityRun?.id !== expectedRunId ||
     qualityRun?.name !== "Quality" ||
@@ -112,7 +136,7 @@ export const validateReleaseContract = ({
     product: "shopping-budget-companion",
     version,
     tag: "v" + version,
-    prerelease: version.includes("-"),
+    prerelease: prerelease !== undefined,
     sourceSha,
     qualityRunId: expectedRunId,
     pagesSite: Object.freeze({

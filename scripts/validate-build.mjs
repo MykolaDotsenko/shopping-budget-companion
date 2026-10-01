@@ -6,9 +6,11 @@ import { gzipSync } from "node:zlib";
 import { ZXING_WASM_SHA256 } from "zxing-wasm/reader";
 
 import { extractInitialAssetPaths } from "./build-budget.mjs";
+import { validateInstalledDependencyContracts } from "./validate-dependency-contracts.mjs";
 import { priceOcrAssets } from "./price-ocr-assets.mjs";
 
 const root = process.cwd();
+await validateInstalledDependencyContracts(root);
 const dist = path.join(root, "dist");
 const assets = path.join(dist, "assets");
 const requiredPwaFiles = [

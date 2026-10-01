@@ -14,8 +14,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "docs:check": "node scripts/validate-docs.mjs",
+    "deps:check": "node scripts/validate-dependency-contracts.mjs",
     "build:check": "node scripts/validate-build.mjs",
-    "check": "npm run docs:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run build:check",
+    "check": "npm run docs:check && npm run deps:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run build:check",
     "beta:prepare-index": "node scripts/prepare-beta-index.mjs",
     "cohort:prepare-index": "node scripts/prepare-cohort-index.mjs",
     "qa:prepare-index": "node scripts/prepare-qa-index.mjs"

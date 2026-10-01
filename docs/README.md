@@ -76,6 +76,7 @@ Specialized contracts:
 
 - [architecture/DATA-PERSISTENCE.md](./architecture/DATA-PERSISTENCE.md)
 - [quality/ACCESSIBILITY.md](./quality/ACCESSIBILITY.md) — current accessibility/release-quality contract
+- [quality/RELEASE-PROCESS.md](./quality/RELEASE-PROCESS.md) — evidence-bound Git tag/GitHub Release publication contract
 
 Cross-cutting durable decisions:
 
@@ -93,7 +94,9 @@ Cross-cutting durable decisions:
 | persistence/recovery | ARCHITECTURE → DATA-PERSISTENCE → STORAGE-SCHEMA → tests |
 | UI/interaction | PRODUCT → DESIGN → ACCESSIBILITY → component/E2E tests |
 | camera, barcode, price tags | PRODUCT → DOMAIN → STATE-MACHINES (camera scan) → ACCESSIBILITY → component/E2E tests |
+| real-store camera field validation | ROADMAP → CAMERA-FIELD-VALIDATION → issue #88 |
 | tests/CI | TESTING → workflow/config |
+| versioned release publishing | TESTING → RELEASE-PROCESS → Publish Release workflow |
 | new capability | PRODUCT → ROADMAP → relevant decision/research |
 | premium/brand polish | PRODUCT → DESIGN → BRAND reference only if identity work |
 | marketing/launch | PRODUCT → MARKETING reference → launch material |
@@ -120,6 +123,7 @@ Evidence documents define how claims become validated:
 
 - [evidence/SPRINT-B-QUALITY-GATE.md](./evidence/SPRINT-B-QUALITY-GATE.md)
 - [evidence/IMMUTABLE-STUDY-DEPLOYMENTS.md](./evidence/IMMUTABLE-STUDY-DEPLOYMENTS.md) — immutable versioned Pages surfaces for real-world studies
+- [evidence/CAMERA-FIELD-VALIDATION.md](./evidence/CAMERA-FIELD-VALIDATION.md) — privacy-safe real-store protocol for shipped camera features
 - [evidence/RETENTION-BETA.md](./evidence/RETENTION-BETA.md)
 - [evidence/RETENTION-BETA-PLAYBOOK.md](./evidence/RETENTION-BETA-PLAYBOOK.md)
 - [evidence/RETENTION-STUDY-LOG-TEMPLATE.md](./evidence/RETENTION-STUDY-LOG-TEMPLATE.md)

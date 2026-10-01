@@ -51,11 +51,12 @@ npm run test:e2e
 `npm run check` runs these steps in order and stops at the first failure:
 
 1. `docs:check` — documentation structure (`scripts/validate-docs.mjs`): required contract paths, retired paths, repository-root and docs-root file placement, relative Markdown links and their heading anchors, and reachability from `docs/README.md`;
-2. `lint` — ESLint with no warnings allowed, including the architectural layer-boundary import rules;
-3. `typecheck` — strict TypeScript (`tsc --noEmit`);
-4. `test:coverage` — every Vitest unit and component test, with the coverage floors below;
-5. `build` — the public production build;
-6. `build:check` — the public build validator (`scripts/validate-build.mjs`): install manifest, icons, install-dialog screenshots (real size, not precached) and service worker, the [public bundle budget](#public-bundle-budget), engine isolation and the guarded-evidence marker scan.
+2. `deps:check` — executable dependency compatibility contracts (`scripts/validate-dependency-contracts.mjs`), including the exact `barcode-detector` ↔ self-hosted `zxing-wasm` runtime/WASM version lock;
+3. `lint` — ESLint with no warnings allowed, including the architectural layer-boundary import rules;
+4. `typecheck` — strict TypeScript (`tsc --noEmit`);
+5. `test:coverage` — every Vitest unit and component test, with the coverage floors below;
+6. `build` — the public production build;
+7. `build:check` — the public build validator (`scripts/validate-build.mjs`): dependency compatibility is rechecked against the installed graph, then the validator checks the install manifest, icons, install-dialog screenshots (real size, not precached), service worker, [public bundle budget](#public-bundle-budget), engine isolation and guarded-evidence marker scan.
 
 `npm run test:e2e` builds the public app and runs the public Playwright suite in Chromium, Firefox and WebKit. Tests tagged for a guarded evidence surface run only with `PLAYWRIGHT_GUARDED_SURFACE=1`, which CI sets while it serves that surface.
 
@@ -103,8 +104,8 @@ The Quality workflow runs on every pull request and every push to `main`, and te
 - **quality** — installs with `npm ci`; generates a production CycloneDX SBOM and validates its envelope, product identity and runtime dependency inventory; runs `npm audit --omit=dev --audit-level=high`; runs `npm run check`; builds and validates a build with `VITE_SHOPPING_BARCODE_SCANNER=0`, `VITE_SHOPPING_PRICE_OCR=0` and `VITE_SHOPPING_VISUAL_RECOGNITION=0`; then builds and validates the public release build, builds every guarded evidence build, checks that each guarded build is relocatable and has no manifest or service worker, and uploads the combined site as one immutable `pages-site` artifact;
 - **provenance** — on pushes and same-repository pull requests, verifies the SBOM digest and attaches signed build-provenance and SBOM attestations to the exact uploaded `pages-site` digest;
 - **artifact-integrity** — checks that the artifact holds the public install files, that every guarded surface has its page but no manifest or service worker, and that no source, package, `study/`, build-directory or SBOM file entered it;
-- **browser** (Chromium, Firefox and WebKit) — runs the public Playwright suite against the exact public build; its axe scans run in the Chromium leg;
-- **guarded-browser** — in Chromium, serves each guarded surface in turn from the same artifact and runs its tagged tests with `PLAYWRIGHT_GUARDED_SURFACE=1`; it continues past a failed surface, names every failed surface and then fails;
+- **browser** (Chromium, Firefox and WebKit) — installs the JavaScript test dependencies with package install scripts disabled, because these jobs execute the already-built production artifact and do not need optional Node-native postinstall binaries; then runs the public Playwright suite against the exact public build; its axe scans run in the Chromium leg;
+- **guarded-browser** — uses the same install-script-free browser-test dependency install, then in Chromium serves each guarded surface in turn from the same artifact and runs its tagged tests with `PLAYWRIGHT_GUARDED_SURFACE=1`; it continues past a failed surface, names every failed surface and then fails;
 - **deploy** — on pushes to `main` only, and only after artifact-integrity, provenance, browser and guarded-browser succeed, publishes the exact tested artifact to GitHub Pages.
 
 Pull requests also run a least-privilege Dependency Review workflow. It fails when a changed runtime, development or unknown-scope dependency introduces a high/critical known vulnerability, while showing patched-version guidance when GitHub Advisory data provides it. The action is pinned to an immutable commit SHA and does not receive pull-request write permission. A CodeQL workflow analyses the JavaScript and TypeScript code on pushes and pull requests to `main` and once a week.

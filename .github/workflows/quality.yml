@@ -277,7 +277,7 @@ jobs:
   browser:
     needs: quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -305,6 +305,16 @@ jobs:
       - name: Expose production index at test origin
         run: cp .playwright-site-root/shopping-budget-companion/index.html .playwright-site-root/index.html
 
+      - name: Harden Ubuntu package acquisition
+        shell: bash
+        run: |
+          sudo tee /etc/apt/apt.conf.d/80-playwright-ci-network >/dev/null <<'EOF'
+          Acquire::Retries "5";
+          Acquire::ForceIPv4 "true";
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          EOF
+
       - name: Install browser
         env:
           NODE_OPTIONS: --dns-result-order=ipv4first
@@ -330,7 +340,7 @@ jobs:
   guarded-browser:
     needs: quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -350,6 +360,16 @@ jobs:
         with:
           name: pages-site
           path: /tmp/pages-site
+
+      - name: Harden Ubuntu package acquisition
+        shell: bash
+        run: |
+          sudo tee /etc/apt/apt.conf.d/80-playwright-ci-network >/dev/null <<'EOF'
+          Acquire::Retries "5";
+          Acquire::ForceIPv4 "true";
+          Acquire::http::Timeout "30";
+          Acquire::https::Timeout "30";
+          EOF
 
       - name: Install Chromium
         env:

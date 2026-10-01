@@ -76,6 +76,17 @@ describe("release contract", () => {
     ).toThrow(/not the current main head/);
   });
 
+  it("rejects non-canonical SemVer prerelease identifiers", () => {
+    expect(() =>
+      validateReleaseContract(
+        valid({
+          version: "2.1.0-beta.01",
+          packageManifest: { version: "2.1.0-beta.01" },
+        }),
+      ),
+    ).toThrow(/leading zeroes/);
+  });
+
   it("rejects a version that does not match package.json", () => {
     expect(() =>
       validateReleaseContract(
@@ -122,7 +133,18 @@ describe("release contract", () => {
           ],
         }),
       ),
-    ).toThrow(/has expired/);
+    ).toThrow(/explicitly present and unexpired/);
+
+    expect(() =>
+      validateReleaseContract(
+        valid({
+          artifacts: [
+            { ...base[0], expired: undefined },
+            base[1],
+          ],
+        }),
+      ),
+    ).toThrow(/explicitly present and unexpired/);
 
     expect(() =>
       validateReleaseContract(

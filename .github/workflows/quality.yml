@@ -306,6 +306,9 @@ jobs:
         run: cp .playwright-site-root/shopping-budget-companion/index.html .playwright-site-root/index.html
 
       - name: Install browser
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
       - name: Run production browser and accessibility tests
@@ -349,6 +352,9 @@ jobs:
           path: /tmp/pages-site
 
       - name: Install Chromium
+        env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "120000"
         run: npx playwright install --with-deps chromium
 
       - name: Run guarded surface browser tests

@@ -32,3 +32,27 @@ Immediately before deleting a selected branch, cleanup re-fetches its ref and op
 Only add a branch to `.github/branch-hygiene.json` after verifying that its work is obsolete or represented by a newer merged implementation. Record its exact current SHA and the replacement reason.
 
 Do not use broad prefixes, age-based deletion or wildcard deletion.
+
+
+## Archiving legacy branches
+
+Unique inactive branch history is preserved before branch-ref cleanup.
+
+A branch may be listed in `.github/branch-hygiene.json` under `archiveBeforeDelete` only with:
+
+- the exact current 40-character lowercase commit SHA;
+- a concrete archival reason;
+- no open pull request;
+- no protected branch name or `study/*` prefix.
+
+For an eligible branch, cleanup:
+
+1. revalidates the current branch SHA and open-PR state;
+2. creates or verifies the deterministic lightweight tag `archive/legacy/<original-branch-name>` at that exact SHA;
+3. verifies the archive tag resolves to the expected SHA;
+4. revalidates the branch SHA and open-PR state a second time;
+5. deletes the branch ref only if every check still passes.
+
+If the archive tag already exists at a different SHA, cleanup fails closed rather than moving the tag.
+
+This converts inactive working refs into explicit historical refs without losing commit history.

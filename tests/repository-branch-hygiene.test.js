@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
 
-import { selectBranchesForDeletion } from "../scripts/cleanup-merged-branches.mjs";
+import {
+  selectBranchesForDeletion,
+  selectExplicitlySupersededBranches,
+} from "../scripts/cleanup-merged-branches.mjs";
 
 const repo = "MykolaDotsenko/shopping-budget-companion";
 
@@ -126,6 +129,99 @@ describe("repository branch hygiene", () => {
         ],
       }),
     ).toEqual(["feat/a-first", "fix/z-last"]);
+  });
+
+
+  it("deletes an explicitly superseded branch only at its verified exact SHA", () => {
+    const manifest = {
+      schemaVersion: 1,
+      explicitlySuperseded: [
+        {
+          branch: "release/old",
+          sha: "a".repeat(40),
+          reason: "Superseded by the merged final release workflow.",
+        },
+      ],
+    };
+
+    expect(
+      selectExplicitlySupersededBranches({
+        repository: repo,
+        branches: [branch("release/old", "a".repeat(40))],
+        openPullRequests: [],
+        manifest,
+      }),
+    ).toEqual(["release/old"]);
+
+    expect(
+      selectExplicitlySupersededBranches({
+        repository: repo,
+        branches: [branch("release/old", "b".repeat(40))],
+        openPullRequests: [],
+        manifest,
+      }),
+    ).toEqual([]);
+  });
+
+  it("never deletes an explicitly superseded ref if it becomes active again", () => {
+    const manifest = {
+      schemaVersion: 1,
+      explicitlySuperseded: [
+        {
+          branch: "release/old",
+          sha: "a".repeat(40),
+          reason: "Superseded.",
+        },
+      ],
+    };
+
+    expect(
+      selectExplicitlySupersededBranches({
+        repository: repo,
+        branches: [branch("release/old", "a".repeat(40))],
+        openPullRequests: [
+          {
+            head: {
+              ref: "release/old",
+              sha: "a".repeat(40),
+              repo: { full_name: repo },
+            },
+          },
+        ],
+        manifest,
+      }),
+    ).toEqual([]);
+  });
+
+  it("fails closed on malformed or duplicate explicit superseded entries", () => {
+    expect(() =>
+      selectExplicitlySupersededBranches({
+        repository: repo,
+        branches: [],
+        openPullRequests: [],
+        manifest: {
+          schemaVersion: 1,
+          explicitlySuperseded: [
+            { branch: "old", sha: "not-a-sha", reason: "" },
+          ],
+        },
+      }),
+    ).toThrow(/exact lowercase 40-character SHA/);
+
+    expect(() =>
+      selectExplicitlySupersededBranches({
+        repository: repo,
+        branches: [],
+        openPullRequests: [],
+        manifest: {
+          schemaVersion: 1,
+          explicitlySuperseded: [
+            { branch: "old", sha: "a".repeat(40), reason: "one" },
+            { branch: "old", sha: "b".repeat(40), reason: "two" },
+          ],
+        },
+      }),
+    ).toThrow(/unique name/);
   });
 
   it("runs destructive cleanup only after a successful main Quality push", () => {

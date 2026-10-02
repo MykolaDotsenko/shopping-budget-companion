@@ -4,6 +4,15 @@ import { fileURLToPath } from "node:url";
 
 const API_VERSION = "2022-11-28";
 const DEFAULT_PROTECTED_BRANCHES = new Set(["main", "gh-pages"]);
+const DEFAULT_PROTECTED_PREFIXES = ["study/"];
+
+const isProtectedBranch = (
+  name,
+  protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
+) =>
+  protectedBranches.has(name) ||
+  protectedPrefixes.some((prefix) => name.startsWith(prefix));
 
 const branchName = (branch) =>
   typeof branch?.name === "string" ? branch.name : "";
@@ -33,6 +42,7 @@ export const selectExplicitlySupersededBranches = ({
   openPullRequests,
   manifest,
   protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
 }) => {
   if (manifest?.schemaVersion !== 1) {
     throw new Error("Branch hygiene manifest must use schemaVersion 1.");
@@ -65,7 +75,10 @@ export const selectExplicitlySupersededBranches = ({
 
     seen.add(name);
 
-    if (protectedBranches.has(name) || openHeads.has(name)) {
+    if (
+      isProtectedBranch(name, protectedBranches, protectedPrefixes) ||
+      openHeads.has(name)
+    ) {
       continue;
     }
 
@@ -84,6 +97,7 @@ export const selectBranchesForDeletion = ({
   openPullRequests,
   closedPullRequests,
   protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
 }) => {
   const openHeads = openBranchHeads({ repository, openPullRequests });
 
@@ -108,7 +122,11 @@ export const selectBranchesForDeletion = ({
       const sha =
         typeof branch?.commit?.sha === "string" ? branch.commit.sha : "";
 
-      if (name === "" || sha === "" || protectedBranches.has(name)) {
+      if (
+        name === "" ||
+        sha === "" ||
+        isProtectedBranch(name, protectedBranches, protectedPrefixes)
+      ) {
         return false;
       }
 
@@ -121,6 +139,17 @@ export const selectBranchesForDeletion = ({
     .map((branch) => branch.name)
     .sort((left, right) => left.localeCompare(right));
 };
+
+export const isDeletionStillSafe = ({
+  expectedSha,
+  currentRef,
+  currentOpenPullRequests,
+}) =>
+  typeof expectedSha === "string" &&
+  expectedSha.length > 0 &&
+  currentRef?.object?.sha === expectedSha &&
+  Array.isArray(currentOpenPullRequests) &&
+  currentOpenPullRequests.length === 0;
 
 const request = async ({ url, token, method = "GET" }) => {
   const response = await fetch(url, {
@@ -228,6 +257,10 @@ export const cleanupMergedBranches = async ({
     `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} merged and ${supersededCandidates.length} exact-SHA superseded branch(es) selected.`,
   );
 
+  const expectedShaByBranch = new Map(
+    branches.map((branch) => [branchName(branch), branch?.commit?.sha]),
+  );
+
   for (const name of candidates) {
     if (!apply) {
       console.log(`DRY RUN delete: ${name}`);
@@ -238,6 +271,43 @@ export const cleanupMergedBranches = async ({
       .split("/")
       .map((segment) => encodeURIComponent(segment))
       .join("/");
+
+    const expectedSha = expectedShaByBranch.get(name);
+    if (typeof expectedSha !== "string" || expectedSha.length === 0) {
+      throw new Error(`Missing expected SHA for cleanup candidate ${name}.`);
+    }
+
+    const owner = repository.split("/")[0];
+    const [currentRef, currentOpenPullRequests] = await Promise.all([
+      request({
+        url: `${apiBase}${repositoryPath}/git/ref/heads/${encodedBranch}`,
+        token,
+      }),
+      listPaginated({
+        apiBase,
+        path: `${repositoryPath}/pulls?state=open&head=${encodeURIComponent(
+          owner,
+        )}%3A${encodeURIComponent(name)}`,
+        token,
+      }),
+    ]);
+
+    if (
+      !isDeletionStillSafe({
+        expectedSha,
+        currentRef,
+        currentOpenPullRequests,
+      })
+    ) {
+      if (currentRef?.object?.sha !== expectedSha) {
+        console.log(
+          `Skip changed branch: ${name} (expected ${expectedSha}, current ${currentRef?.object?.sha ?? "unknown"}).`,
+        );
+      } else {
+        console.log(`Skip branch with newly opened PR: ${name}.`);
+      }
+      continue;
+    }
 
     await request({
       url: `${apiBase}${repositoryPath}/git/refs/heads/${encodedBranch}`,

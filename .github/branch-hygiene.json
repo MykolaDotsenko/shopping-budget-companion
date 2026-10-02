@@ -49,6 +49,11 @@
       "branch": "release/release-evidence-contracts-v2",
       "sha": "c0707b1abc36d740355e2b7ee46f9aadb65ac503",
       "reason": "Closed PR #130 is superseded by merged final release evidence PR #138."
+    },
+    {
+      "branch": "chore/repository-branch-hygiene-pass-2",
+      "sha": "bb7b860ff370b316659adf3aeb551f8889be83b1",
+      "reason": "Closed PR #148 is superseded by merged repository hygiene implementation PR #149."
     }
   ]
 }

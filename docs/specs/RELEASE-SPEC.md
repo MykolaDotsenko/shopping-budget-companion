@@ -370,6 +370,14 @@ A representative release journey:
 
 The journey must remain clear, fast, durable and accessible.
 
+## Formal release identity
+
+A GitHub Release is allowed only from a semantic version tag whose version equals `package.json`, whose SHA belongs to `main`, and whose exact SHA is already recorded by the current tested `gh-pages` deployment.
+
+The tagged release workflow rebuilds and validates the public artifact, reruns the complete browser matrix, emits SHA-256 digests and a CycloneDX production SBOM, and refuses to replace an existing release.
+
+Formal release metadata does not override evidence status. Retention and physical camera gates remain pass/fail/not-run according to their own evidence contracts.
+
 ## Acceptance rule
 
 Current release behaviour is accepted only when:

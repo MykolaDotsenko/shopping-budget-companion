@@ -150,7 +150,7 @@ const isBarcodeObservation = (value) =>
   ]) &&
   value.capability === "barcode" &&
   ["native", "fallback"].includes(value.engine) &&
-  ["correct", "wrong", "no-read", "timeout"].includes(value.outcome) &&
+  ["correct", "wrong", "no-read", "timeout", "runtime-error"].includes(value.outcome) &&
   typeof value.correctionOrRejection === "boolean";
 
 const isRank = (value, max) =>
@@ -176,7 +176,7 @@ const isVisualObservation = (value) =>
   ["webgpu", "wasm"].includes(value.engine) &&
   isFiniteNonNegative(value.candidateListLatencyMs) &&
   isRank(value.correctRank, 5) &&
-  ["accepted-correct", "accepted-wrong", "rejected", "no-result", "timeout"].includes(value.outcome) &&
+  ["accepted-correct", "accepted-wrong", "rejected", "no-result", "timeout", "runtime-error"].includes(value.outcome) &&
   (value.confusionClass === null ||
     ["same-brand-size", "same-brand-flavour", "similar-packaging", "produce-lookalike", "other"].includes(value.confusionClass));
 
@@ -197,7 +197,7 @@ const isOcrObservation = (value) =>
   ]) &&
   value.capability === "ocr" &&
   isRank(value.correctCandidateRank, 4) &&
-  ["accepted-correct", "accepted-wrong", "rejected", "no-result", "timeout"].includes(value.outcome) &&
+  ["accepted-correct", "accepted-wrong", "rejected", "no-result", "timeout", "runtime-error"].includes(value.outcome) &&
   typeof value.correctionOrRejection === "boolean" &&
   ["low", "medium", "high", "not-asked"].includes(value.cognitiveEffort);
 
@@ -394,7 +394,10 @@ export const summarizeCameraFieldEvidence = (reports) => {
       correctReads: barcode.filter((item) => item.outcome === "correct").length,
       wrongReads: barcode.filter((item) => item.outcome === "wrong").length,
       failuresOrTimeouts: barcode.filter(
-        (item) => item.outcome === "no-read" || item.outcome === "timeout",
+        (item) =>
+          item.outcome === "no-read" ||
+          item.outcome === "timeout" ||
+          item.outcome === "runtime-error",
       ).length,
       correctionOrRejectionRate: rate(
         barcode.filter((item) => item.correctionOrRejection).length,
@@ -418,6 +421,7 @@ export const summarizeCameraFieldEvidence = (reports) => {
       ),
       wrongAccepts: visual.filter((item) => item.outcome === "accepted-wrong").length,
       rejections: visual.filter((item) => item.outcome === "rejected").length,
+      runtimeErrors: visual.filter((item) => item.outcome === "runtime-error").length,
     },
     ocr: {
       ...ocrBase,
@@ -446,6 +450,7 @@ export const summarizeCameraFieldEvidence = (reports) => {
         ocr.filter((item) => item.correctionOrRejection).length,
         ocr.length,
       ),
+      runtimeErrors: ocr.filter((item) => item.outcome === "runtime-error").length,
       cognitiveEffort: {
         low: ocr.filter((item) => item.cognitiveEffort === "low").length,
         medium: ocr.filter((item) => item.cognitiveEffort === "medium").length,

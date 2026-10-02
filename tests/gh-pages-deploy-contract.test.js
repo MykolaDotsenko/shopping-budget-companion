@@ -36,7 +36,7 @@ describe("gh-pages deployment governance contract", () => {
     );
   });
 
-  it("serializes gh-pages writers without cancelling an active publication", () => {
+  it("queues gh-pages writers without cancelling active or pending publication", () => {
     const deployJob = qualityWorkflow.slice(
       qualityWorkflow.indexOf("\n  deploy:\n"),
     );
@@ -45,6 +45,7 @@ describe("gh-pages deployment governance contract", () => {
       "    concurrency:",
       "      group: gh-pages-publish",
       "      cancel-in-progress: false",
+      "      queue: max",
     ].join("\n"));
     expect(deployJob).not.toContain(
       "group: gh-pages-publish\n      cancel-in-progress: true",
@@ -53,6 +54,7 @@ describe("gh-pages deployment governance contract", () => {
       "concurrency:",
       "  group: gh-pages-publish",
       "  cancel-in-progress: false",
+      "  queue: max",
     ].join("\n"));
   });
 

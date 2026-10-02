@@ -431,6 +431,7 @@ jobs:
     concurrency:
       group: gh-pages-publish
       cancel-in-progress: false
+      queue: max
 
     steps:
       - name: Checkout deployment repository

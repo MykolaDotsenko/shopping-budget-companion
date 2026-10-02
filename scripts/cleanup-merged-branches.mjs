@@ -1,3 +1,6 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 const API_VERSION = "2022-11-28";
 const DEFAULT_PROTECTED_BRANCHES = new Set(["main", "gh-pages"]);
 
@@ -181,7 +184,7 @@ export const cleanupMergedBranches = async ({
 
 const runningAsCli =
   process.argv[1] !== undefined &&
-  new URL(import.meta.url).pathname.endsWith(process.argv[1].replaceAll("\\", "/"));
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (runningAsCli) {
   try {

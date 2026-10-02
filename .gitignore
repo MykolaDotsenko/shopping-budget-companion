@@ -17,6 +17,9 @@ playwright-report/
 test-results/
 .playwright-site-root/
 
+# Physical field-study evidence stays local and must never be committed
+.field-evidence/
+
 # Local environment
 .env
 .env.*

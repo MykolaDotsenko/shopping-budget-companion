@@ -93,6 +93,11 @@ export const selectExplicitlySupersededBranches = ({
 
 export const archiveTagForBranch = (name) => `archive/legacy/${name}`;
 
+export const isArchiveRefValid = ({ archiveRef, expectedSha }) =>
+  typeof expectedSha === "string" &&
+  expectedSha.length > 0 &&
+  archiveRef?.object?.sha === expectedSha;
+
 export const selectArchiveBeforeDeleteBranches = ({
   repository,
   branches,
@@ -429,7 +434,7 @@ export const cleanupMergedBranches = async ({
         });
       }
 
-      if (archiveRef?.object?.sha !== expectedSha) {
+      if (!isArchiveRefValid({ archiveRef, expectedSha })) {
         throw new Error(
           `Archive tag ${archiveEntry.tag} does not resolve to expected SHA ${expectedSha}.`,
         );

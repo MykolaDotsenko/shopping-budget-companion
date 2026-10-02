@@ -244,8 +244,18 @@ jobs:
           gradle-version: "9.6.0"
 
       - name: Lint and build Android APK variants
+        shell: bash
         run: |
-          gradle -p android --no-daemon --stacktrace lintDebug assembleDebug assembleRelease
+          set -euo pipefail
+          if ! gradle -p android --no-daemon --stacktrace lintDebug assembleDebug assembleRelease; then
+            report="android/app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt"
+            if [[ -f "${report}" ]]; then
+              echo "::group::Android lint report"
+              cat "${report}"
+              echo "::endgroup::"
+            fi
+            exit 1
+          fi
 
       - name: Verify installable preview APK signature
         run: |

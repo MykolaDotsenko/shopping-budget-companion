@@ -4,6 +4,15 @@ import { fileURLToPath } from "node:url";
 
 const API_VERSION = "2022-11-28";
 const DEFAULT_PROTECTED_BRANCHES = new Set(["main", "gh-pages"]);
+const DEFAULT_PROTECTED_PREFIXES = ["study/"];
+
+const isProtectedBranch = (
+  name,
+  protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
+) =>
+  protectedBranches.has(name) ||
+  protectedPrefixes.some((prefix) => name.startsWith(prefix));
 
 const branchName = (branch) =>
   typeof branch?.name === "string" ? branch.name : "";
@@ -33,6 +42,7 @@ export const selectExplicitlySupersededBranches = ({
   openPullRequests,
   manifest,
   protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
 }) => {
   if (manifest?.schemaVersion !== 1) {
     throw new Error("Branch hygiene manifest must use schemaVersion 1.");
@@ -65,7 +75,10 @@ export const selectExplicitlySupersededBranches = ({
 
     seen.add(name);
 
-    if (protectedBranches.has(name) || openHeads.has(name)) {
+    if (
+      isProtectedBranch(name, protectedBranches, protectedPrefixes) ||
+      openHeads.has(name)
+    ) {
       continue;
     }
 
@@ -84,6 +97,7 @@ export const selectBranchesForDeletion = ({
   openPullRequests,
   closedPullRequests,
   protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
 }) => {
   const openHeads = openBranchHeads({ repository, openPullRequests });
 
@@ -108,7 +122,11 @@ export const selectBranchesForDeletion = ({
       const sha =
         typeof branch?.commit?.sha === "string" ? branch.commit.sha : "";
 
-      if (name === "" || sha === "" || protectedBranches.has(name)) {
+      if (
+        name === "" ||
+        sha === "" ||
+        isProtectedBranch(name, protectedBranches, protectedPrefixes)
+      ) {
         return false;
       }
 

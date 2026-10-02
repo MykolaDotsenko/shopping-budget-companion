@@ -361,3 +361,43 @@ Semantic tokens give high visual leverage while preserving one tested interactio
 ### Revisit when
 
 A platform limitation prevents semantic tokens from expressing a required accessible design, or measured user evidence shows that a mode needs materially different interaction rather than presentation.
+
+
+## D-058 — Self-hosted ZXing runtime and WASM stay version-locked
+
+Date: 2026-10-01
+
+Status: accepted
+
+### Decision
+
+Treat `barcode-detector` and the directly self-hosted `zxing-wasm` package as one compatibility unit.
+
+The application's direct `zxing-wasm` version must exactly match the `zxing-wasm` version required by the installed `barcode-detector` package. CI must fail closed when:
+
+- the direct dependency spec drifts from the exact version required by `barcode-detector`;
+- the installed root `zxing-wasm` version differs from that requirement;
+- npm installs a second nested `zxing-wasm` version under `barcode-detector`;
+- a future `barcode-detector` release stops pinning an exact ZXing runtime without an explicit review of the self-hosted WASM integration.
+
+Dependabot groups the two barcode-runtime dependencies separately from other production updates. A `zxing-wasm`-only update is not mergeable merely because it is a patch release; it must wait for a compatible `barcode-detector` release or be handled as an explicit paired compatibility change.
+
+### Rationale
+
+The barcode fallback imports the ponyfill/runtime from `barcode-detector`, while the application self-hosts the ZXing reader WASM through the direct `zxing-wasm` package so scanning can remain offline-capable.
+
+Emscripten runtime JavaScript and its WASM binary are one ABI-level artifact pair. Feeding a runtime one package version while serving the WASM binary from another can crash the page rather than fail as an ordinary recoverable scanner error.
+
+This risk was exposed by the attempted `zxing-wasm 3.1.3 → 3.1.4` Dependabot update: `barcode-detector@3.2.2` still required `zxing-wasm@3.1.3`, so npm installed two ZXing versions and the Chromium barcode E2E crashed. The safe production version remains the aligned pair until both sides can move together.
+
+### Consequence
+
+- dependency drift fails before release;
+- build validation independently re-checks the installed runtime graph;
+- a scanner dependency update cannot silently replace only the self-hosted WASM half of the runtime;
+- barcode updates remain reviewable as a small explicit compatibility unit;
+- the current production scanner stays on the known-green aligned versions until the paired update passes the full browser matrix.
+
+### Revisit when
+
+The application stops self-hosting ZXing WASM, `barcode-detector` exposes a first-class self-hosted asset path that cannot diverge from its runtime, or the barcode implementation no longer has two separately resolved package boundaries.

@@ -6,7 +6,18 @@ updates:
       interval: weekly
       day: monday
     groups:
+      barcode-runtime:
+        patterns:
+          - barcode-detector
+          - zxing-wasm
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
       production-minor-patch:
+        exclude-patterns:
+          - barcode-detector
+          - zxing-wasm
         dependency-type: production
         update-types:
           - minor

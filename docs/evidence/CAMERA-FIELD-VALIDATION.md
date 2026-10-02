@@ -168,9 +168,11 @@ Copy this table into a private field document. Do not commit completed rows.
 
 Allowed Result values should stay capability-specific and mechanical:
 
-- barcode: success, wrong-read, no-result, runtime-error;
-- Product: top1-correct, top3-correct, no-correct-candidate, runtime-error;
-- OCR: rank1-correct, rank2-3-correct, missing-correct-candidate, runtime-error.
+- barcode: correct, wrong, no-read, timeout, runtime-error;
+- Product: accepted-correct, accepted-wrong, rejected, no-result, timeout, runtime-error;
+- OCR: accepted-correct, accepted-wrong, rejected, no-result, timeout, runtime-error.
+
+Correct candidate rank remains a separate numeric field for Product and OCR, so top-1/top-3 analysis is derived from the evidence rather than encoded ambiguously into the result label.
 
 Do not invent calibrated confidence percentages from model scores.
 
@@ -263,3 +265,42 @@ Whatever the decision:
 - build kill switches remain available until field evidence is mature.
 
 Automated fixtures, a green CI matrix or a single successful store demo cannot close issue #88.
+
+## Structured local evidence analyzer
+
+The repository includes a local-only analyzer so the private facilitator log can be validated and summarized without adding production telemetry.
+
+Create a local evidence skeleton:
+
+```bash
+mkdir -p .field-evidence
+npm run field:report -- --template > .field-evidence/field-001.json
+```
+
+The `.field-evidence/` directory is ignored by Git. Do not force-add completed reports.
+
+Validate and aggregate one decision cycle:
+
+```bash
+npm run field:report -- \
+  .field-evidence/android-001.json \
+  .field-evidence/iphone-001.json \
+  > .field-evidence/camera-field-summary.json
+```
+
+The machine-readable contract intentionally contains no images, product names, barcode values, prices, store names or participant identity. Unknown observation fields and weakened privacy declarations are rejected rather than silently retained.
+
+The analyzer verifies:
+
+- one exact 40-character build revision per decision cycle;
+- Android/Chromium and iPhone/Safari evidence;
+- native and fallback barcode paths;
+- WebGPU and WASM Product paths;
+- cold and warm Product/OCR paths;
+- every required barcode, Product and OCR scenario separately on both device classes;
+- unique evidence IDs;
+- bounded mechanical outcome categories.
+
+It summarizes success/correctness, top-1/top-3 candidate placement, fallback/correction rates, latency medians, preference counts and cognitive-effort counts. It never emits an automatic KEEP / REMEDIATE / DISABLE verdict.
+
+A complete analyzer coverage result means only that the evidence matrix was exercised. It does not mean a capability passed field validation. The final capability decisions remain human and must use the decision records above.

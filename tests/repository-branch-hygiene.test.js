@@ -224,6 +224,42 @@ describe("repository branch hygiene", () => {
     ).toThrow(/unique name/);
   });
 
+  it("hard-protects study evidence refs from merged-head cleanup", () => {
+    expect(
+      selectBranchesForDeletion({
+        repository: repo,
+        branches: [branch("study/evidence-baseline-r1", "study-sha")],
+        openPullRequests: [],
+        closedPullRequests: [
+          pull({
+            head: "study/evidence-baseline-r1",
+            sha: "study-sha",
+          }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("hard-protects study evidence refs from explicit superseded cleanup", () => {
+    expect(
+      selectExplicitlySupersededBranches({
+        repository: repo,
+        branches: [branch("study/evidence-baseline-r1", "a".repeat(40))],
+        openPullRequests: [],
+        manifest: {
+          schemaVersion: 1,
+          explicitlySuperseded: [
+            {
+              branch: "study/evidence-baseline-r1",
+              sha: "a".repeat(40),
+              reason: "Even an explicit entry cannot bypass study protection.",
+            },
+          ],
+        },
+      }),
+    ).toEqual([]);
+  });
+
   it("runs destructive cleanup only after a successful main Quality push", () => {
     expect(hygieneWorkflow).toContain('workflows: ["Quality"]');
     expect(hygieneWorkflow).toContain("types: [completed]");

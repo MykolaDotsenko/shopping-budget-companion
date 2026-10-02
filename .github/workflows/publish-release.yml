@@ -295,7 +295,7 @@ jobs:
             --json tagName,targetCommitish,isDraft,assets \
             > /tmp/release-contract/published-draft.json
 
-          jq -e --arg tag "${TAG}" --arg sha "${SOURCE_SHA}" '
+          jq -e --arg tag "${TAG}" --arg sha "${SOURCE_SHA}" --arg version "${VERSION}" '
             .tagName == $tag and
             .targetCommitish == $sha and
             .isDraft == true and
@@ -303,8 +303,8 @@ jobs:
             ([.assets[].name] | index("pages-site-" + $sha + ".zip") != null) and
             ([.assets[].name] | index("shopping-budget-companion-" + $sha + ".cdx.json") != null) and
             ([.assets[].name] | index("shopping-budget-companion-" + $sha + ".cdx.json.sha256") != null) and
-            ([.assets[].name] | index("shopping-budget-companion-" + .tagName[1:] + ".apk") != null) and
-            ([.assets[].name] | index("shopping-budget-companion-" + .tagName[1:] + ".apk.sha256") != null)
+            ([.assets[].name] | index("shopping-budget-companion-" + $version + ".apk") != null) and
+            ([.assets[].name] | index("shopping-budget-companion-" + $version + ".apk.sha256") != null)
           ' /tmp/release-contract/published-draft.json >/dev/null
 
       - name: Publish verified release

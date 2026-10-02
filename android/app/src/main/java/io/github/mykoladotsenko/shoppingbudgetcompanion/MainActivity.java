@@ -1,6 +1,7 @@
 package io.github.mykoladotsenko.shoppingbudgetcompanion;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -52,12 +53,15 @@ public final class MainActivity extends Activity {
         }
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
     private void configureWebView(@NonNull WebView view) {
         boolean debuggable =
             (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
         WebView.setWebContentsDebuggingEnabled(debuggable);
 
         WebSettings settings = view.getSettings();
+        // The bundled React application requires JavaScript. The WebView is restricted
+        // to the appassets origin; arbitrary top-level web content opens externally.
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);

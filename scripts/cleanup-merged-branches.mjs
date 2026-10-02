@@ -91,6 +91,75 @@ export const selectExplicitlySupersededBranches = ({
   return selected.sort((left, right) => left.localeCompare(right));
 };
 
+export const archiveTagForBranch = (name) => `archive/legacy/${name}`;
+
+export const isArchiveRefValid = ({ archiveRef, expectedSha }) =>
+  typeof expectedSha === "string" &&
+  expectedSha.length > 0 &&
+  archiveRef?.object?.sha === expectedSha;
+
+export const selectArchiveBeforeDeleteBranches = ({
+  repository,
+  branches,
+  openPullRequests,
+  manifest,
+  protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
+}) => {
+  if (manifest?.schemaVersion !== 1) {
+    throw new Error("Branch hygiene manifest must use schemaVersion 1.");
+  }
+
+  if (!Array.isArray(manifest.archiveBeforeDelete)) {
+    throw new Error("Branch hygiene manifest archiveBeforeDelete must be an array.");
+  }
+
+  const openHeads = openBranchHeads({ repository, openPullRequests });
+  const byName = new Map(branches.map((branch) => [branchName(branch), branch]));
+  const seen = new Set();
+  const selected = [];
+
+  for (const entry of manifest.archiveBeforeDelete) {
+    const name = typeof entry?.branch === "string" ? entry.branch : "";
+    const sha = typeof entry?.sha === "string" ? entry.sha : "";
+    const reason = typeof entry?.reason === "string" ? entry.reason.trim() : "";
+
+    if (
+      name === "" ||
+      !/^[0-9a-f]{40}$/.test(sha) ||
+      reason === "" ||
+      seen.has(name)
+    ) {
+      throw new Error(
+        "Every archived legacy branch needs a unique name, exact lowercase 40-character SHA and reason.",
+      );
+    }
+
+    seen.add(name);
+
+    if (
+      isProtectedBranch(name, protectedBranches, protectedPrefixes) ||
+      openHeads.has(name)
+    ) {
+      continue;
+    }
+
+    const current = byName.get(name);
+    if (current?.commit?.sha === sha) {
+      selected.push({
+        branch: name,
+        sha,
+        tag: archiveTagForBranch(name),
+        reason,
+      });
+    }
+  }
+
+  return selected.sort((left, right) =>
+    left.branch.localeCompare(right.branch),
+  );
+};
+
 export const selectBranchesForDeletion = ({
   repository,
   branches,
@@ -151,21 +220,33 @@ export const isDeletionStillSafe = ({
   Array.isArray(currentOpenPullRequests) &&
   currentOpenPullRequests.length === 0;
 
-const request = async ({ url, token, method = "GET" }) => {
+const request = async ({
+  url,
+  token,
+  method = "GET",
+  body = undefined,
+  allowNotFound = false,
+}) => {
   const response = await fetch(url, {
     method,
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
       "X-GitHub-Api-Version": API_VERSION,
       "User-Agent": "shopping-budget-companion-branch-hygiene",
     },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 
+  if (allowNotFound && response.status === 404) {
+    return null;
+  }
+
   if (!response.ok) {
-    const body = await response.text();
+    const responseBody = await response.text();
     throw new Error(
-      `GitHub API ${method} ${url} failed with ${response.status}: ${body.slice(0, 500)}`,
+      `GitHub API ${method} ${url} failed with ${response.status}: ${responseBody.slice(0, 500)}`,
     );
   }
 
@@ -249,12 +330,25 @@ export const cleanupMergedBranches = async ({
     openPullRequests,
     manifest,
   });
-  const candidates = [...new Set([...mergedCandidates, ...supersededCandidates])].sort(
-    (left, right) => left.localeCompare(right),
+  const archiveCandidates = selectArchiveBeforeDeleteBranches({
+    repository,
+    branches,
+    openPullRequests,
+    manifest,
+  });
+  const archiveByBranch = new Map(
+    archiveCandidates.map((entry) => [entry.branch, entry]),
   );
+  const candidates = [
+    ...new Set([
+      ...mergedCandidates,
+      ...supersededCandidates,
+      ...archiveCandidates.map((entry) => entry.branch),
+    ]),
+  ].sort((left, right) => left.localeCompare(right));
 
   console.log(
-    `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} merged and ${supersededCandidates.length} exact-SHA superseded branch(es) selected.`,
+    `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} merged, ${supersededCandidates.length} exact-SHA superseded, and ${archiveCandidates.length} archive-before-delete branch(es) selected.`,
   );
 
   const expectedShaByBranch = new Map(
@@ -309,15 +403,96 @@ export const cleanupMergedBranches = async ({
       continue;
     }
 
+    const archiveEntry = archiveByBranch.get(name);
+    if (archiveEntry !== undefined) {
+      const encodedTag = archiveEntry.tag
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+      const archiveRefUrl =
+        `${apiBase}${repositoryPath}/git/ref/tags/${encodedTag}`;
+
+      let archiveRef = await request({
+        url: archiveRefUrl,
+        token,
+        allowNotFound: true,
+      });
+
+      if (archiveRef === null) {
+        await request({
+          url: `${apiBase}${repositoryPath}/git/refs`,
+          token,
+          method: "POST",
+          body: {
+            ref: `refs/tags/${archiveEntry.tag}`,
+            sha: expectedSha,
+          },
+        });
+        archiveRef = await request({
+          url: archiveRefUrl,
+          token,
+        });
+      }
+
+      if (!isArchiveRefValid({ archiveRef, expectedSha })) {
+        throw new Error(
+          `Archive tag ${archiveEntry.tag} does not resolve to expected SHA ${expectedSha}.`,
+        );
+      }
+
+      console.log(
+        `Verified archive tag: ${archiveEntry.tag} -> ${expectedSha}`,
+      );
+
+      const [postArchiveRef, postArchiveOpenPullRequests] = await Promise.all([
+        request({
+          url: `${apiBase}${repositoryPath}/git/ref/heads/${encodedBranch}`,
+          token,
+        }),
+        listPaginated({
+          apiBase,
+          path: `${repositoryPath}/pulls?state=open&head=${encodeURIComponent(
+            owner,
+          )}%3A${encodeURIComponent(name)}`,
+          token,
+        }),
+      ]);
+
+      if (
+        !isDeletionStillSafe({
+          expectedSha,
+          currentRef: postArchiveRef,
+          currentOpenPullRequests: postArchiveOpenPullRequests,
+        })
+      ) {
+        console.log(
+          `Skip archived branch whose state changed before delete: ${name}.`,
+        );
+        continue;
+      }
+    }
+
     await request({
       url: `${apiBase}${repositoryPath}/git/refs/heads/${encodedBranch}`,
       token,
       method: "DELETE",
     });
-    console.log(`Deleted safe stale branch: ${name}`);
+    console.log(
+      archiveEntry === undefined
+        ? `Deleted safe stale branch: ${name}`
+        : `Archived and deleted legacy branch: ${name}`,
+    );
   }
 
-  return { inspected: branches.length, candidates };
+  return {
+    inspected: branches.length,
+    candidates,
+    archived: archiveCandidates.map((entry) => ({
+      branch: entry.branch,
+      tag: entry.tag,
+      sha: entry.sha,
+    })),
+  };
 };
 
 const runningAsCli =

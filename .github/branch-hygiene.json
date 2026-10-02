@@ -55,5 +55,67 @@
       "sha": "bb7b860ff370b316659adf3aeb551f8889be83b1",
       "reason": "Closed PR #148 is superseded by merged repository hygiene implementation PR #149."
     }
+  ],
+  "archiveBeforeDelete": [
+    {
+      "branch": "chore/formal-release-process",
+      "sha": "b4e5f1ca658742e8a09a79705373c2ced2427bc3",
+      "reason": "Historical formal-release draft; the current evidence-bound release workflow is on main. Preserve this exact head as an archive tag before deleting the branch."
+    },
+    {
+      "branch": "experiment/visual-transformers-adapter",
+      "sha": "ee19b4b469e959f1b2df8e52e47344461b2061d9",
+      "reason": "Historical local visual-recognition experiment. Preserve the exact experiment head as an archive tag before removing the inactive branch."
+    },
+    {
+      "branch": "feat/phase-8-repeat-price-memory",
+      "sha": "e309f6151af6a8b8637da9c04a4adf107951b4c2",
+      "reason": "Historical Phase 8 repeat/price-memory development branch. Preserve its exact head as an archive tag."
+    },
+    {
+      "branch": "feat/visual-recognition-benchmark",
+      "sha": "7112d2ac9fb3f8996ba8b082fab356fef87dee3d",
+      "reason": "Historical visual-recognition benchmark branch. Preserve the exact benchmark head as an archive tag."
+    },
+    {
+      "branch": "feature/pulse-counter-native-transitions",
+      "sha": "ef706ae596b6323380de52a7a63247c79c1852bb",
+      "reason": "Historical UI transition experiment with no active PR. Preserve its exact head as an archive tag."
+    },
+    {
+      "branch": "feature/pulse-counter-wow-ui",
+      "sha": "6947d0fe8065b38c1cdc404d59c4db80d6d09835",
+      "reason": "Historical spectral UI branch containing post-PR commits. Preserve the exact final head as an archive tag."
+    },
+    {
+      "branch": "fix/localization-complete-compact-switcher",
+      "sha": "103c8a33a3c6bb7ed740376637fcff177fa0b019",
+      "reason": "Historical localization branch containing post-merge commits. Preserve the exact final head as an archive tag."
+    },
+    {
+      "branch": "phase-4-a4-active-screen",
+      "sha": "a0a075646da6671e92f856eea65500e4a4c6ca7b",
+      "reason": "Historical Phase 4 active-screen branch. Preserve the exact head as an archive tag."
+    },
+    {
+      "branch": "phase-8/retention-beta-evidence",
+      "sha": "26495899418e3560ec66ccb7ca8f743d7cd06b02",
+      "reason": "Historical retention-beta branch containing post-merge documentation work. Preserve the exact final head as an archive tag."
+    },
+    {
+      "branch": "qa/barcode-paired-analyzer",
+      "sha": "ac06d140f17a75d0e643bd616e1cc44b56e6be85",
+      "reason": "Historical barcode analyzer QA branch containing post-merge cleanup. Preserve the exact final head as an archive tag."
+    },
+    {
+      "branch": "qa/retention-decision-readiness",
+      "sha": "5c962fc0c695d4f407a9dfd0321494456d8dcf39",
+      "reason": "Historical retention readiness QA branch. Preserve the exact head as an archive tag."
+    },
+    {
+      "branch": "qa/visual-evidence-integrity",
+      "sha": "ad27aa964fdf194156135840fd076a4c100b51b6",
+      "reason": "Historical visual-evidence QA branch. Preserve the exact head as an archive tag."
+    }
   ]
 }

@@ -3,7 +3,10 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import {
+  archiveTagForBranch,
+  isArchiveRefValid,
   isDeletionStillSafe,
+  selectArchiveBeforeDeleteBranches,
   selectBranchesForDeletion,
   selectExplicitlySupersededBranches,
 } from "../scripts/cleanup-merged-branches.mjs";
@@ -286,6 +289,136 @@ describe("repository branch hygiene", () => {
         expectedSha: "expected-sha",
         currentRef: { object: { sha: "expected-sha" } },
         currentOpenPullRequests: [{ number: 999 }],
+      }),
+    ).toBe(false);
+  });
+
+
+  it("selects archive-before-delete branches only at their exact inactive SHA", () => {
+    const manifest = {
+      schemaVersion: 1,
+      explicitlySuperseded: [],
+      archiveBeforeDelete: [
+        {
+          branch: "experiment/legacy",
+          sha: "a".repeat(40),
+          reason: "Preserve before cleanup.",
+        },
+      ],
+    };
+
+    expect(
+      selectArchiveBeforeDeleteBranches({
+        repository: repo,
+        branches: [branch("experiment/legacy", "a".repeat(40))],
+        openPullRequests: [],
+        manifest,
+      }),
+    ).toEqual([
+      {
+        branch: "experiment/legacy",
+        sha: "a".repeat(40),
+        tag: "archive/legacy/experiment/legacy",
+        reason: "Preserve before cleanup.",
+      },
+    ]);
+
+    expect(
+      selectArchiveBeforeDeleteBranches({
+        repository: repo,
+        branches: [branch("experiment/legacy", "b".repeat(40))],
+        openPullRequests: [],
+        manifest,
+      }),
+    ).toEqual([]);
+  });
+
+  it("never archives protected study refs or branches with an open PR", () => {
+    const manifest = {
+      schemaVersion: 1,
+      explicitlySuperseded: [],
+      archiveBeforeDelete: [
+        {
+          branch: "study/evidence-r1",
+          sha: "a".repeat(40),
+          reason: "Should remain protected.",
+        },
+        {
+          branch: "experiment/active",
+          sha: "b".repeat(40),
+          reason: "Should remain active.",
+        },
+      ],
+    };
+
+    expect(
+      selectArchiveBeforeDeleteBranches({
+        repository: repo,
+        branches: [
+          branch("study/evidence-r1", "a".repeat(40)),
+          branch("experiment/active", "b".repeat(40)),
+        ],
+        openPullRequests: [
+          {
+            head: {
+              ref: "experiment/active",
+              sha: "b".repeat(40),
+              repo: { full_name: repo },
+            },
+          },
+        ],
+        manifest,
+      }),
+    ).toEqual([]);
+  });
+
+  it("fails closed on malformed or duplicate archive entries", () => {
+    expect(() =>
+      selectArchiveBeforeDeleteBranches({
+        repository: repo,
+        branches: [],
+        openPullRequests: [],
+        manifest: {
+          schemaVersion: 1,
+          explicitlySuperseded: [],
+          archiveBeforeDelete: [
+            { branch: "legacy", sha: "bad", reason: "" },
+          ],
+        },
+      }),
+    ).toThrow(/exact lowercase 40-character SHA/);
+
+    expect(() =>
+      selectArchiveBeforeDeleteBranches({
+        repository: repo,
+        branches: [],
+        openPullRequests: [],
+        manifest: {
+          schemaVersion: 1,
+          explicitlySuperseded: [],
+          archiveBeforeDelete: [
+            { branch: "legacy", sha: "a".repeat(40), reason: "one" },
+            { branch: "legacy", sha: "b".repeat(40), reason: "two" },
+          ],
+        },
+      }),
+    ).toThrow(/unique name/);
+  });
+
+  it("derives stable archive tags and requires them to resolve to the exact SHA", () => {
+    expect(archiveTagForBranch("qa/legacy")).toBe("archive/legacy/qa/legacy");
+
+    expect(
+      isArchiveRefValid({
+        archiveRef: { object: { sha: "expected" } },
+        expectedSha: "expected",
+      }),
+    ).toBe(true);
+
+    expect(
+      isArchiveRefValid({
+        archiveRef: { object: { sha: "other" } },
+        expectedSha: "expected",
       }),
     ).toBe(false);
   });

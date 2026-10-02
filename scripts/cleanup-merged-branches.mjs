@@ -335,6 +335,10 @@ export const cleanupMergedBranches = async ({
     `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} exact merged-head branch(es), ${closedPrCapturedCandidates.length} closed-PR-captured branch(es), and ${treeEquivalentCandidates.length} main-tree-equivalent branch(es) selected.`,
   );
 
+  const expectedShaByBranch = new Map(
+    branches.map((branch) => [branchName(branch), branch?.commit?.sha]),
+  );
+
   for (const name of candidates) {
     if (!apply) {
       console.log(`DRY RUN delete: ${name}`);
@@ -346,12 +350,46 @@ export const cleanupMergedBranches = async ({
       .map((segment) => encodeURIComponent(segment))
       .join("/");
 
+    const expectedSha = expectedShaByBranch.get(name);
+    if (typeof expectedSha !== "string" || expectedSha.length === 0) {
+      throw new Error(`Missing expected SHA for cleanup candidate ${name}.`);
+    }
+
+    // Revalidate immediately before deletion to close the time-of-check /
+    // time-of-use window. Never delete a branch that advanced or acquired
+    // a new open pull request after the initial cleanup snapshot.
+    const [currentRef, currentOpenPullRequests] = await Promise.all([
+      request({
+        url: `${apiBase}${repositoryPath}/git/ref/heads/${encodedBranch}`,
+        token,
+      }),
+      listPaginated({
+        apiBase,
+        path: `${repositoryPath}/pulls?state=open&head=${encodeURIComponent(
+          repository.split("/")[0],
+        )}%3A${encodeURIComponent(name)}`,
+        token,
+      }),
+    ]);
+
+    if (currentRef?.object?.sha !== expectedSha) {
+      console.log(
+        `Skip changed branch: ${name} (expected ${expectedSha}, current ${currentRef?.object?.sha ?? "unknown"}).`,
+      );
+      continue;
+    }
+
+    if (currentOpenPullRequests.length > 0) {
+      console.log(`Skip branch with newly opened PR: ${name}.`);
+      continue;
+    }
+
     await request({
       url: `${apiBase}${repositoryPath}/git/refs/heads/${encodedBranch}`,
       token,
       method: "DELETE",
     });
-    console.log(`Deleted merged branch: ${name}`);
+    console.log(`Deleted safe branch: ${name}`);
   }
 
   return {

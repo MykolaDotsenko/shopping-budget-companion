@@ -79,6 +79,7 @@ Do not load every decision file for a narrow task. Use the category links or tab
 | D-056 | Retire the camera benchmarks once the camera features ship | [Future Capability](./decisions/future-capabilities.md) |
 | D-057 | Production visual recognition ships as a local-inference optional accelerator | [Future Capability](./decisions/future-capabilities.md) |
 | D-058 | Self-hosted ZXing runtime and WASM stay version-locked | [Architecture and Technology](./decisions/architecture-technology.md) |
+| D-059 | Android APK uses a thin local WebViewAssetLoader shell | [Architecture and Technology](./decisions/architecture-technology.md) |
 
 ## Usage rule
 

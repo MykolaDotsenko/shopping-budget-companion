@@ -47,6 +47,7 @@ Implemented:
 - Shop again, Recent Items and local Price Memory;
 - independent local-data controls;
 - installable offline PWA shell with prompt-based updates;
+- thin Android API 36 APK wrapper that bundles the same local-first product through WebViewAssetLoader;
 - optional barcode identification (native detector, lazy self-hosted ZXing WASM fallback, local barcode names, tap-only online name lookup) behind build switches;
 - optional price tag reading (lazy self-hosted Tesseract.js, geometry-aware exact-money candidates, confirmation in price entry) in the same camera, behind a build switch;
 - optional local visual product recognition (pinned CLIP via Transformers.js, bounded closed-set candidates, explicit human choice and manual fallback), behind a build switch;
@@ -201,6 +202,8 @@ Add regression coverage when changing:
 
 Money, persistence, recovery and evidence-integrity bug fixes are incomplete without regression tests.
 
+Android-wrapper changes additionally require the Quality workflow's `android-apk` job to pass Android lint, APK assembly and preview-signature verification.
+
 ## Documentation maintenance
 
 Current authoritative docs contain current contracts and current decisions, not chronological implementation narration. Follow the maintenance steps, placement rules and status vocabulary in `docs/README.md`.
@@ -235,7 +238,9 @@ Before declaring complete:
 
 Runtime dependencies must earn product value.
 
-Prefer native Web APIs and existing abstractions. The admitted runtime dependencies are React, Zod, the Workbox PWA tooling (D-028), `barcode-detector` + `zxing-wasm` (D-031, D-053), and Tesseract.js with its core and Finnish data (D-055). Add nothing further — state libraries, routers, backends, analytics SDKs, other scanner/OCR SDKs or UI frameworks — without an accepted decision.
+Prefer native Web APIs and existing abstractions. The admitted web runtime dependencies are React, Zod, the Workbox PWA tooling (D-028), `barcode-detector` + `zxing-wasm` (D-031, D-053), and Tesseract.js with its core and Finnish data (D-055). Add nothing further — state libraries, routers, backends, analytics SDKs, other scanner/OCR SDKs or UI frameworks — without an accepted decision.
+
+Android distribution is a separate packaging/security boundary under D-059 and admits pinned AndroidX WebKit 1.17.1 only; native code must not become a second source of product/business state.
 
 ## Git discipline
 

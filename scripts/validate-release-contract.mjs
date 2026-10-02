@@ -130,9 +130,11 @@ export const validateReleaseContract = ({
   const pagesSite = requiredArtifact(artifacts, "pages-site");
   const sbomName = "sbom-" + sourceSha;
   const sbom = requiredArtifact(artifacts, sbomName);
+  const androidName = "android-apk-" + sourceSha;
+  const androidApk = requiredArtifact(artifacts, androidName);
 
   return Object.freeze({
-    schemaVersion: 1,
+    schemaVersion: 2,
     product: "shopping-budget-companion",
     version,
     tag: "v" + version,
@@ -147,6 +149,11 @@ export const validateReleaseContract = ({
       artifactId: sbom.id,
       digest: sbom.digest,
       name: sbom.name,
+    }),
+    androidApk: Object.freeze({
+      artifactId: androidApk.id,
+      digest: androidApk.digest,
+      name: androidApk.name,
     }),
   });
 };

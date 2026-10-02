@@ -62,6 +62,8 @@ const selfHostedPriceReader = (enabled) => ({
 export default defineConfig(() => {
   const cohortAnalysisEnabled =
     process.env.VITE_SHOPPING_COHORT_ANALYSIS === "1";
+  const androidWrapperEnabled =
+    process.env.VITE_SHOPPING_ANDROID_WRAPPER === "1";
   const evidenceEnabled =
     process.env.VITE_SHOPPING_QA_TIMING === "1" ||
     process.env.VITE_SHOPPING_BETA_EVIDENCE === "1" ||
@@ -78,7 +80,7 @@ export default defineConfig(() => {
       react(),
       selfHostedPriceReader(priceOcrBuild),
       VitePWA({
-        disable: evidenceEnabled,
+        disable: evidenceEnabled || androidWrapperEnabled,
         strategies: "generateSW",
         registerType: "prompt",
         injectRegister: "auto",

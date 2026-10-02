@@ -98,6 +98,7 @@ Cross-cutting durable decisions:
 | real-store camera field validation | ROADMAP → CAMERA-FIELD-VALIDATION → issue #88 |
 | tests/CI | TESTING → workflow/config |
 | versioned release publishing | TESTING → RELEASE-PROCESS → Publish Release workflow |
+| Android APK packaging | ARCHITECTURE → TESTING → RELEASE-PROCESS → D-059 → Android project/workflow |
 | repository / branch cleanup | REPOSITORY-HYGIENE → branch-hygiene manifest/workflow |
 | new capability | PRODUCT → ROADMAP → relevant decision/research |
 | premium/brand polish | PRODUCT → DESIGN → BRAND reference only if identity work |

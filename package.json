@@ -14,6 +14,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "docs:check": "node scripts/validate-docs.mjs",
+    "field:report": "node scripts/camera-field-evidence.mjs",
     "deps:check": "node scripts/validate-dependency-contracts.mjs",
     "build:check": "node scripts/validate-build.mjs",
     "check": "npm run docs:check && npm run deps:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run build:check",

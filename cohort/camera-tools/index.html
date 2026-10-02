@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <meta http-equiv="refresh" content="0; url=../" />
+    <title>Shopping Budget Companion</title>
+    <link rel="canonical" href="../" />
+    <script>
+      (() => {
+        const allowed = ["en", "fi", "uk"];
+        let language = "en";
+
+        try {
+          const stored = localStorage.getItem("shopping-budget:language");
+          if (allowed.includes(stored)) {
+            language = stored;
+          } else {
+            const detected = (navigator.languages ?? [navigator.language])
+              .map((value) => value.toLowerCase().split("-")[0])
+              .find((value) => value === "fi" || value === "uk");
+            if (detected) language = detected;
+          }
+        } catch {}
+
+        document.documentElement.lang = language;
+        window.location.replace("../");
+      })();
+    </script>
+  </head>
+  <body>
+    <p data-i18n="body">
+      Scanning now lives inside your trip.
+      <a href="../" data-i18n="action">Open Shopping Budget Companion</a>.
+    </p>
+    <script>
+      (() => {
+        const copy = {
+          en: {
+            body: "Scanning now lives inside your trip.",
+            action: "Open Shopping Budget Companion"
+          },
+          fi: {
+            body: "Skannaus on nyt osa ostosreissuasi.",
+            action: "Avaa Shopping Budget Companion"
+          },
+          uk: {
+            body: "Сканування тепер доступне безпосередньо у вашому поході за покупками.",
+            action: "Відкрити Shopping Budget Companion"
+          }
+        };
+        const language = copy[document.documentElement.lang] ? document.documentElement.lang : "en";
+        const selected = copy[language];
+        document.querySelector('[data-i18n="body"]').firstChild.textContent = `${selected.body} `;
+        document.querySelector('[data-i18n="action"]').textContent = selected.action;
+      })();
+    </script>
+  </body>
+</html>

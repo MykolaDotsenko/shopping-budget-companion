@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f1eb" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="application-name" content="Shopping Budget Companion" />
+    <meta
+      name="description"
+      content="Set a shopping limit, add prices as you go and always see what’s left before checkout. No account, no bank connection, works offline once opened."
+    />
+    <link rel="canonical" href="https://mykoladotsenko.github.io/shopping-budget-companion/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Shopping Budget Companion" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:title" content="Know what’s left before checkout" />
+    <meta
+      property="og:description"
+      content="Set a shopping limit, add prices as you go and always see what’s left before checkout. No account, no bank connection, works offline once opened."
+    />
+    <meta property="og:url" content="https://mykoladotsenko.github.io/shopping-budget-companion/" />
+    <meta property="og:image" content="https://mykoladotsenko.github.io/shopping-budget-companion/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The Shopping Budget Companion trip screen showing €19.48 left of a €50 budget."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="apple-mobile-web-app-title" content="Shop Budget" />
+    <script>
+      (() => {
+        const key = "shopping-budget:language";
+        const allowed = ["en", "fi", "uk"];
+        let language = "en";
+
+        try {
+          const stored = localStorage.getItem(key);
+
+          if (allowed.includes(stored)) {
+            language = stored;
+          } else {
+            const detected = (navigator.languages ?? [navigator.language])
+              .map((value) => value.toLowerCase().split("-")[0])
+              .find((value) => value === "fi" || value === "uk");
+
+            if (detected) {
+              language = detected;
+            }
+          }
+        } catch {
+          // Language preference is convenience-only. Rendering must continue.
+        }
+
+        document.documentElement.lang = language;
+      })();
+    </script>
+    <script>
+      (() => {
+        const key = "shopping-budget:appearance";
+        const allowed = ["system", "light", "dark", "aurora"];
+        let mode = "system";
+
+        try {
+          const stored = localStorage.getItem(key);
+
+          if (allowed.includes(stored)) {
+            mode = stored;
+          }
+        } catch {
+          // Appearance persistence is convenience-only. Rendering must continue.
+        }
+
+        document.documentElement.dataset.appearance = mode;
+
+        const prefersDark =
+          typeof matchMedia === "function" &&
+          matchMedia("(prefers-color-scheme: dark)").matches;
+        const resolved =
+          mode === "system" ? (prefersDark ? "dark" : "light") : mode;
+
+        document.documentElement.dataset.theme = resolved;
+
+        const colors = {
+          light: "#f4f1eb",
+          dark: "#0f1210",
+          aurora: "#070912",
+        };
+        const themeMeta = document.querySelector('meta[name="theme-color"]');
+
+        themeMeta?.setAttribute("content", colors[resolved] ?? colors.light);
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/shopping-budget-companion/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/shopping-budget-companion/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/shopping-budget-companion/apple-touch-icon.png" />
+    <title>Shopping Budget Companion — know what’s left before checkout</title>
+    <script type="module" crossorigin src="/shopping-budget-companion/assets/index-Cup-PffX.js"></script>
+    <link rel="modulepreload" crossorigin href="/shopping-budget-companion/assets/rolldown-runtime-D0SfkDIG.js">
+    <link rel="modulepreload" crossorigin href="/shopping-budget-companion/assets/react-BdEVOYh4.js">
+    <link rel="modulepreload" crossorigin href="/shopping-budget-companion/assets/money-CvnUFuEG.js">
+    <link rel="stylesheet" crossorigin href="/shopping-budget-companion/assets/index-D09fbUMr.css">
+  <link rel="manifest" href="/shopping-budget-companion/manifest.webmanifest"></head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

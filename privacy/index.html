@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f4f1eb" />
+    <meta
+      name="description"
+      content="How Shopping Budget Companion handles your data: everything stays on your device, with no account, analytics or cookies."
+    />
+    <link rel="canonical" href="https://mykoladotsenko.github.io/shopping-budget-companion/privacy/" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <title>Privacy — Shopping Budget Companion</title>
+    <script>
+      (() => {
+        const languageKey = "shopping-budget:language";
+        const allowedLanguages = ["en", "fi", "uk"];
+        let language = "en";
+
+        try {
+          const stored = localStorage.getItem(languageKey);
+
+          if (allowedLanguages.includes(stored)) {
+            language = stored;
+          } else {
+            const detected = (navigator.languages ?? [navigator.language])
+              .map((value) => value.toLowerCase().split("-")[0])
+              .find((value) => value === "fi" || value === "uk");
+
+            if (detected) {
+              language = detected;
+            }
+          }
+        } catch {
+          // Language preference is convenience-only.
+        }
+
+        document.documentElement.lang = language;
+
+        try {
+          const mode = localStorage.getItem("shopping-budget:appearance");
+
+          if (mode === "light" || mode === "dark" || mode === "aurora") {
+            document.documentElement.dataset.theme =
+              mode === "light" ? "light" : "dark";
+          }
+        } catch {
+          // Appearance preference is convenience-only.
+        }
+      })();
+    </script>
+    <style>
+      :root {
+        --page: #f4f1eb;
+        --panel: #fffefa;
+        --text: #1d241f;
+        --muted: #5f675f;
+        --border: #d9d3c9;
+        --accent: #2f604f;
+        --accent-soft: #dfece6;
+        --focus: #225fc4;
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --page: #0f1210;
+          --panel: #181d19;
+          --text: #f3f5f1;
+          --muted: #c5cdc6;
+          --border: #333c35;
+          --accent: #8fd4b7;
+          --accent-soft: #20352c;
+          --focus: #a6c6ff;
+          color-scheme: dark;
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --page: #0f1210;
+        --panel: #181d19;
+        --text: #f3f5f1;
+        --muted: #c5cdc6;
+        --border: #333c35;
+        --accent: #8fd4b7;
+        --accent-soft: #20352c;
+        --focus: #a6c6ff;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      main {
+        width: min(100% - 32px, 42rem);
+        margin: 0 auto;
+        padding: 24px 0 56px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      a {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      a:focus-visible,
+      button:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+        border-radius: 6px;
+      }
+
+      .back {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+      }
+
+      .languages {
+        display: inline-grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 44px;
+        gap: 2px;
+        padding: 2px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--panel);
+      }
+
+      .language {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 0.72rem;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+      }
+
+      .language[aria-pressed="true"] {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(2rem, 8vw, 2.8rem);
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      .lead {
+        margin: 0 0 28px;
+        font-size: 1.1rem;
+      }
+
+      section {
+        margin-top: 16px;
+        padding: 18px 20px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: var(--panel);
+      }
+
+      h2 {
+        margin: 0 0 6px;
+        font-size: 1.1rem;
+      }
+
+      section p {
+        margin: 0;
+      }
+
+      section p + p {
+        margin-top: 10px;
+      }
+
+      .updated {
+        margin-top: 28px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 420px) {
+        .topbar {
+          align-items: flex-start;
+        }
+      }
+
+      @media (forced-colors: active) {
+        .languages {
+          border-color: ButtonText;
+        }
+
+        .language[aria-pressed="true"] {
+          background: Highlight;
+          color: HighlightText;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="topbar">
+        <a class="back" href="../" data-i18n="back">← Back to the app</a>
+        <div class="languages" role="group" aria-label="App language" data-i18n-aria="languageLabel">
+          <button class="language" type="button" data-language="en" aria-label="English" lang="en">EN</button>
+          <button class="language" type="button" data-language="fi" aria-label="Suomi" lang="fi">FI</button>
+          <button class="language" type="button" data-language="uk" aria-label="Українська" lang="uk">UA</button>
+        </div>
+      </div>
+
+      <h1 data-i18n="title">Privacy</h1>
+      <p class="lead" data-i18n="lead">
+        Shopping Budget Companion keeps your shopping on your device. There is no
+        account, no bank connection, no analytics, no advertising and no cookies.
+      </p>
+
+      <section aria-labelledby="device-title">
+        <h2 id="device-title" data-i18n="deviceTitle">What stays on your device</h2>
+        <p data-i18n="device1">
+          Your trips, trip history, remembered prices and remembered barcode names are
+          saved in this browser’s storage on this device. They are never sent to us or
+          to anyone else, and they do not sync between devices.
+        </p>
+        <p data-i18n="device2">
+          The browser also keeps a copy of the app’s own files so it opens without a
+          connection.
+        </p>
+        <p data-i18n="device3">
+          On iPhone and iPad, Safari may delete this data if you haven’t opened the app
+          for about a week. Added to your Home Screen, the app keeps it; its storage is
+          separate from Safari’s, so it starts empty there.
+        </p>
+      </section>
+
+      <section aria-labelledby="camera-title">
+        <h2 id="camera-title" data-i18n="cameraTitle">The camera</h2>
+        <p data-i18n="camera1">
+          When you scan a barcode or read a price tag, the camera picture is processed on
+          your device by code that comes with the app. No picture or video leaves your
+          device. The reading engines are downloaded from this site the first time you
+          use them.
+        </p>
+        <p data-i18n="camera2">
+          You can refuse camera access and type prices instead; everything else still works.
+        </p>
+      </section>
+
+      <section aria-labelledby="lookup-title">
+        <h2 id="lookup-title" data-i18n="lookupTitle">Finding a product name online</h2>
+        <p>
+          <span data-i18n="lookup1">Only when you tap</span>
+          <strong data-i18n="findName">Find name online</strong>,
+          <span data-i18n="lookup2">the app asks</span>
+          <a href="https://world.openfoodfacts.org/privacy">Open Food Facts</a>
+          <span data-i18n="lookup3">
+            for the product with that barcode number. The request contains the barcode
+            number and the app’s name and version, and no cookies. Like any website,
+            Open Food Facts sees your IP address.
+          </span>
+        </p>
+      </section>
+
+      <section aria-labelledby="hosting-title">
+        <h2 id="hosting-title" data-i18n="hostingTitle">Hosting</h2>
+        <p>
+          <span data-i18n="hosting1">
+            The app is served by GitHub Pages. GitHub may record visitors’ IP addresses
+            for security, as described in the
+          </span>
+          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" data-i18n="githubPrivacy">
+            GitHub privacy statement
+          </a>.
+        </p>
+      </section>
+
+      <section aria-labelledby="delete-title">
+        <h2 id="delete-title" data-i18n="deleteTitle">Deleting your data</h2>
+        <p>
+          <span data-i18n="delete1">In the app, open</span>
+          <strong data-i18n="viewHistory">View trip history</strong>
+          <span data-i18n="delete2">and use</span>
+          <strong data-i18n="dataControls">Data controls</strong>
+          <span data-i18n="delete3">
+            to clear your trip history or your remembered prices and barcode names.
+            Clearing this site’s data in your browser settings removes everything.
+          </span>
+        </p>
+      </section>
+
+      <section aria-labelledby="contact-title">
+        <h2 id="contact-title" data-i18n="contactTitle">Questions</h2>
+        <p>
+          <span data-i18n="contact1">Ask or report a problem on</span>
+          <a href="https://github.com/MykolaDotsenko/shopping-budget-companion/issues/new?template=feedback.yml">GitHub</a>.
+          <span data-i18n="contact2">
+            Please don’t include personal details there; it is public.
+          </span>
+        </p>
+      </section>
+
+      <p class="updated" data-i18n="updated">Last updated 27 September 2026.</p>
+    </main>
+
+    <script>
+      (() => {
+        const languageKey = "shopping-budget:language";
+        const copy = {
+          en: {
+            title: "Privacy",
+            pageTitle: "Privacy — Shopping Budget Companion",
+            description: "How Shopping Budget Companion handles your data: everything stays on your device, with no account, analytics or cookies.",
+            languageLabel: "App language",
+            back: "← Back to the app",
+            lead: "Shopping Budget Companion keeps your shopping on your device. There is no account, no bank connection, no analytics, no advertising and no cookies.",
+            deviceTitle: "What stays on your device",
+            device1: "Your trips, trip history, remembered prices and remembered barcode names are saved in this browser’s storage on this device. They are never sent to us or to anyone else, and they do not sync between devices.",
+            device2: "The browser also keeps a copy of the app’s own files so it opens without a connection.",
+            device3: "On iPhone and iPad, Safari may delete this data if you haven’t opened the app for about a week. Added to your Home Screen, the app keeps it; its storage is separate from Safari’s, so it starts empty there.",
+            cameraTitle: "The camera",
+            camera1: "When you scan a barcode or read a price tag, the camera picture is processed on your device by code that comes with the app. No picture or video leaves your device. The reading engines are downloaded from this site the first time you use them.",
+            camera2: "You can refuse camera access and type prices instead; everything else still works.",
+            lookupTitle: "Finding a product name online",
+            lookup1: "Only when you tap",
+            findName: "Find name online",
+            lookup2: "the app asks",
+            lookup3: "for the product with that barcode number. The request contains the barcode number and the app’s name and version, and no cookies. Like any website, Open Food Facts sees your IP address.",
+            hostingTitle: "Hosting",
+            hosting1: "The app is served by GitHub Pages. GitHub may record visitors’ IP addresses for security, as described in the",
+            githubPrivacy: "GitHub privacy statement",
+            deleteTitle: "Deleting your data",
+            delete1: "In the app, open",
+            viewHistory: "View trip history",
+            delete2: "and use",
+            dataControls: "Data controls",
+            delete3: "to clear your trip history or your remembered prices and barcode names. Clearing this site’s data in your browser settings removes everything.",
+            contactTitle: "Questions",
+            contact1: "Ask or report a problem on",
+            contact2: "Please don’t include personal details there; it is public.",
+            updated: "Last updated 27 September 2026."
+          },
+          fi: {
+            title: "Tietosuoja",
+            pageTitle: "Tietosuoja — Shopping Budget Companion",
+            description: "Näin Shopping Budget Companion käsittelee tietojasi: tiedot pysyvät laitteellasi ilman tiliä, analytiikkaa tai evästeitä.",
+            languageLabel: "Sovelluksen kieli",
+            back: "← Takaisin sovellukseen",
+            lead: "Shopping Budget Companion pitää ostostietosi laitteellasi. Ei tiliä, pankkiyhteyttä, analytiikkaa, mainontaa eikä evästeitä.",
+            deviceTitle: "Mitä laitteellesi tallennetaan",
+            device1: "Ostosreissusi, ostoshistoria, muistetut hinnat ja muistetut viivakoodinimet tallennetaan tämän selaimen tallennustilaan tällä laitteella. Niitä ei lähetetä meille tai muille, eivätkä ne synkronoidu laitteiden välillä.",
+            device2: "Selain säilyttää myös kopion sovelluksen omista tiedostoista, jotta sovellus avautuu ilman verkkoyhteyttä.",
+            device3: "iPhonessa ja iPadissa Safari voi poistaa nämä tiedot, jos et ole avannut sovellusta noin viikkoon. Koti-valikkoon lisättynä sovellus säilyttää ne; sen tallennustila on erillinen Safarista, joten Koti-valikkoon lisätty sovellus alkaa tyhjänä.",
+            cameraTitle: "Kamera",
+            camera1: "Kun skannaat viivakoodin tai luet hintalapun, kamerakuva käsitellään laitteellasi sovelluksen mukana tulevalla koodilla. Kuvaa tai videota ei lähetetä laitteeltasi. Lukumoottorit ladataan tältä sivustolta ensimmäisellä käyttökerralla.",
+            camera2: "Voit estää kameran käytön ja syöttää hinnat käsin; kaikki muu toimii silti.",
+            lookupTitle: "Tuotteen nimen hakeminen verkosta",
+            lookup1: "Vain kun napautat",
+            findName: "Hae nimi verkosta",
+            lookup2: "sovellus kysyy palvelulta",
+            lookup3: "tuotetta tällä viivakoodinumerolla. Pyyntö sisältää viivakoodin numeron sekä sovelluksen nimen ja version, eikä se sisällä evästeitä. Kuten mikä tahansa verkkosivusto, Open Food Facts näkee IP-osoitteesi.",
+            hostingTitle: "Palvelun ylläpito",
+            hosting1: "Sovellus tarjoillaan GitHub Pages -palvelusta. GitHub voi tallentaa kävijöiden IP-osoitteita turvallisuussyistä, kuten kerrotaan",
+            githubPrivacy: "GitHubin tietosuojaselosteessa",
+            deleteTitle: "Tietojesi poistaminen",
+            delete1: "Avaa sovelluksessa",
+            viewHistory: "Näytä ostoshistoria",
+            delete2: "ja käytä osiota",
+            dataControls: "Tietojen hallinta",
+            delete3: "tyhjentääksesi ostoshistorian tai muistetut hinnat ja viivakoodinimet. Kaiken voi poistaa myös tyhjentämällä tämän sivuston tiedot selaimen asetuksista.",
+            contactTitle: "Kysymyksiä",
+            contact1: "Kysy tai ilmoita ongelmasta",
+            contact2: "Älä lisää sinne henkilötietoja, koska sisältö on julkista.",
+            updated: "Päivitetty viimeksi 27. syyskuuta 2026."
+          },
+          uk: {
+            title: "Конфіденційність",
+            pageTitle: "Конфіденційність — Shopping Budget Companion",
+            description: "Як Shopping Budget Companion працює з вашими даними: усе залишається на вашому пристрої, без облікового запису, аналітики чи cookies.",
+            languageLabel: "Мова застосунку",
+            back: "← Назад до застосунку",
+            lead: "Shopping Budget Companion зберігає дані про покупки на вашому пристрої. Без облікового запису, підключення до банку, аналітики, реклами та cookies.",
+            deviceTitle: "Що залишається на вашому пристрої",
+            device1: "Ваші походи за покупками, історія, збережені ціни та назви штрихкодів зберігаються у сховищі цього браузера на цьому пристрої. Вони не надсилаються нам чи будь-кому іншому та не синхронізуються між пристроями.",
+            device2: "Браузер також зберігає копію власних файлів застосунку, щоб він відкривався без підключення.",
+            device3: "На iPhone та iPad Safari може видалити ці дані, якщо ви не відкривали застосунок приблизно тиждень. Якщо додати застосунок на початковий екран і відкривати звідти, дані зберігаються; це сховище окреме від Safari, тому після додавання на початковий екран воно починається порожнім.",
+            cameraTitle: "Камера",
+            camera1: "Коли ви скануєте штрихкод або зчитуєте цінник, зображення з камери обробляється на вашому пристрої кодом, що постачається разом із застосунком. Жодне фото чи відео не залишає пристрій. Модулі зчитування завантажуються з цього сайту під час першого використання.",
+            camera2: "Можна не надавати доступ до камери та вводити ціни вручну; решта функцій працюватиме.",
+            lookupTitle: "Пошук назви товару онлайн",
+            lookup1: "Лише коли ви натискаєте",
+            findName: "Знайти назву онлайн",
+            lookup2: "застосунок звертається до",
+            lookup3: "за товаром із цим номером штрихкоду. Запит містить номер штрихкоду, назву та версію застосунку й не містить cookies. Як і будь-який вебсайт, Open Food Facts бачить вашу IP-адресу.",
+            hostingTitle: "Хостинг",
+            hosting1: "Застосунок працює через GitHub Pages. GitHub може реєструвати IP-адреси відвідувачів із міркувань безпеки, як описано в",
+            githubPrivacy: "політиці конфіденційності GitHub",
+            deleteTitle: "Видалення ваших даних",
+            delete1: "У застосунку відкрийте",
+            viewHistory: "Переглянути історію покупок",
+            delete2: "і скористайтеся розділом",
+            dataControls: "Керування даними",
+            delete3: "щоб очистити історію покупок або збережені ціни та назви штрихкодів. Очищення даних цього сайту в налаштуваннях браузера видаляє все.",
+            contactTitle: "Запитання",
+            contact1: "Поставити запитання або повідомити про проблему можна на",
+            contact2: "Не додавайте туди особисті дані, оскільки це публічний простір.",
+            updated: "Останнє оновлення: 27 вересня 2026 р."
+          }
+        };
+
+        const languageButtons = [...document.querySelectorAll("[data-language]")];
+        const metaDescription = document.querySelector('meta[name="description"]');
+
+        const applyLanguage = (language, persist = false) => {
+          const selected = copy[language] ?? copy.en;
+
+          document.documentElement.lang = language;
+          document.title = selected.pageTitle;
+          metaDescription?.setAttribute("content", selected.description);
+
+          document.querySelectorAll("[data-i18n]").forEach((element) => {
+            const key = element.dataset.i18n;
+            if (key && key in selected) {
+              element.textContent = selected[key];
+            }
+          });
+
+          document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+            const key = element.dataset.i18nAria;
+            if (key && key in selected) {
+              element.setAttribute("aria-label", selected[key]);
+            }
+          });
+
+          languageButtons.forEach((button) => {
+            button.setAttribute(
+              "aria-pressed",
+              String(button.dataset.language === language),
+            );
+          });
+
+          if (persist) {
+            try {
+              localStorage.setItem(languageKey, language);
+            } catch {
+              // The page still works for this session.
+            }
+          }
+        };
+
+        const initialLanguage =
+          ["en", "fi", "uk"].includes(document.documentElement.lang)
+            ? document.documentElement.lang
+            : "en";
+
+        applyLanguage(initialLanguage);
+
+        languageButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            applyLanguage(button.dataset.language ?? "en", true);
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

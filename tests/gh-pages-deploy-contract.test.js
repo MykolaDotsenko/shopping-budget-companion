@@ -37,12 +37,18 @@ describe("gh-pages deployment governance contract", () => {
   });
 
   it("serializes gh-pages writers without cancelling an active publication", () => {
-    expect(qualityWorkflow).toContain([
-      "  deploy:",
+    const deployJob = qualityWorkflow.slice(
+      qualityWorkflow.indexOf("\n  deploy:\n"),
+    );
+
+    expect(deployJob).toContain([
       "    concurrency:",
       "      group: gh-pages-publish",
       "      cancel-in-progress: false",
     ].join("\n"));
+    expect(deployJob).not.toContain(
+      "group: gh-pages-publish\n      cancel-in-progress: true",
+    );
     expect(studyWorkflow).toContain([
       "concurrency:",
       "  group: gh-pages-publish",

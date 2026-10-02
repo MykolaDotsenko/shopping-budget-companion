@@ -21,21 +21,6 @@ const pull = ({
     sha,
     repo: repository === null ? null : { full_name: repository },
   },
-  it("runs destructive cleanup only after a successful main Quality push", () => {
-    expect(hygieneWorkflow).toContain('workflows: ["Quality"]');
-    expect(hygieneWorkflow).toContain("types: [completed]");
-    expect(hygieneWorkflow).toContain(
-      "github.event.workflow_run.conclusion == 'success'",
-    );
-    expect(hygieneWorkflow).toContain(
-      "github.event.workflow_run.event == 'push'",
-    );
-    expect(hygieneWorkflow).toContain(
-      "github.event.workflow_run.head_branch == 'main'",
-    );
-    expect(hygieneWorkflow).toContain("contents: write");
-    expect(hygieneWorkflow).toContain('BRANCH_HYGIENE_APPLY: "1"');
-  });
 });
 
 const hygieneWorkflow = await readFile(
@@ -141,5 +126,21 @@ describe("repository branch hygiene", () => {
         ],
       }),
     ).toEqual(["feat/a-first", "fix/z-last"]);
+  });
+
+  it("runs destructive cleanup only after a successful main Quality push", () => {
+    expect(hygieneWorkflow).toContain('workflows: ["Quality"]');
+    expect(hygieneWorkflow).toContain("types: [completed]");
+    expect(hygieneWorkflow).toContain(
+      "github.event.workflow_run.conclusion == 'success'",
+    );
+    expect(hygieneWorkflow).toContain(
+      "github.event.workflow_run.event == 'push'",
+    );
+    expect(hygieneWorkflow).toContain(
+      "github.event.workflow_run.head_branch == 'main'",
+    );
+    expect(hygieneWorkflow).toContain("contents: write");
+    expect(hygieneWorkflow).toContain('BRANCH_HYGIENE_APPLY: "1"');
   });
 });

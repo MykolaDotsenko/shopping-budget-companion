@@ -25,6 +25,8 @@ The cleanup script inspects all branches, open pull requests and closed pull req
 
 Both paths fail closed when the evidence is incomplete.
 
+Immediately before deleting a selected branch, cleanup re-fetches its ref and open-PR state. The delete is skipped if the branch SHA changed or a new pull request appeared after the initial snapshot.
+
 ## Adding a superseded branch
 
 Only add a branch to `.github/branch-hygiene.json` after verifying that its work is obsolete or represented by a newer merged implementation. Record its exact current SHA and the replacement reason.

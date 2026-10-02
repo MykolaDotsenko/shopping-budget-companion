@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sourceSha": "0516397983a85af777cc57a01e69711110116294",
+  "version": "2.0.0",
+  "targetApi": 36,
+  "minApi": 24,
+  "applicationId": "io.github.mykoladotsenko.shoppingbudgetcompanion",
+  "previewApplicationId": "io.github.mykoladotsenko.shoppingbudgetcompanion.debug",
+  "previewSigned": true,
+  "releaseSigned": false
+}

@@ -2,8 +2,15 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(path, "utf8");
 
-const [packageJsonText, viteConfig, appGradle, manifest, activity] =
-  await Promise.all([
+const [
+  packageJsonText,
+  viteConfig,
+  appGradle,
+  manifest,
+  activity,
+  legacyBackupRules,
+  dataExtractionRules,
+] = await Promise.all([
     read("package.json"),
     read("vite.config.js"),
     read("android/app/build.gradle"),
@@ -11,6 +18,8 @@ const [packageJsonText, viteConfig, appGradle, manifest, activity] =
     read(
       "android/app/src/main/java/io/github/mykoladotsenko/shoppingbudgetcompanion/MainActivity.java",
     ),
+    read("android/app/src/main/res/xml/backup_rules.xml"),
+    read("android/app/src/main/res/xml/data_extraction_rules.xml"),
   ]);
 
 const packageJson = JSON.parse(packageJsonText);
@@ -54,8 +63,44 @@ requireText(
 requireText(
   manifest,
   /android:allowBackup="false"/,
-  "Android wrapper must keep local shopping data out of Android backup.",
+  "Android wrapper must keep legacy backup disabled.",
 );
+requireText(
+  manifest,
+  /android:fullBackupContent="@xml\/backup_rules"/,
+  "Android wrapper must declare explicit Android 11-and-lower backup rules.",
+);
+requireText(
+  manifest,
+  /android:dataExtractionRules="@xml\/data_extraction_rules"/,
+  "Android wrapper must declare Android 12+ data extraction rules.",
+);
+for (const domain of [
+  "root",
+  "file",
+  "database",
+  "sharedpref",
+  "external",
+  "device_root",
+  "device_file",
+  "device_database",
+  "device_sharedpref",
+]) {
+  requireText(
+    legacyBackupRules,
+    new RegExp(`<exclude\\s+domain="${domain}"\\s+path="\\."\\s*/>`),
+    `Legacy Android backup rules must exclude ${domain} data.`,
+  );
+
+  const matches = dataExtractionRules.match(
+    new RegExp(`<exclude\\s+domain="${domain}"\\s+path="\\."\\s*/>`, "g"),
+  );
+  if ((matches?.length ?? 0) !== 2) {
+    throw new Error(
+      `Android 12+ data extraction rules must exclude ${domain} from both cloud backup and device transfer.`,
+    );
+  }
+}
 requireText(
   manifest,
   /android:usesCleartextTraffic="false"/,

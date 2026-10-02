@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "protectedBranches": [
+    "main",
+    "gh-pages"
+  ],
+  "explicitlySuperseded": [
+    {
+      "branch": "chore/artifact-attestations",
+      "sha": "28e68f5e0328343e431c17d5a54e8460a321bd2e",
+      "reason": "Closed PR #85 is superseded by the current tested-artifact provenance and attestation pipeline on main."
+    },
+    {
+      "branch": "chore/formal-release-pipeline",
+      "sha": "98a9803609de858ed6b8c566a04d4fd5c14a25ec",
+      "reason": "Closed PR #134 is superseded by merged release evidence workflow PR #138."
+    },
+    {
+      "branch": "chore/release-sbom",
+      "sha": "b601a1d8327b72091d7089c9591cde440525bf1e",
+      "reason": "Closed PR #83 is superseded by the current validated CycloneDX SBOM and release evidence pipeline on main."
+    },
+    {
+      "branch": "chore/typescript-eslint-8.71.0-v2",
+      "sha": "f18e1bfd6d506febab00dcd3b3b26c09664ef727",
+      "reason": "Closed empty replacement PR #145 is superseded by merged PR #144."
+    },
+    {
+      "branch": "feat/camera-field-evidence",
+      "sha": "cf1788bdcacd71f93aeec92131b0e90da3b3d788",
+      "reason": "Closed PR #133 is superseded by merged camera evidence analyzer PR #140."
+    },
+    {
+      "branch": "qa/camera-field-evidence-analyzer",
+      "sha": "d17c8f278426b028430c332665e2ad5c27aa4181",
+      "reason": "Closed stacked PR #137 is superseded by merged final analyzer PR #140."
+    },
+    {
+      "branch": "qa/camera-field-evidence-analyzer-v2",
+      "sha": "3289b656e3da8612b391dc5f3d13228596799ced",
+      "reason": "Closed PR #139 is superseded by merged final analyzer PR #140."
+    },
+    {
+      "branch": "release/release-evidence-contracts",
+      "sha": "9bac7df97c4b51bb4aceb9148d593d23f955af05",
+      "reason": "Closed PR #129 is superseded by merged final release evidence PR #138."
+    },
+    {
+      "branch": "release/release-evidence-contracts-v2",
+      "sha": "c0707b1abc36d740355e2b7ee46f9aadb65ac503",
+      "reason": "Closed PR #130 is superseded by merged final release evidence PR #138."
+    }
+  ]
+}

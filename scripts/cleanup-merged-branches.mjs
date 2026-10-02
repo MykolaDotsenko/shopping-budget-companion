@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 const API_VERSION = "2022-11-28";
 const DEFAULT_PROTECTED_BRANCHES = new Set(["main", "gh-pages"]);
+const DEFAULT_PROTECTED_PREFIXES = ["study/"];
 
 const branchName = (branch) =>
   typeof branch?.name === "string" ? branch.name : "";
@@ -18,12 +19,21 @@ const pullRequestHead = (pullRequest) => ({
       : "",
 });
 
+const isProtectedBranch = (
+  name,
+  protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
+) =>
+  protectedBranches.has(name) ||
+  protectedPrefixes.some((prefix) => name.startsWith(prefix));
+
 export const selectBranchesForDeletion = ({
   repository,
   branches,
   openPullRequests,
   closedPullRequests,
   protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
 }) => {
   const openHeads = new Set(
     openPullRequests
@@ -53,7 +63,11 @@ export const selectBranchesForDeletion = ({
       const sha =
         typeof branch?.commit?.sha === "string" ? branch.commit.sha : "";
 
-      if (name === "" || sha === "" || protectedBranches.has(name)) {
+      if (
+        name === "" ||
+        sha === "" ||
+        isProtectedBranch(name, protectedBranches, protectedPrefixes)
+      ) {
         return false;
       }
 
@@ -62,6 +76,43 @@ export const selectBranchesForDeletion = ({
       }
 
       return mergedByHeadAndSha.has(`${name}\u0000${sha}`);
+    })
+    .map((branch) => branch.name)
+    .sort((left, right) => left.localeCompare(right));
+};
+
+export const selectTreeEquivalentBranches = ({
+  branches,
+  openPullRequests,
+  treeBySha,
+  mainTreeSha,
+  repository,
+  protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
+}) => {
+  const openHeads = new Set(
+    openPullRequests
+      .filter((pullRequest) => pullRequest?.head?.repo?.full_name === repository)
+      .map((pullRequest) => pullRequestHead(pullRequest).branch)
+      .filter(Boolean),
+  );
+
+  return branches
+    .filter((branch) => {
+      const name = branchName(branch);
+      const sha =
+        typeof branch?.commit?.sha === "string" ? branch.commit.sha : "";
+
+      if (
+        name === "" ||
+        sha === "" ||
+        isProtectedBranch(name, protectedBranches, protectedPrefixes) ||
+        openHeads.has(name)
+      ) {
+        return false;
+      }
+
+      return treeBySha.get(sha) === mainTreeSha;
     })
     .map((branch) => branch.name)
     .sort((left, right) => left.localeCompare(right));
@@ -149,15 +200,82 @@ export const cleanupMergedBranches = async ({
     }),
   ]);
 
-  const candidates = selectBranchesForDeletion({
+  const mergedCandidates = selectBranchesForDeletion({
     repository,
     branches,
     openPullRequests,
     closedPullRequests,
   });
 
+  const protectedOrOpen = new Set([
+    "main",
+    "gh-pages",
+    ...openPullRequests
+      .filter((pullRequest) => pullRequest?.head?.repo?.full_name === repository)
+      .map((pullRequest) => pullRequestHead(pullRequest).branch),
+  ]);
+
+  const treeCheckBranches = branches.filter((branch) => {
+    const name = branchName(branch);
+    return (
+      !protectedOrOpen.has(name) &&
+      !DEFAULT_PROTECTED_PREFIXES.some((prefix) => name.startsWith(prefix))
+    );
+  });
+
+  const mainBranch = branches.find((branch) => branchName(branch) === "main");
+  if (mainBranch === undefined) {
+    throw new Error("main branch was not returned by GitHub.");
+  }
+
+  const uniqueCommitShas = [
+    ...new Set(treeCheckBranches.map((branch) => branch.commit.sha)),
+  ];
+
+  const [mainCommit, ...branchCommits] = await Promise.all([
+    request({
+      url: `${apiBase}${repositoryPath}/git/commits/${mainBranch.commit.sha}`,
+      token,
+    }),
+    ...uniqueCommitShas.map((sha) =>
+      request({
+        url: `${apiBase}${repositoryPath}/git/commits/${sha}`,
+        token,
+      }),
+    ),
+  ]);
+
+  const mainTreeSha = mainCommit?.tree?.sha;
+  if (typeof mainTreeSha !== "string" || mainTreeSha.length === 0) {
+    throw new Error("Unable to resolve the main Git tree SHA.");
+  }
+
+  const treeBySha = new Map();
+  for (let index = 0; index < uniqueCommitShas.length; index += 1) {
+    const treeSha = branchCommits[index]?.tree?.sha;
+    if (typeof treeSha !== "string" || treeSha.length === 0) {
+      throw new Error(
+        `Unable to resolve Git tree SHA for ${uniqueCommitShas[index]}.`,
+      );
+    }
+    treeBySha.set(uniqueCommitShas[index], treeSha);
+  }
+
+  const treeEquivalentCandidates = selectTreeEquivalentBranches({
+    repository,
+    branches: treeCheckBranches,
+    openPullRequests,
+    treeBySha,
+    mainTreeSha,
+  });
+
+  const candidates = [...new Set([
+    ...mergedCandidates,
+    ...treeEquivalentCandidates,
+  ])].sort((left, right) => left.localeCompare(right));
+
   console.log(
-    `Branch hygiene: ${branches.length} branches inspected, ${candidates.length} safe merged branch(es) selected.`,
+    `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} exact merged-head branch(es) and ${treeEquivalentCandidates.length} main-tree-equivalent branch(es) selected.`,
   );
 
   for (const name of candidates) {
@@ -179,7 +297,12 @@ export const cleanupMergedBranches = async ({
     console.log(`Deleted merged branch: ${name}`);
   }
 
-  return { inspected: branches.length, candidates };
+  return {
+    inspected: branches.length,
+    candidates,
+    mergedCandidates,
+    treeEquivalentCandidates,
+  };
 };
 
 const runningAsCli =

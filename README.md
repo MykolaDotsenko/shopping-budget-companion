@@ -152,6 +152,17 @@ Browser journeys cover Chromium, Firefox and WebKit across accessibility, recove
 
 > **Evidence over hype:** automated checks are kept separate from human/device validation. Real-store camera evidence and real-shopper retention remain explicit validation gates, not marketing claims.
 
+## Android APK
+
+The same local-first product is packaged for Android in a thin API 36 wrapper. The web payload is bundled inside the APK and served through Android's secure `WebViewAssetLoader` boundary — no second implementation of money or shopping state.
+
+Every Quality run produces:
+
+- an **installable debug-signed preview APK** for device testing;
+- the exact **unsigned release APK** that the release workflow later signs with the private production key without rebuilding product code.
+
+The signing key is never stored in git.
+
 ## Run locally
 
 Requirements: Node.js 24 and npm 11.

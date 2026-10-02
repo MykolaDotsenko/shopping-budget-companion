@@ -401,3 +401,62 @@ This risk was exposed by the attempted `zxing-wasm 3.1.3 → 3.1.4` Dependabot u
 ### Revisit when
 
 The application stops self-hosting ZXing WASM, `barcode-detector` exposes a first-class self-hosted asset path that cannot diverge from its runtime, or the barcode implementation no longer has two separately resolved package boundaries.
+
+## D-059 — Android APK uses a thin local WebViewAssetLoader shell
+
+Date: 2026-10-02
+
+Status: accepted
+
+### Decision
+
+Ship Android distribution as a thin native shell around the same tested React/Vite product.
+
+The shell:
+
+- bundles the production web payload inside the APK;
+- serves bundled files through AndroidX `WebViewAssetLoader` on the secure `https://appassets.androidplatform.net` origin;
+- never uses `file://` or enables WebView file access;
+- keeps JavaScript business state, exact-money rules and persistence inside the existing web application;
+- grants WebView camera access only for `RESOURCE_VIDEO_CAPTURE`, only to the bundled local origin, and only after Android runtime permission succeeds;
+- sends external top-level links to the system browser rather than loading arbitrary sites in the privileged WebView;
+- disables cleartext traffic, Android backup and third-party cookies;
+- disables the PWA service worker/manifest in the Android-specific web build because APK assets are already local and must update atomically with the APK;
+- targets Android 16 / API 36, with Android 7 / API 24 as the minimum wrapper runtime.
+
+Use AndroidX WebKit 1.17.1 and Android Gradle Plugin 9.4.0 with Gradle 9.6.0 for this packaging baseline.
+
+Do not use a Trusted Web Activity while the public product is hosted as a GitHub Pages project path whose origin-level Digital Asset Links file is outside this repository's control.
+
+### Rationale
+
+The Android package should preserve the product's strongest architectural property: the core shopping loop remains local and does not depend on a remote application server.
+
+Bundling the web payload:
+
+- makes first launch independent of GitHub Pages availability;
+- avoids a second native implementation of money, persistence or UX rules;
+- keeps browser and Android releases on one product code path;
+- makes an APK update the authority for bundled application code instead of leaving an older service-worker cache able to mask a native update.
+
+`WebViewAssetLoader` preserves an HTTPS-like origin and same-origin semantics without the security weaknesses of `file://` loading.
+
+A TWA remains a viable future distribution option if the product moves to an origin where the required Digital Asset Links association can be controlled and verified.
+
+### Consequences
+
+- Android packaging adds one native runtime dependency, AndroidX WebKit, but no JavaScript product dependency.
+- Android CI must build a relative-base web payload, lint the native shell and produce both an installable debug-signed preview APK and an unsigned release APK.
+- A public production APK must be signed with a private release key supplied through GitHub Actions secrets; the key is never committed.
+- Optional network-backed product-name/model delivery may still use HTTPS, while shopping state remains local.
+- Native code is a security/packaging boundary only and must not become a second source of product state or financial rules.
+
+### Revisit when
+
+Revisit if:
+
+- verified TWA hosting becomes available;
+- WebView-specific behaviour materially diverges from browser behaviour;
+- a native capability is required that cannot be expressed safely through the current web/native boundary;
+- Play distribution requirements make a different package architecture materially safer or simpler.
+

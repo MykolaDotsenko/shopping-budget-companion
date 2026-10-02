@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   selectBranchesForDeletion,
+  selectClosedPrCapturedBranches,
   selectTreeEquivalentBranches,
 } from "../scripts/cleanup-merged-branches.mjs";
 
@@ -16,7 +17,9 @@ const pull = ({
   merged = true,
   base = "main",
   repository = repo,
+  state = "closed",
 }) => ({
+  state,
   merged_at: merged ? "2026-10-02T00:00:00Z" : null,
   base: { ref: base },
   head: {
@@ -142,6 +145,75 @@ describe("repository branch hygiene", () => {
           pull({
             head: "study/evidence-baseline-r1",
             sha: "study-sha",
+          }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+
+  it("selects a branch whose exact current head is archived by a closed PR", () => {
+    expect(
+      selectClosedPrCapturedBranches({
+        repository: repo,
+        branches: [
+          branch("experiment/archived", "captured-sha"),
+          branch("experiment/advanced", "new-sha"),
+        ],
+        openPullRequests: [],
+        closedPullRequests: [
+          pull({
+            head: "experiment/archived",
+            sha: "captured-sha",
+            merged: false,
+          }),
+          pull({
+            head: "experiment/advanced",
+            sha: "old-sha",
+            merged: false,
+          }),
+        ],
+      }),
+    ).toEqual(["experiment/archived"]);
+  });
+
+  it("does not delete study refs even when a closed PR captures their head", () => {
+    expect(
+      selectClosedPrCapturedBranches({
+        repository: repo,
+        branches: [branch("study/legacy-r1", "captured-sha")],
+        openPullRequests: [],
+        closedPullRequests: [
+          pull({
+            head: "study/legacy-r1",
+            sha: "captured-sha",
+            merged: false,
+          }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("does not treat an open PR snapshot as archival deletion evidence", () => {
+    expect(
+      selectClosedPrCapturedBranches({
+        repository: repo,
+        branches: [branch("feat/open", "open-sha")],
+        openPullRequests: [
+          {
+            head: {
+              ref: "feat/open",
+              sha: "open-sha",
+              repo: { full_name: repo },
+            },
+          },
+        ],
+        closedPullRequests: [
+          pull({
+            head: "feat/open",
+            sha: "open-sha",
+            merged: false,
+            state: "closed",
           }),
         ],
       }),

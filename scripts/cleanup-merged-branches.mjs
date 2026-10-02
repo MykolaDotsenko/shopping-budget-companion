@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,6 +19,65 @@ const pullRequestHead = (pullRequest) => ({
       : "",
 });
 
+const openBranchHeads = ({ repository, openPullRequests }) =>
+  new Set(
+    openPullRequests
+      .filter((pullRequest) => pullRequest?.head?.repo?.full_name === repository)
+      .map((pullRequest) => pullRequestHead(pullRequest).branch)
+      .filter(Boolean),
+  );
+
+export const selectExplicitlySupersededBranches = ({
+  repository,
+  branches,
+  openPullRequests,
+  manifest,
+  protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+}) => {
+  if (manifest?.schemaVersion !== 1) {
+    throw new Error("Branch hygiene manifest must use schemaVersion 1.");
+  }
+
+  if (!Array.isArray(manifest.explicitlySuperseded)) {
+    throw new Error("Branch hygiene manifest explicitlySuperseded must be an array.");
+  }
+
+  const openHeads = openBranchHeads({ repository, openPullRequests });
+  const byName = new Map(branches.map((branch) => [branchName(branch), branch]));
+  const seen = new Set();
+  const selected = [];
+
+  for (const entry of manifest.explicitlySuperseded) {
+    const name = typeof entry?.branch === "string" ? entry.branch : "";
+    const sha = typeof entry?.sha === "string" ? entry.sha : "";
+    const reason = typeof entry?.reason === "string" ? entry.reason.trim() : "";
+
+    if (
+      name === "" ||
+      !/^[0-9a-f]{40}$/.test(sha) ||
+      reason === "" ||
+      seen.has(name)
+    ) {
+      throw new Error(
+        "Every explicitly superseded branch needs a unique name, exact lowercase 40-character SHA and reason.",
+      );
+    }
+
+    seen.add(name);
+
+    if (protectedBranches.has(name) || openHeads.has(name)) {
+      continue;
+    }
+
+    const current = byName.get(name);
+    if (current?.commit?.sha === sha) {
+      selected.push(name);
+    }
+  }
+
+  return selected.sort((left, right) => left.localeCompare(right));
+};
+
 export const selectBranchesForDeletion = ({
   repository,
   branches,
@@ -25,12 +85,7 @@ export const selectBranchesForDeletion = ({
   closedPullRequests,
   protectedBranches = DEFAULT_PROTECTED_BRANCHES,
 }) => {
-  const openHeads = new Set(
-    openPullRequests
-      .filter((pullRequest) => pullRequest?.head?.repo?.full_name === repository)
-      .map((pullRequest) => pullRequestHead(pullRequest).branch)
-      .filter(Boolean),
-  );
+  const openHeads = openBranchHeads({ repository, openPullRequests });
 
   const mergedByHeadAndSha = new Set(
     closedPullRequests
@@ -149,15 +204,28 @@ export const cleanupMergedBranches = async ({
     }),
   ]);
 
-  const candidates = selectBranchesForDeletion({
+  const manifest = JSON.parse(
+    await readFile(path.join(process.cwd(), ".github", "branch-hygiene.json"), "utf8"),
+  );
+
+  const mergedCandidates = selectBranchesForDeletion({
     repository,
     branches,
     openPullRequests,
     closedPullRequests,
   });
+  const supersededCandidates = selectExplicitlySupersededBranches({
+    repository,
+    branches,
+    openPullRequests,
+    manifest,
+  });
+  const candidates = [...new Set([...mergedCandidates, ...supersededCandidates])].sort(
+    (left, right) => left.localeCompare(right),
+  );
 
   console.log(
-    `Branch hygiene: ${branches.length} branches inspected, ${candidates.length} safe merged branch(es) selected.`,
+    `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} merged and ${supersededCandidates.length} exact-SHA superseded branch(es) selected.`,
   );
 
   for (const name of candidates) {
@@ -176,7 +244,7 @@ export const cleanupMergedBranches = async ({
       token,
       method: "DELETE",
     });
-    console.log(`Deleted merged branch: ${name}`);
+    console.log(`Deleted safe stale branch: ${name}`);
   }
 
   return { inspected: branches.length, candidates };

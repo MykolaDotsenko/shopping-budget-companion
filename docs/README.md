@@ -77,6 +77,7 @@ Specialized contracts:
 - [architecture/DATA-PERSISTENCE.md](./architecture/DATA-PERSISTENCE.md)
 - [quality/ACCESSIBILITY.md](./quality/ACCESSIBILITY.md) — current accessibility/release-quality contract
 - [quality/RELEASE-PROCESS.md](./quality/RELEASE-PROCESS.md) — evidence-bound Git tag/GitHub Release publication contract
+- [quality/REPOSITORY-HYGIENE.md](./quality/REPOSITORY-HYGIENE.md) — conservative branch-retention and cleanup contract
 
 Cross-cutting durable decisions:
 
@@ -97,6 +98,7 @@ Cross-cutting durable decisions:
 | real-store camera field validation | ROADMAP → CAMERA-FIELD-VALIDATION → issue #88 |
 | tests/CI | TESTING → workflow/config |
 | versioned release publishing | TESTING → RELEASE-PROCESS → Publish Release workflow |
+| repository / branch cleanup | REPOSITORY-HYGIENE → branch-hygiene manifest/workflow |
 | new capability | PRODUCT → ROADMAP → relevant decision/research |
 | premium/brand polish | PRODUCT → DESIGN → BRAND reference only if identity work |
 | marketing/launch | PRODUCT → MARKETING reference → launch material |

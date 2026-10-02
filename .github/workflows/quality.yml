@@ -188,6 +188,108 @@ jobs:
           include-hidden-files: true
           retention-days: 3
 
+
+  android-apk:
+    needs: quality
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Validate Android wrapper contract
+        run: npm run android:check
+
+      - name: Build bundled Android web payload
+        env:
+          VITE_SHOPPING_ANDROID_WRAPPER: "1"
+        run: |
+          rm -rf dist-android
+          npm run build -- --base=./ --outDir=dist-android
+          node scripts/prepare-android-assets.mjs dist-android
+          test -f android/app/src/main/assets/web/index.html
+          test ! -e android/app/src/main/assets/web/sw.js
+          test ! -e android/app/src/main/assets/web/manifest.webmanifest
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: ""
+
+      - name: Install pinned Android platform and build tools
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle 9.6.0
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Lint and build Android APK variants
+        run: |
+          gradle -p android --no-daemon --stacktrace lintDebug assembleDebug assembleRelease
+
+      - name: Verify installable preview APK signature
+        run: |
+          "${ANDROID_SDK_ROOT}/build-tools/36.0.0/apksigner" verify             --verbose             android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Stage Android APK evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(jq -r .version package.json)"
+          OUT="android-output"
+          mkdir -p "${OUT}"
+
+          cp android/app/build/outputs/apk/debug/app-debug.apk             "${OUT}/shopping-budget-companion-${VERSION}-preview.apk"
+
+          UNSIGNED="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          test -f "${UNSIGNED}"
+          cp "${UNSIGNED}"             "${OUT}/shopping-budget-companion-${VERSION}-release-unsigned.apk"
+
+          (
+            cd "${OUT}"
+            sha256sum *.apk > SHA256SUMS
+          )
+
+          jq -n             --arg sourceSha "${GITHUB_SHA}"             --arg version "${VERSION}"             --arg applicationId "io.github.mykoladotsenko.shoppingbudgetcompanion"             --arg previewApplicationId "io.github.mykoladotsenko.shoppingbudgetcompanion.debug"             '{
+              schemaVersion: 1,
+              sourceSha: $sourceSha,
+              version: $version,
+              targetApi: 36,
+              minApi: 24,
+              applicationId: $applicationId,
+              previewApplicationId: $previewApplicationId,
+              previewSigned: true,
+              releaseSigned: false
+            }' > "${OUT}/android-build-manifest.json"
+
+      - name: Upload Android APK evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-apk-${{ github.sha }}
+          path: android-output
+          if-no-files-found: error
+          retention-days: 30
+
   provenance:
     needs: quality
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}

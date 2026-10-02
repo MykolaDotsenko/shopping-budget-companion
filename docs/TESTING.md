@@ -451,6 +451,8 @@ Protect behaviour, invariants and user outcomes.
 
 ## Release checklist
 
+Versioned GitHub Releases use [quality/RELEASE-PROCESS.md](./quality/RELEASE-PROCESS.md) and may only label an already-successful push-to-main Quality revision; release publication does not rebuild the app.
+
 Before a significant release:
 
 - full quality gate green;

@@ -19,7 +19,7 @@ const privacy = {
 
 const barcode = (overrides = {}) => ({
   capability: "barcode",
-  scenario: "ordinary-ean-upc",
+  scenario: "B-ORDINARY",
   conditions: ["normal"],
   engine: "native",
   runtimeState: "warm",
@@ -33,7 +33,7 @@ const barcode = (overrides = {}) => ({
 
 const visual = (overrides = {}) => ({
   capability: "visual",
-  scenario: "loose-produce",
+  scenario: "V-PRODUCE",
   conditions: ["normal"],
   engine: "webgpu",
   runtimeState: "warm",
@@ -49,7 +49,7 @@ const visual = (overrides = {}) => ({
 
 const ocr = (overrides = {}) => ({
   capability: "ocr",
-  scenario: "comma-decimal",
+  scenario: "O-COMMA",
   conditions: ["normal"],
   runtimeState: "warm",
   decisionLatencyMs: 1100,
@@ -125,7 +125,7 @@ describe("camera field evidence", () => {
         observations: [
           barcode(),
           barcode({
-            scenario: "small-code",
+            scenario: "B-SMALL",
             outcome: "wrong",
             correctionOrRejection: true,
             manualFallbackUsed: true,
@@ -134,15 +134,15 @@ describe("camera field evidence", () => {
           }),
           visual(),
           visual({
-            scenario: "similar-packaging",
+            scenario: "V-SIMILAR",
             correctRank: 3,
             outcome: "rejected",
             manualFallbackUsed: true,
-            confusionClass: "similar-packaging",
+            confusionClass: "V-SIMILAR",
           }),
           ocr(),
           ocr({
-            scenario: "unit-price",
+            scenario: "O-UNIT",
             correctCandidateRank: null,
             outcome: "no-result",
             manualFallbackUsed: true,

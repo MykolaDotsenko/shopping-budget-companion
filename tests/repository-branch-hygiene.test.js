@@ -2,7 +2,10 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
 
-import { selectBranchesForDeletion } from "../scripts/cleanup-merged-branches.mjs";
+import {
+  selectBranchesForDeletion,
+  selectTreeEquivalentBranches,
+} from "../scripts/cleanup-merged-branches.mjs";
 
 const repo = "MykolaDotsenko/shopping-budget-companion";
 
@@ -126,6 +129,63 @@ describe("repository branch hygiene", () => {
         ],
       }),
     ).toEqual(["feat/a-first", "fix/z-last"]);
+  });
+
+
+  it("protects study evidence refs from automatic deletion", () => {
+    expect(
+      selectBranchesForDeletion({
+        repository: repo,
+        branches: [branch("study/evidence-baseline-r1", "study-sha")],
+        openPullRequests: [],
+        closedPullRequests: [
+          pull({
+            head: "study/evidence-baseline-r1",
+            sha: "study-sha",
+          }),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it("selects a leftover branch when its complete Git tree is identical to main", () => {
+    expect(
+      selectTreeEquivalentBranches({
+        repository: repo,
+        branches: [
+          branch("chore/empty-superseded", "same-tree-commit"),
+          branch("feat/unique-work", "unique-tree-commit"),
+          branch("study/evidence-baseline-r1", "study-tree-commit"),
+        ],
+        openPullRequests: [],
+        treeBySha: new Map([
+          ["same-tree-commit", "main-tree"],
+          ["unique-tree-commit", "unique-tree"],
+          ["study-tree-commit", "main-tree"],
+        ]),
+        mainTreeSha: "main-tree",
+      }),
+    ).toEqual(["chore/empty-superseded"]);
+  });
+
+  it("does not tree-delete a branch with an open pull request", () => {
+    expect(
+      selectTreeEquivalentBranches({
+        repository: repo,
+        branches: [branch("feat/open", "open-sha")],
+        openPullRequests: [
+          {
+            head: {
+              ref: "feat/open",
+              sha: "open-sha",
+              repo: { full_name: repo },
+            },
+          },
+        ],
+        treeBySha: new Map([["open-sha", "main-tree"]]),
+        mainTreeSha: "main-tree",
+      }),
+    ).toEqual([]);
   });
 
   it("runs destructive cleanup only after a successful main Quality push", () => {

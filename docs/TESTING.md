@@ -225,6 +225,44 @@ Service-worker updates must remain prompt-based. Automated or runtime update log
 
 CI runs the full browser-offline reload journey in Chromium and Firefox. WebKit CI verifies the manifest, service-worker registration and precached application entry; Playwright WebKit offline navigation is not treated as Safari/device evidence because its Web Inspector harness cannot reliably navigate once offline.
 
+## Android APK packaging
+
+Android packaging is part of the release gate, but native automation does not replace physical-device product evidence.
+
+CI must prove:
+
+- the Android wrapper contract passes `npm run android:check`;
+- the web payload is built with relative URLs and without a PWA manifest/service worker;
+- only the public product payload is copied into `android/app/src/main/assets/web`;
+- Android lint passes with warnings treated as errors;
+- the native project compiles against and targets API 36;
+- the debug variant produces an installable signed preview APK;
+- the release variant produces an unsigned APK that can be signed later without rebuilding product code;
+- the preview APK signature verifies with Android build tools;
+- the APK artifact records exact source SHA, package version, API levels and SHA-256 checksums;
+- the Quality run exposes exactly one `android-apk-<source-sha>` artifact for release provenance.
+
+The shell's static contract must continue to prove:
+
+- `WebViewAssetLoader` is used instead of `file://`;
+- WebView file access and mixed cleartext content stay disabled;
+- Android backup stays disabled;
+- camera permission is scoped to local-origin video capture rather than blindly granting every future WebView resource type.
+
+The browser matrix remains the behavioural source for the shared web product. A future store/public Android launch should additionally be exercised on at least one representative physical Android device for:
+
+- first launch;
+- active-trip persistence across app background/foreground;
+- process recreation;
+- offline core flow;
+- camera permission denial and grant;
+- barcode / price-tag / product camera fallback;
+- external links;
+- system back navigation;
+- keyboard and large-text behaviour.
+
+A debug-signed preview APK is installable test evidence, not a production signing identity.
+
 ## Exact-money contract
 
 Tests must prove:

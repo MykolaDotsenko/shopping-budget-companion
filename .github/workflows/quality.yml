@@ -430,7 +430,7 @@ jobs:
       contents: write
     concurrency:
       group: gh-pages-publish
-      cancel-in-progress: true
+      cancel-in-progress: false
 
     steps:
       - name: Checkout deployment repository
@@ -474,8 +474,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch --orphan gh-pages-publish
-          git rm -rf . || true
+
+          # Build the deployment commit directly on the current remote gh-pages
+          # head. This keeps every production publication fast-forwardable so
+          # gh-pages can reject force pushes without breaking verified deploys.
+          git switch -C gh-pages-publish origin/gh-pages
+          git rm -rf .
           git clean -fdx
           cp -R /tmp/pages-site/. .
 
@@ -492,5 +496,11 @@ jobs:
             test "${study_tree_after}" = "${study_tree_before}"
           fi
 
-          git commit -m "deploy: tested shopping app ${GITHUB_SHA}"
-          git push --force origin HEAD:gh-pages
+          # Even if the tested site bytes are unchanged, retain one deployment
+          # commit that records exactly which main SHA passed every release gate.
+          git commit --allow-empty -m "deploy: tested shopping app ${GITHUB_SHA}"
+
+          # Fail closed if the local deployment commit is somehow no longer a
+          # descendant of the remote deployment head we fetched above.
+          git merge-base --is-ancestor origin/gh-pages HEAD
+          git push origin HEAD:gh-pages

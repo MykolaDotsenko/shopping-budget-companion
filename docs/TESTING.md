@@ -448,11 +448,34 @@ Avoid brittle tests for:
 
 Protect behaviour, invariants and user outcomes.
 
+## Formal tagged release
+
+GitHub Releases are immutable evidence snapshots, not a second deployment path.
+
+A semantic version tag such as `v2.0.0` triggers `.github/workflows/release.yml`. The workflow fails unless:
+
+- the tag exactly matches the `package.json` version;
+- the tagged SHA is contained in `main`;
+- the current `gh-pages` deployment records that exact SHA as its tested source;
+- production dependency audit passes;
+- the complete static/unit/component gate passes;
+- the camera kill-switch build passes;
+- the public build validator passes;
+- Chromium, Firefox and WebKit browser/accessibility suites pass.
+
+Only then does the workflow create a GitHub Release containing the exact public-site archive, SHA-256 digest, CycloneDX production SBOM, SBOM digest and generated release notes.
+
+The workflow refuses to replace an existing GitHub Release. A correction requires a new version/tag after the corrected `main` SHA has deployed.
+
+Real-user retention and real-store camera evidence remain separate product-validation gates. Formal release metadata never turns a not-run human gate into a pass.
+
 ## Release checklist
 
 Before a significant release:
 
 - full quality gate green;
+- exact candidate SHA already deployed from `main`;
+- package version and intended semantic tag agree;
 - no unresolved money/persistence regression;
 - critical browser journeys green;
 - accessibility contract checked;

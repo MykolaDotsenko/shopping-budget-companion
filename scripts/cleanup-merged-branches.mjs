@@ -167,6 +167,17 @@ export const selectTreeEquivalentBranches = ({
     .sort((left, right) => left.localeCompare(right));
 };
 
+export const isDeletionStillSafe = ({
+  expectedSha,
+  currentRef,
+  currentOpenPullRequests,
+}) =>
+  typeof expectedSha === "string" &&
+  expectedSha.length > 0 &&
+  currentRef?.object?.sha === expectedSha &&
+  Array.isArray(currentOpenPullRequests) &&
+  currentOpenPullRequests.length === 0;
+
 const request = async ({ url, token, method = "GET" }) => {
   const response = await fetch(url, {
     method,
@@ -372,15 +383,20 @@ export const cleanupMergedBranches = async ({
       }),
     ]);
 
-    if (currentRef?.object?.sha !== expectedSha) {
-      console.log(
-        `Skip changed branch: ${name} (expected ${expectedSha}, current ${currentRef?.object?.sha ?? "unknown"}).`,
-      );
-      continue;
-    }
-
-    if (currentOpenPullRequests.length > 0) {
-      console.log(`Skip branch with newly opened PR: ${name}.`);
+    if (
+      !isDeletionStillSafe({
+        expectedSha,
+        currentRef,
+        currentOpenPullRequests,
+      })
+    ) {
+      if (currentRef?.object?.sha !== expectedSha) {
+        console.log(
+          `Skip changed branch: ${name} (expected ${expectedSha}, current ${currentRef?.object?.sha ?? "unknown"}).`,
+        );
+      } else {
+        console.log(`Skip branch with newly opened PR: ${name}.`);
+      }
       continue;
     }
 

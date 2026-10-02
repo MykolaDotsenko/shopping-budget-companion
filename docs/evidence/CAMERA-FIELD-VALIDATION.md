@@ -168,9 +168,11 @@ Copy this table into a private field document. Do not commit completed rows.
 
 Allowed Result values should stay capability-specific and mechanical:
 
-- barcode: success, wrong-read, no-result, runtime-error;
-- Product: top1-correct, top3-correct, no-correct-candidate, runtime-error;
-- OCR: rank1-correct, rank2-3-correct, missing-correct-candidate, runtime-error.
+- barcode: correct, wrong, no-read, timeout, runtime-error;
+- Product: accepted-correct, accepted-wrong, rejected, no-result, timeout, runtime-error;
+- OCR: accepted-correct, accepted-wrong, rejected, no-result, timeout, runtime-error.
+
+Correct candidate rank remains a separate numeric field for Product and OCR, so top-1/top-3 analysis is derived from the evidence rather than encoded ambiguously into the result label.
 
 Do not invent calibrated confidence percentages from model scores.
 

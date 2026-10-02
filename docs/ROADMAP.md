@@ -20,6 +20,8 @@ These gates are intentionally stronger than “CI is green”.
 
 ## Current priority
 
+Android packaging is implemented as a distribution surface (D-059): CI produces an installable preview APK plus an unsigned release APK from the same product source, while public release signing remains a secure release-process step using a private key outside git. This does not close the real-shopper or real-store evidence gates below.
+
 ### 1. Run the real-store retention beta
 
 Use the guarded beta evidence path defined in:
@@ -205,6 +207,8 @@ Do not add reopen semantics unless real-user evidence shows recurring need.
 If approved, reopening must derive a **new active trip** from immutable completed history. A completed history record must never be mutated back into an active transaction.
 
 ### G. Launch / recruiter-grade proof
+
+Android distribution work is implemented at the packaging/CI layer. Before calling the APK production-ready for broad Android distribution, complete representative physical-device smoke coverage and configure the private release signing key in GitHub Actions.
 
 Build the final case study from verified evidence:
 

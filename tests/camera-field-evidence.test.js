@@ -109,6 +109,39 @@ describe("camera field evidence", () => {
     ).toBeNull();
   });
 
+  it("keeps runtime failures as explicit field evidence", () => {
+    const candidate = report({
+      observations: [
+        barcode({
+          scenario: "B-LOWLIGHT",
+          outcome: "runtime-error",
+          manualFallbackUsed: true,
+        }),
+        visual({
+          scenario: "V-GLARE",
+          outcome: "runtime-error",
+          correctRank: null,
+          manualFallbackUsed: true,
+        }),
+        ocr({
+          scenario: "O-GLARE",
+          outcome: "runtime-error",
+          correctCandidateRank: null,
+          manualFallbackUsed: true,
+          correctionOrRejection: true,
+        }),
+      ],
+    });
+
+    const parsed = parseCameraFieldEvidence(candidate);
+    expect(parsed).not.toBeNull();
+
+    const summary = summarizeCameraFieldEvidence([candidate]);
+    expect(summary.barcode.failuresOrTimeouts).toBe(1);
+    expect(summary.visual.runtimeErrors).toBe(1);
+    expect(summary.ocr.runtimeErrors).toBe(1);
+  });
+
   it("rejects a report whose privacy declaration is weakened", () => {
     expect(
       parseCameraFieldEvidence(

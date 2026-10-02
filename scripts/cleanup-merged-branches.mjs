@@ -81,6 +81,55 @@ export const selectBranchesForDeletion = ({
     .sort((left, right) => left.localeCompare(right));
 };
 
+export const selectClosedPrCapturedBranches = ({
+  repository,
+  branches,
+  openPullRequests,
+  closedPullRequests,
+  protectedBranches = DEFAULT_PROTECTED_BRANCHES,
+  protectedPrefixes = DEFAULT_PROTECTED_PREFIXES,
+}) => {
+  const openHeads = new Set(
+    openPullRequests
+      .filter((pullRequest) => pullRequest?.head?.repo?.full_name === repository)
+      .map((pullRequest) => pullRequestHead(pullRequest).branch)
+      .filter(Boolean),
+  );
+
+  const capturedHeadAndSha = new Set(
+    closedPullRequests
+      .filter(
+        (pullRequest) =>
+          pullRequest?.state === "closed" &&
+          pullRequest?.head?.repo?.full_name === repository,
+      )
+      .map((pullRequest) => {
+        const head = pullRequestHead(pullRequest);
+        return `${head.branch}\u0000${head.sha}`;
+      }),
+  );
+
+  return branches
+    .filter((branch) => {
+      const name = branchName(branch);
+      const sha =
+        typeof branch?.commit?.sha === "string" ? branch.commit.sha : "";
+
+      if (
+        name === "" ||
+        sha === "" ||
+        isProtectedBranch(name, protectedBranches, protectedPrefixes) ||
+        openHeads.has(name)
+      ) {
+        return false;
+      }
+
+      return capturedHeadAndSha.has(`${name}\u0000${sha}`);
+    })
+    .map((branch) => branch.name)
+    .sort((left, right) => left.localeCompare(right));
+};
+
 export const selectTreeEquivalentBranches = ({
   branches,
   openPullRequests,
@@ -207,6 +256,13 @@ export const cleanupMergedBranches = async ({
     closedPullRequests,
   });
 
+  const closedPrCapturedCandidates = selectClosedPrCapturedBranches({
+    repository,
+    branches,
+    openPullRequests,
+    closedPullRequests,
+  });
+
   const protectedOrOpen = new Set([
     "main",
     "gh-pages",
@@ -271,11 +327,12 @@ export const cleanupMergedBranches = async ({
 
   const candidates = [...new Set([
     ...mergedCandidates,
+    ...closedPrCapturedCandidates,
     ...treeEquivalentCandidates,
   ])].sort((left, right) => left.localeCompare(right));
 
   console.log(
-    `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} exact merged-head branch(es) and ${treeEquivalentCandidates.length} main-tree-equivalent branch(es) selected.`,
+    `Branch hygiene: ${branches.length} branches inspected, ${mergedCandidates.length} exact merged-head branch(es), ${closedPrCapturedCandidates.length} closed-PR-captured branch(es), and ${treeEquivalentCandidates.length} main-tree-equivalent branch(es) selected.`,
   );
 
   for (const name of candidates) {
@@ -301,6 +358,7 @@ export const cleanupMergedBranches = async ({
     inspected: branches.length,
     candidates,
     mergedCandidates,
+    closedPrCapturedCandidates,
     treeEquivalentCandidates,
   };
 };

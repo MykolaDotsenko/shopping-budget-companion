@@ -32,14 +32,20 @@ const valid = (overrides = {}) => ({
       expired: false,
       digest: "sha256:" + "b".repeat(64),
     },
+    {
+      id: 103,
+      name: "android-apk-" + SHA,
+      expired: false,
+      digest: "sha256:" + "c".repeat(64),
+    },
   ],
   ...overrides,
 });
 
 describe("release contract", () => {
-  it("binds a release to the current tested main artifact and SBOM", () => {
+  it("binds a release to the current tested web, SBOM and Android artifacts", () => {
     expect(validateReleaseContract(valid())).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       product: "shopping-budget-companion",
       version: "2.0.0",
       tag: "v2.0.0",
@@ -54,6 +60,11 @@ describe("release contract", () => {
         artifactId: 102,
         digest: "sha256:" + "b".repeat(64),
         name: "sbom-" + SHA,
+      },
+      androidApk: {
+        artifactId: 103,
+        digest: "sha256:" + "c".repeat(64),
+        name: "android-apk-" + SHA,
       },
     });
   });
@@ -119,6 +130,10 @@ describe("release contract", () => {
     ).toThrow(/sbom-/);
 
     expect(() =>
+      validateReleaseContract(valid({ artifacts: base.slice(0, 2) })),
+    ).toThrow(/android-apk-/);
+
+    expect(() =>
       validateReleaseContract(
         valid({ artifacts: [...base, { ...base[0], id: 103 }] }),
       ),
@@ -130,6 +145,7 @@ describe("release contract", () => {
           artifacts: [
             { ...base[0], expired: true },
             base[1],
+            base[2],
           ],
         }),
       ),
@@ -141,6 +157,7 @@ describe("release contract", () => {
           artifacts: [
             { ...base[0], expired: undefined },
             base[1],
+            base[2],
           ],
         }),
       ),
@@ -152,6 +169,7 @@ describe("release contract", () => {
           artifacts: [
             { ...base[0], digest: null },
             base[1],
+            base[2],
           ],
         }),
       ),

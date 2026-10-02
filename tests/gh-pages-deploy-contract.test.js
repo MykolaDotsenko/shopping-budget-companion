@@ -36,6 +36,15 @@ describe("gh-pages deployment governance contract", () => {
     );
   });
 
+  it("serializes gh-pages writers without cancelling an active publication", () => {
+    expect(qualityWorkflow).toContain(
+      "group: gh-pages-publish\n      cancel-in-progress: false",
+    );
+    expect(studyWorkflow).toContain(
+      "group: gh-pages-publish\n      cancel-in-progress: false",
+    );
+  });
+
   it("publishes study baselines without force and refuses to overwrite an existing path", () => {
     expect(studyWorkflow).toContain(
       'if [ -e "${target}" ]; then',

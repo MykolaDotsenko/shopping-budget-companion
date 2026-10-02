@@ -108,10 +108,21 @@ jobs:
 
           "${{ steps.syft.outputs.cmd }}" dir:.             --select-catalogers '-github-actions-usage-cataloger,-github-action-workflow-usage-cataloger'             --source-name shopping-budget-companion             --source-version "${VERSION}"             -o "cyclonedx-json=release-bundle/shopping-budget-companion-${VERSION}.cdx.json"
 
-          sha256sum "release-bundle/shopping-budget-companion-${VERSION}.cdx.json"             > "release-bundle/shopping-budget-companion-${VERSION}.cdx.json.sha256"
+          SBOM="release-bundle/shopping-budget-companion-${VERSION}.cdx.json"
+          sha256sum "${SBOM}" > "${SBOM}.sha256"
+
+          jq -e '.bomFormat == "CycloneDX"' "${SBOM}" >/dev/null
+          jq -e --arg version "${VERSION}" '.metadata.component.name == "shopping-budget-companion" and .metadata.component.version == $version' "${SBOM}" >/dev/null
+
+          while IFS= read -r dependency; do
+            jq -e --arg dependency "${dependency}" 'any(.components[]; .name == $dependency)' "${SBOM}" >/dev/null
+          done < <(jq -r '.dependencies | keys[]' package.json)
+
+          jq -e 'all(.components[]; .name != "vitest" and .name != "@vitest/coverage-v8")' "${SBOM}" >/dev/null
+          jq -e '[.components[] | select((.purl // "") | startswith("pkg:github/"))] | length == 0' "${SBOM}" >/dev/null
 
           sha256sum --check "release-bundle/shopping-budget-companion-${VERSION}.tar.gz.sha256"
-          sha256sum --check "release-bundle/shopping-budget-companion-${VERSION}.cdx.json.sha256"
+          sha256sum --check "${SBOM}.sha256"
 
       - name: Upload exact release site
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

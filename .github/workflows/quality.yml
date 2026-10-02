@@ -535,7 +535,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [artifact-integrity, provenance, browser, guarded-browser]
+    needs: [artifact-integrity, provenance, browser, guarded-browser, android-apk]
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
@@ -557,6 +557,38 @@ jobs:
           name: pages-site
           path: /tmp/pages-site
 
+      - name: Download exact tested Android APK artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-apk-${{ github.sha }}
+          path: /tmp/android-apk
+
+      - name: Stage stable Android preview download
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cd /tmp/android-apk
+          sha256sum --check SHA256SUMS
+
+          VERSION="$(jq -r .version android-build-manifest.json)"
+          SOURCE_SHA="$(jq -r .sourceSha android-build-manifest.json)"
+          PREVIEW_SIGNED="$(jq -r .previewSigned android-build-manifest.json)"
+          PREVIEW="shopping-budget-companion-${VERSION}-preview.apk"
+
+          test "${SOURCE_SHA}" = "${GITHUB_SHA}"
+          test "${PREVIEW_SIGNED}" = "true"
+          test -f "${PREVIEW}"
+
+          mkdir -p /tmp/pages-site/downloads
+          cp "${PREVIEW}" /tmp/pages-site/downloads/shopping-budget-companion-android-preview.apk
+          cp android-build-manifest.json /tmp/pages-site/downloads/android-build-manifest.json
+
+          (
+            cd /tmp/pages-site/downloads
+            sha256sum shopping-budget-companion-android-preview.apk               > shopping-budget-companion-android-preview.apk.sha256
+          )
+
       - name: Verify deploy artifact cleanliness
         shell: bash
         run: |
@@ -564,6 +596,9 @@ jobs:
           for file in index.html .nojekyll manifest.webmanifest sw.js; do
             test -f "/tmp/pages-site/${file}"
           done
+          test -f "/tmp/pages-site/downloads/shopping-budget-companion-android-preview.apk"
+          test -f "/tmp/pages-site/downloads/shopping-budget-companion-android-preview.apk.sha256"
+          test -f "/tmp/pages-site/downloads/android-build-manifest.json"
           for path in node_modules package.json src tests; do
             test ! -e "/tmp/pages-site/${path}"
           done

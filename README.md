@@ -17,6 +17,8 @@
 <p align="center">
   <a href="https://mykoladotsenko.github.io/shopping-budget-companion/"><strong>Open the app →</strong></a>
   ·
+  <a href="https://mykoladotsenko.github.io/shopping-budget-companion/downloads/shopping-budget-companion-android-preview.apk"><strong>Download Android APK ↓</strong></a>
+  ·
   <a href="https://mykoladotsenko.github.io/shopping-budget-companion/privacy/">Privacy</a>
   ·
   <a href="https://github.com/MykolaDotsenko/shopping-budget-companion/issues/new?template=feedback.yml">Send feedback</a>
@@ -154,14 +156,16 @@ Browser journeys cover Chromium, Firefox and WebKit across accessibility, recove
 
 ## Android APK
 
+**[Download the latest Android preview APK ↓](https://mykoladotsenko.github.io/shopping-budget-companion/downloads/shopping-budget-companion-android-preview.apk)**
+
 The same local-first product is packaged for Android in a thin API 36 wrapper. The web payload is bundled inside the APK and served through Android's secure `WebViewAssetLoader` boundary — no second implementation of money or shopping state.
 
-Every Quality run produces:
+The linked APK is the **debug-signed preview build from the latest verified `main` deployment**. Its checksum and build metadata are published beside it:
 
-- an **installable debug-signed preview APK** for device testing;
-- the exact **unsigned release APK** that the release workflow later signs with the private production key without rebuilding product code.
+- [SHA-256 checksum](https://mykoladotsenko.github.io/shopping-budget-companion/downloads/shopping-budget-companion-android-preview.apk.sha256)
+- [Android build manifest](https://mykoladotsenko.github.io/shopping-budget-companion/downloads/android-build-manifest.json)
 
-The signing key is never stored in git.
+Every Quality run also produces the exact **unsigned release APK** that the release workflow later signs with the private production key without rebuilding product code. The signing key is never stored in git.
 
 ## Run locally
 

@@ -6,7 +6,7 @@ This file describes **current validation gates and future sequencing**.
 
 It is not a chronological implementation diary; git history keeps the completed phase-by-phase plans.
 
-## Current status — 2026-09-27
+## Current status — 2026-10-01
 
 The core Shopping Budget Companion engineering path is implemented: exact money, the trip domain, local-first persistence and recovery, the remaining-first UI, fast price entry, history, Shop again, Recent Items, Price Memory, data controls and the installable offline shell. Production barcode identification (D-053), visual product recognition (D-057) and price-tag reading (D-055) ship in the shared in-trip camera behind build kill switches. Guarded evidence builds cover timing QA, the retention beta and cohort analysis. [specs/RELEASE-SPEC.md](./specs/RELEASE-SPEC.md) owns the per-capability status.
 
@@ -92,6 +92,7 @@ The active roadmap is intentionally narrow and local-first.
    - use repeat use, abandonment, Price Memory/reuse and trust/friction evidence to decide whether the core flow needs remediation.
 
 3. **Real-store camera validation — issue #88 (post-release validation, D-053/D-055/D-057)**
+   - use the field protocol in [evidence/CAMERA-FIELD-VALIDATION.md](./evidence/CAMERA-FIELD-VALIDATION.md);
    - use the production app on representative Android Chrome and iPhone Safari devices in real stores;
    - validate barcode reads across small/curved/glossy/store-printed codes and native-detector fallback;
    - validate Product mode across loose produce, familiar packaged products, same-brand variants, glare, angle, partial occlusion and visually similar packaging;

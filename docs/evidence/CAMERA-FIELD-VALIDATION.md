@@ -40,19 +40,19 @@ If remediation changes camera behaviour, start a new decision cycle on the remed
 Run:
 
 ```bash
-npm run field:report -- --template > field-001.json
+mkdir -p .field-evidence\nnpm run field:report -- --template > .field-evidence/field-001.json
 ```
 
 Replace all placeholders before collecting evidence.
 
-Keep completed evidence outside the public repository. Do not commit real-store evidence files.
+Keep completed evidence outside the public repository. The repository ignores `.field-evidence/`; store real reports there locally and do not force-add them.
 
 ## Validate and summarize
 
 Run:
 
 ```bash
-npm run field:report -- field-001.json field-002.json > camera-field-summary.json
+npm run field:report -- .field-evidence/field-001.json .field-evidence/field-002.json > .field-evidence/camera-field-summary.json
 ```
 
 The command fails on:

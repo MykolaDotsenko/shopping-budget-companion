@@ -69,7 +69,7 @@ set a limit → add prices → see what remains → correct mistakes → finish 
 
 A price is enough to add an item; names are optional. Edit, remove and Undo handle distracted input. At checkout, the actual receipt can be compared with the aisle estimate without rewriting it.
 
-The next trip gets faster through **Shop again**, **Recent Items** and local **Price Memory**.
+Repeat trips get faster through **Shop again**, **Recent Items** and local **Price Memory**.
 
 ## Why this is different
 
@@ -82,9 +82,7 @@ This is purpose-built for the moment **before payment**, when the decision can s
 | **Typical banking/budget app** | account-level spending overview | usually explains spending after transactions, not one basket before checkout |
 | **Shopping Budget Companion** | pre-checkout shopping control | intentionally focused on one trip and one remaining amount |
 
-It competes on **remaining-first control, low interaction cost, exact money, local durability and repeat-trip speed** — not on feature count.
-
-Typical use cases include a fixed grocery limit, a cash-envelope or gift-card budget, and larger baskets where repeated mental arithmetic becomes distracting.
+It competes on **remaining-first control, low interaction cost, exact money, local durability and repeat-trip speed** — not feature count. Best-fit situations include fixed grocery limits, cash-envelope/gift-card shopping and larger baskets.
 
 ## Built for a real shopping aisle
 
@@ -92,8 +90,7 @@ Typical use cases include a fixed grocery limit, a cash-envelope or gift-card bu
 - **Price first** — names, barcodes and other context stay optional.
 - **Correction is cheap** — edit, remove and Undo are normal parts of the flow.
 - **No setup wall** — no account, bank link or mandatory onboarding before first value.
-- **Offline core** — the installable PWA shell keeps the main budget loop independent of network availability after initial load.
-- **Repeat use gets easier** — prior trips and remembered prices reduce repeated work.
+- **Offline, repeatable core** — the PWA keeps the budget loop available after initial load, while prior trips and remembered prices reduce repeated work.
 
 ## Trust is part of the product
 
@@ -107,7 +104,7 @@ Canonical money is stored as **integer euro cents**.
 €50.00 → 5000
 ```
 
-Totals, safe remaining spend, buffers, projections and over-budget states are derived from exact canonical values outside React components.
+Totals, buffers, projections and over-budget states are derived from exact values outside React components.
 
 ### Checkout is reconciliation, not a reset
 
@@ -115,17 +112,17 @@ If the estimated cart is **€32.40** and the receipt is **€33.05**, the app r
 
 ### Storage failure must not become silent data loss
 
-Stored state is versioned and validated with Zod. If a completed trip cannot be saved safely, the active trip stays open rather than pretending it was archived.
+Stored state is versioned and Zod-validated. If completion cannot be saved safely, the active trip stays open instead of pretending it was archived.
 
 ### Smart capture can suggest; the shopper decides
 
-Manual entry always works. Optional barcode, product-recognition and shelf-price tools can reduce typing, but the trust boundary stays explicit:
+Manual entry always works. Barcode, product-recognition and shelf-price helpers stay behind an explicit trust boundary:
 
 ```text
 camera → candidate/context → shopper confirms → canonical price
 ```
 
-A barcode is not treated as a guaranteed shelf price. OCR and visual recognition remain advisory, and camera frames stay on the device.
+Barcode identity is not treated as a current shelf price; OCR and visual recognition remain advisory, and camera frames stay on-device.
 
 ## Engineering underneath
 
@@ -143,13 +140,13 @@ features ─────────▶ application ─────────�
 | **Infrastructure** | storage, validation/codecs, camera and recognition adapters |
 | **UI** | rendering, drafts, focus, accessibility and interaction feedback |
 
-The state model uses a small TypeScript controller with `useSyncExternalStore`; architecture exists to protect money, lifecycle and recovery rules, not to make a small app look artificially large.
+A small TypeScript controller with `useSyncExternalStore` protects money, lifecycle and recovery rules without adding a state framework.
 
 **Product:** React 19 · TypeScript 6 strict · Vite 8 · Zod 4 · CSS Modules · Workbox/PWA · ZXing WASM · Transformers.js/CLIP · Tesseract.js
 
 **Verification:** Vitest · React Testing Library · fast-check · Playwright · axe-core · ESLint · GitHub Actions · dependency/security checks
 
-Browser journeys cover Chromium, Firefox and WebKit, including accessibility, persistence/recovery, localization, multi-tab behaviour and camera-tool flows.
+Browser journeys cover Chromium, Firefox and WebKit across accessibility, recovery, localization, multi-tab and camera-tool flows.
 
 [![Quality](https://github.com/MykolaDotsenko/shopping-budget-companion/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/MykolaDotsenko/shopping-budget-companion/actions/workflows/quality.yml)
 

@@ -331,6 +331,24 @@ The public product ships an **IMPLEMENTED** installable/offline application shel
 
 Offline browser coverage verifies that an already installed/cached shell can restore an active trip, complete it while offline, persist history and restore that history after another offline reload.
 
+## Android APK shell
+
+Android distribution is an **IMPLEMENTED packaging boundary**, not a second product implementation.
+
+- the native project lives under `android/`;
+- CI builds the same React/Vite product with relative asset URLs and `VITE_SHOPPING_ANDROID_WRAPPER=1`;
+- that Android-specific build disables the PWA manifest/service worker, then copies the immutable web payload into the APK;
+- `WebViewAssetLoader` exposes those bundled files on `https://appassets.androidplatform.net/assets/web/`, preserving HTTPS/same-origin semantics without `file://`;
+- WebView file/content access and mixed cleartext content are disabled;
+- external top-level links leave the shell and open in the system browser;
+- camera access is granted only to the local bundled origin, only for video capture, and only after Android CAMERA permission succeeds;
+- Android backup is disabled so WebView shopping state is not promoted into a cloud-backup data path;
+- the native shell owns no ShoppingTrip, money, history, Price Memory or evidence state.
+
+The package targets API 36 and keeps API 24 as its minimum runtime. AndroidX WebKit is the only native runtime dependency admitted by D-059.
+
+The installable CI preview APK uses Android's debug signing identity and a `.debug` application-id suffix. Production release APKs are generated from the exact CI-tested unsigned release payload and must be signed later with a private release key supplied through GitHub Actions secrets. No signing key belongs in git.
+
 ## Barcode, visual product recognition and price-tag reading
 
 Production barcode identification (D-053), visual product recognition (D-057) and price-tag reading (D-055) are implemented and share one camera.

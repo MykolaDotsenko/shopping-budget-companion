@@ -45,12 +45,14 @@ The workflow:
 3. validates the release contract with scripts/validate-release-contract.mjs;
 4. verifies package.json version equality;
 5. rejects duplicate tags and releases;
-6. downloads the exact SHA-scoped SBOM from the selected run;
-7. verifies the SBOM SHA-256 sidecar;
-8. creates a draft GitHub Release directly from the exact source SHA;
-9. attaches release-manifest.json, the CycloneDX SBOM and its SHA-256 sidecar;
-10. verifies the draft tag, target SHA and required assets;
-11. only then publishes the release.
+6. downloads the exact tested `pages-site` artifact archive by immutable artifact ID;
+7. verifies that archive against the SHA-256 digest recorded by GitHub Actions;
+8. downloads the exact SHA-scoped SBOM from the selected run;
+9. verifies the SBOM SHA-256 sidecar;
+10. creates a draft GitHub Release directly from the exact source SHA;
+11. attaches the tested Pages archive, `release-manifest.json`, the CycloneDX SBOM and its SHA-256 sidecar;
+12. verifies the draft tag, target SHA and required assets;
+13. only then publishes the release.
 
 No application build occurs in this workflow.
 
@@ -67,7 +69,7 @@ release-manifest.json records:
 - pages-site artifact ID and SHA-256 digest;
 - SBOM artifact ID, name and SHA-256 digest.
 
-It is a provenance pointer, not a second build system.
+It is a provenance pointer, not a second build system. The GitHub Release also preserves the exact tested `pages-site` artifact archive so the short Actions retention window cannot erase the release payload it identifies.
 
 ## Failure rules
 

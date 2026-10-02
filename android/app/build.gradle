@@ -1,0 +1,94 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id "com.android.application"
+}
+
+def webPackage = new JsonSlurper().parse(file("../../package.json"))
+def webVersion = webPackage.version.toString()
+def versionMatch = (webVersion =~ /^(\d+)\.(\d+)\.(\d+)(?:-.+)?$/)
+if (!versionMatch.matches()) {
+    throw new GradleException("package.json version must be SemVer-compatible for Android packaging: " + webVersion)
+}
+
+def defaultVersionCode =
+    versionMatch[0][1].toInteger() * 1_000_000 +
+    versionMatch[0][2].toInteger() * 1_000 +
+    versionMatch[0][3].toInteger()
+def requestedVersionCode = System.getenv("ANDROID_VERSION_CODE")
+def androidVersionCode = requestedVersionCode ? requestedVersionCode.toInteger() : defaultVersionCode
+
+def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+def keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+def keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+def releaseSigningReady = [keystorePath, keystorePassword, keyAlias, keyPassword].every { value ->
+    value != null && !value.isBlank()
+}
+
+android {
+    namespace "io.github.mykoladotsenko.shoppingbudgetcompanion"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "io.github.mykoladotsenko.shoppingbudgetcompanion"
+        minSdk 24
+        targetSdk 36
+        versionCode androidVersionCode
+        versionName webVersion
+    }
+
+    signingConfigs {
+        release {
+            if (releaseSigningReady) {
+                storeFile file(keystorePath)
+                storePassword keystorePassword
+                keyAlias keyAlias
+                keyPassword keyPassword
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+                enableV4Signing true
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            if (releaseSigningReady) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+        warningsAsErrors true
+    }
+
+    packaging {
+        resources {
+            excludes += [
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE-notice.md",
+            ]
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.17.1"
+}

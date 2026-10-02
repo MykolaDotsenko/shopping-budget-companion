@@ -23,6 +23,7 @@ npm run test:e2e -- --project=chromium
 4. Update code, tests and current documentation together when the contract changes.
 5. Run the relevant quality gates locally.
 6. Open a PR; do not bypass CI with direct changes to `main`.
+7. After a merged PR passes the post-merge `Quality` run, its unchanged head branch is deleted automatically. Branches with open PRs, unmerged work, or commits added after merge are preserved.
 
 ## Architectural boundaries
 

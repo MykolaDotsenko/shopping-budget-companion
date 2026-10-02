@@ -72,8 +72,6 @@ const exactKeys = (value, keys) => {
 const isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 const isFiniteNonNegative = (value) =>
   typeof value === "number" && Number.isFinite(value) && value >= 0;
-const isPositiveInteger = (value) =>
-  Number.isSafeInteger(value) && value >= 1;
 const isIsoTimestamp = (value) => {
   if (typeof value !== "string") return false;
   const parsed = Date.parse(value);

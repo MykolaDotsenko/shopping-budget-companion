@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import {
+  isDeletionStillSafe,
   selectBranchesForDeletion,
   selectExplicitlySupersededBranches,
 } from "../scripts/cleanup-merged-branches.mjs";
@@ -258,6 +259,35 @@ describe("repository branch hygiene", () => {
         },
       }),
     ).toEqual([]);
+  });
+
+
+  it("revalidates the exact branch SHA immediately before deletion", () => {
+    expect(
+      isDeletionStillSafe({
+        expectedSha: "expected-sha",
+        currentRef: { object: { sha: "expected-sha" } },
+        currentOpenPullRequests: [],
+      }),
+    ).toBe(true);
+
+    expect(
+      isDeletionStillSafe({
+        expectedSha: "expected-sha",
+        currentRef: { object: { sha: "new-sha" } },
+        currentOpenPullRequests: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("cancels deletion if a pull request opens after the initial snapshot", () => {
+    expect(
+      isDeletionStillSafe({
+        expectedSha: "expected-sha",
+        currentRef: { object: { sha: "expected-sha" } },
+        currentOpenPullRequests: [{ number: 999 }],
+      }),
+    ).toBe(false);
   });
 
   it("runs destructive cleanup only after a successful main Quality push", () => {

@@ -23,6 +23,7 @@ permissions:
 concurrency:
   group: gh-pages-publish
   cancel-in-progress: false
+  queue: max
 
 jobs:
   publish-study-baseline:

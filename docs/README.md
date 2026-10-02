@@ -125,6 +125,7 @@ Evidence documents define how claims become validated:
 - [evidence/RETENTION-STUDY-LOG-TEMPLATE.md](./evidence/RETENTION-STUDY-LOG-TEMPLATE.md)
 - [evidence/PHASE-4-DESIGN-VALIDATION.md](./evidence/PHASE-4-DESIGN-VALIDATION.md)
 - [evidence/BRAND-IMPLEMENTATION-AUDIT.md](./evidence/BRAND-IMPLEMENTATION-AUDIT.md)
+- [evidence/CAMERA-FIELD-VALIDATION.md](./evidence/CAMERA-FIELD-VALIDATION.md) — privacy-safe real-phone/real-store protocol for issue #88
 
 Automation does not substitute for explicitly required human/device evidence.
 

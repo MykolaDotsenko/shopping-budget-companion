@@ -430,7 +430,7 @@ jobs:
       contents: write
     concurrency:
       group: gh-pages-publish
-      cancel-in-progress: true
+      cancel-in-progress: false
 
     steps:
       - name: Checkout deployment repository

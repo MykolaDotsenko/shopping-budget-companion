@@ -6,13 +6,11 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowInsets;
 import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
@@ -28,7 +26,6 @@ import androidx.annotation.Nullable;
 import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewClientCompat;
 
-import java.util.Arrays;
 
 public final class MainActivity extends Activity {
     private static final int CAMERA_PERMISSION_REQUEST = 1001;
@@ -44,14 +41,11 @@ public final class MainActivity extends Activity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Window window = getWindow();
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.TRANSPARENT);
-
         webView = new WebView(this);
         applySystemBarInsets(webView);
         configureWebView(webView);
         setContentView(webView);
+        registerBackNavigation();
 
         if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
             webView.loadUrl(START_URL);
@@ -173,26 +167,36 @@ public final class MainActivity extends Activity {
     }
 
     private void applySystemBarInsets(@NonNull View view) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            getWindow().setDecorFitsSystemWindows(false);
-            view.setOnApplyWindowInsetsListener((target, insets) -> {
-                android.graphics.Insets bars = insets.getInsets(
-                    WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
-                );
-                target.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-                return insets;
-            });
-        } else {
-            view.setOnApplyWindowInsetsListener((target, insets) -> {
-                target.setPadding(
-                    insets.getSystemWindowInsetLeft(),
-                    insets.getSystemWindowInsetTop(),
-                    insets.getSystemWindowInsetRight(),
-                    insets.getSystemWindowInsetBottom()
-                );
-                return insets;
-            });
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return;
         }
+
+        getWindow().setDecorFitsSystemWindows(false);
+        view.setOnApplyWindowInsetsListener((target, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(
+                WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout()
+            );
+            target.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return insets;
+        });
+    }
+
+    private void registerBackNavigation() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                this::handleBackNavigation
+            );
+        }
+    }
+
+    private void handleBackNavigation() {
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+            return;
+        }
+
+        finishAfterTransition();
     }
 
     @Override
@@ -270,8 +274,8 @@ public final class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView != null && webView.canGoBack()) {
-            webView.goBack();
+        if (keyCode == KeyEvent.KEYCODE_BACK && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            handleBackNavigation();
             return true;
         }
         return super.onKeyDown(keyCode, event);

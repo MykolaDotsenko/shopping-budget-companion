@@ -178,7 +178,7 @@ const isVisualObservation = (value) =>
   isRank(value.correctRank, 5) &&
   ["accepted-correct", "accepted-wrong", "rejected", "no-result", "timeout", "runtime-error"].includes(value.outcome) &&
   (value.confusionClass === null ||
-    ["same-brand-size", "same-brand-flavour", "similar-packaging", "produce-lookalike", "other"].includes(value.confusionClass));
+    ["V-SAME-SIZE", "V-SAME-FLAVOUR", "V-SIMILAR", "V-PRODUCE", "OTHER"].includes(value.confusionClass));
 
 const isOcrObservation = (value) =>
   isCommonObservation(value, new Set(OCR_SCENARIOS)) &&

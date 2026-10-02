@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
 import { selectBranchesForDeletion } from "../scripts/cleanup-merged-branches.mjs";
@@ -19,7 +21,27 @@ const pull = ({
     sha,
     repo: repository === null ? null : { full_name: repository },
   },
+  it("runs destructive cleanup only after a successful main Quality push", () => {
+    expect(hygieneWorkflow).toContain('workflows: ["Quality"]');
+    expect(hygieneWorkflow).toContain("types: [completed]");
+    expect(hygieneWorkflow).toContain(
+      "github.event.workflow_run.conclusion == 'success'",
+    );
+    expect(hygieneWorkflow).toContain(
+      "github.event.workflow_run.event == 'push'",
+    );
+    expect(hygieneWorkflow).toContain(
+      "github.event.workflow_run.head_branch == 'main'",
+    );
+    expect(hygieneWorkflow).toContain("contents: write");
+    expect(hygieneWorkflow).toContain('BRANCH_HYGIENE_APPLY: "1"');
+  });
 });
+
+const hygieneWorkflow = await readFile(
+  ".github/workflows/repository-branch-hygiene.yml",
+  "utf8",
+);
 
 describe("repository branch hygiene", () => {
   it("selects a merged branch only when its current head matches the merged PR head", () => {

@@ -25,7 +25,7 @@
     "android:assets": "npm run build -- --base=./ --outDir=dist-android && node scripts/prepare-android-assets.mjs dist-android"
   },
   "dependencies": {
-    "@huggingface/transformers": "4.3.0",
+    "@huggingface/transformers": "4.3.1",
     "@tesseract.js-data/fin": "1.0.0",
     "barcode-detector": "3.2.2",
     "react": "19.3.0",

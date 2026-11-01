@@ -312,7 +312,7 @@ jobs:
 
     steps:
       - name: Download exact SBOM evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: sbom-${{ github.sha }}
           path: /tmp/sbom
@@ -358,7 +358,7 @@ jobs:
 
     steps:
       - name: Download release artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: pages-site
           path: /tmp/pages-site
@@ -409,7 +409,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Download exact release artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: pages-site
           path: .playwright-site-root/shopping-budget-companion
@@ -468,7 +468,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Download exact release artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: pages-site
           path: /tmp/pages-site
@@ -552,13 +552,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download exact tested site artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: pages-site
           path: /tmp/pages-site
 
       - name: Download exact tested Android APK artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: android-apk-${{ github.sha }}
           path: /tmp/android-apk
